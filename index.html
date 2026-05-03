@@ -429,8 +429,7 @@ function renderPyramid() {
             <div class="team-card ${isMyTeam?'my-team':''} ${canChallenge?'can-challenge':''} ${hasPendingChallenge&&!isMyTeam?'has-challenge':''}"
                  onclick="openTeam('${t.id}')">
               <div class="team-pos">#${t.position}</div>
-              <div class="team-nickname">${t.nickname}</div>
-              <div class="team-name">${t.name}</div>
+              <div class="team-nickname">${t.name}</div>
               <div class="team-captain">👑 ${captainName}</div>
               ${canChallenge ? `<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge('${t.id}')">⚔️ Izazovi</button>` : ''}
               ${isMyTeam ? '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>' : ''}
@@ -467,10 +466,9 @@ async function openTeam(teamId) {
 
   document.getElementById('team-modal-content').innerHTML = `
     <div class="team-detail-header">
-      <div class="team-avatar">${team.nickname.substring(0,2).toUpperCase()}</div>
+      <div class="team-avatar">${team.name.substring(0,2).toUpperCase()}</div>
       <div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;">${team.nickname}</div>
-        <div style="font-size:0.8rem;color:var(--text3);">${team.name}</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;">${team.name}</div>
         <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">Stepenica ${team.step} · Pozicija #${team.position}</div>
       </div>
     </div>
@@ -698,19 +696,36 @@ function renderAdmin() {
     <div class="admin-box">
       <div class="admin-box-header">➕ Dodaj Tim</div>
       <div class="admin-box-body">
-        <div class="form-row">
-          <div class="form-group" style="margin:0"><label>Naziv tima *</label><input type="text" id="new-team-name" placeholder="Naziv"/></div>
-          <div class="form-group" style="margin:0"><label>Nadimak *</label><input type="text" id="new-team-nickname" placeholder="Nadimak"/></div>
+        <div class="form-group">
+          <label>Naziv tima *</label>
+          <input type="text" id="new-team-name" placeholder="npr. Tim Goleš"/>
         </div>
-        <div class="form-row" style="margin-top:0.75rem;">
+        <div class="form-row">
           <div class="form-group" style="margin:0">
             <label>Kapetan *</label>
-            <select id="new-team-captain">
+            <select id="new-team-captain" onchange="updateMemberOptions()">
               <option value="">— odaberi —</option>
               ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
             </select>
           </div>
-          <div class="form-group" style="margin:0"><label>Stepenica</label><input type="number" id="new-team-step" placeholder="auto" min="1"/></div>
+          <div class="form-group" style="margin:0">
+            <label>Stepenica <span style="color:var(--text3);font-weight:400">(prazno = automatski)</span></label>
+            <input type="number" id="new-team-step" placeholder="auto" min="1"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Član 2 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
+          <select id="new-team-member2">
+            <option value="">— odaberi —</option>
+            ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Član 3 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
+          <select id="new-team-member3">
+            <option value="">— odaberi —</option>
+            ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
+          </select>
         </div>
         <button class="btn-primary" id="add-team-btn" onclick="addTeam()">+ Dodaj Tim</button>
       </div>
@@ -782,13 +797,40 @@ async function revertDecision() {
 }
 
 // ---- ADD TEAM ----
+function updateMemberOptions() {
+  // Ažuriraj member selectove da ne mogu odabrati isti email kao kapetan
+  const captain = document.getElementById('new-team-captain').value;
+  ['new-team-member2','new-team-member3'].forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    Array.from(sel.options).forEach(opt => {
+      opt.disabled = opt.value && opt.value === captain;
+    });
+  });
+}
+
 async function addTeam() {
   const name = document.getElementById('new-team-name').value.trim();
-  const nickname = document.getElementById('new-team-nickname').value.trim();
   const captain = document.getElementById('new-team-captain').value;
+  const member2 = document.getElementById('new-team-member2').value;
+  const member3 = document.getElementById('new-team-member3').value;
   const stepInput = document.getElementById('new-team-step').value;
 
-  if(!name||!nickname||!captain) { showToast('Ispuni sva obavezna polja!','error'); return; }
+  if(!name||!captain) { showToast('Unesi naziv i kapetana!','error'); return; }
+
+  // Provjeri duplikate
+  const members = [captain, member2, member3].filter(Boolean);
+  if(new Set(members).size !== members.length) { showToast('Isti igrač ne može biti dva puta u timu!','error'); return; }
+
+  // Provjeri jesu li igrači već u nekom timu
+  for(const email of members) {
+    const { data: existing } = await sb.from('team_members').select('team_id').eq('player_email',email).single();
+    if(existing) {
+      const player = allPlayers.find(p=>p.email===email);
+      showToast((player?.name||email)+' je već u drugom timu!','error');
+      return;
+    }
+  }
 
   // Automatski odabir stepenice
   const maxStep = allTeams.length ? Math.max(...allTeams.map(t=>t.step)) : 0;
@@ -798,14 +840,18 @@ async function addTeam() {
   const btn = document.getElementById('add-team-btn');
   btn.disabled=true; btn.textContent='Dodajem...';
 
-  const { data: team, error } = await sb.from('teams').insert({ name, nickname, captain_email:captain, step, position:posInStep }).select().single();
+  const { data: team, error } = await sb.from('teams').insert({
+    name, nickname: name, captain_email: captain, step, position: posInStep
+  }).select().single();
+
   if(error) { btn.disabled=false; btn.textContent='+ Dodaj Tim'; showToast('Greška: '+error.message,'error'); return; }
 
-  // Automatski dodaj kapetana kao člana
-  await sb.from('team_members').insert({ team_id:team.id, player_email:captain });
+  // Dodaj sve članove
+  const memberInserts = members.map(email => ({ team_id: team.id, player_email: email }));
+  await sb.from('team_members').insert(memberInserts);
 
   btn.disabled=false; btn.textContent='+ Dodaj Tim';
-  showToast(nickname+' dodan! ✓','success');
+  showToast(name+' dodan! ✓','success');
   await loadAll(); renderAdmin();
 }
 
