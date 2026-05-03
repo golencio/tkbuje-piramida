@@ -758,8 +758,9 @@ function renderAdmin() {
               <div style="font-weight:600;font-size:0.88rem;">${t.nickname} <span style="color:var(--text3);font-weight:400;font-size:0.78rem;">${t.name}</span></div>
               <div style="font-size:0.75rem;color:var(--text3);">St.${t.step} · Poz.${t.position} · 👑 ${captain?.name||t.captain_email}</div>
             </div>
+            <button onclick="openEditTeam('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️ Edit</button>
             <button onclick="openAddMember('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">+ Član</button>
-            <button onclick="deleteTeam('${t.id}','${t.nickname}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🗑</button>
+            <button onclick="deleteTeam('${t.id}','${t.name}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🗑</button>
           </div>`;
         }).join('')}
       </div>
@@ -961,6 +962,143 @@ async function addTeam() {
   psResetAll();
   showToast(name+' dodan! ✓','success');
   await loadAll(); renderAdmin();
+}
+
+// ---- EDIT TEAM ----
+let editTeamId = null;
+
+async function openEditTeam(teamId) {
+  editTeamId = teamId;
+  const team = allTeams.find(t=>t.id===teamId);
+  if(!team) return;
+
+  const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
+  const memberEmails = (members||[]).map(m=>m.player_email);
+
+  // Buildaj prikaz članova s opcijom uklanjanja
+  const membersHTML = memberEmails.map(email => {
+    const player = allPlayers.find(p=>p.email===email);
+    const isCaptain = email === team.captain_email;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg3);border-radius:8px;margin-bottom:0.4rem;">
+      <span style="font-size:0.88rem;font-weight:${isCaptain?'600':'400'};color:${isCaptain?'var(--orange)':'var(--text2)'};">
+        ${player?.name||email} ${isCaptain?'👑':''}
+      </span>
+      ${!isCaptain?`<button onclick="removeMember('${teamId}','${email}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.9rem;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">✕</button>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('team-modal-content').innerHTML = `
+    <div class="modal-title">Uredi Tim</div>
+    <div class="form-group">
+      <label>Naziv tima *</label>
+      <input type="text" id="edit-team-name" value="${team.name}"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label>Stepenica</label>
+        <input type="number" id="edit-team-step" value="${team.step}" min="1"/>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Pozicija</label>
+        <input type="number" id="edit-team-position" value="${team.position}" min="1"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Novi kapetan</label>
+      <div class="ps-wrap">
+        <input type="text" class="ps-input" id="search-edit-captain" placeholder="Pretraži novog kapetana..." oninput="psFilterEdit()" onfocus="psOpenEdit()" autocomplete="off"/>
+        <div class="ps-dropdown" id="drop-edit-captain"></div>
+      </div>
+      <div class="ps-badge" id="badge-edit-captain">
+        <span id="badge-edit-captain-name"></span>
+        <button class="ps-clear" onclick="psClearEdit()">×</button>
+      </div>
+      <input type="hidden" id="edit-team-captain"/>
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem;">Trenutni kapetan: <strong style="color:var(--orange);">${allPlayers.find(p=>p.email===team.captain_email)?.name||team.captain_email}</strong></div>
+    </div>
+
+    <div style="font-size:0.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:1rem 0 0.5rem;">Trenutni članovi</div>
+    ${membersHTML}
+    ${memberEmails.length < 3 ? `
+    <div style="margin-top:0.75rem;">
+      <div style="font-size:0.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem;">Dodaj novog člana</div>
+      <div class="ps-wrap">
+        <input type="text" class="ps-input" id="search-add-member" placeholder="Pretraži igrača..." oninput="psFilterModal()" onfocus="psOpenModal()" autocomplete="off"/>
+        <div class="ps-dropdown" id="drop-add-member"></div>
+      </div>
+      <div class="ps-badge" id="badge-add-member">
+        <span id="badge-add-member-name"></span>
+        <button class="ps-clear" onclick="psClearModal()">×</button>
+      </div>
+      <input type="hidden" id="add-member-player"/>
+      <button class="btn-primary" onclick="addMember()" style="margin-top:0.5rem;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">+ Dodaj člana</button>
+    </div>` : '<div style="font-size:0.78rem;color:var(--text3);margin-top:0.5rem;">Tim ima maksimalno 3 člana.</div>'}
+
+    <button class="btn-primary" onclick="saveEditTeam()" style="margin-top:1.25rem;">💾 Spremi promjene</button>`;
+
+  openModal('modal-team');
+}
+
+function psOpenEdit() {
+  psFilterEdit();
+  document.getElementById('drop-edit-captain').classList.add('open');
+}
+
+function psFilterEdit() {
+  const q = document.getElementById('search-edit-captain')?.value.toLowerCase()||'';
+  const filtered = allPlayers.filter(p=>p.name.toLowerCase().includes(q));
+  const drop = document.getElementById('drop-edit-captain');
+  if(!drop) return;
+  drop.innerHTML = filtered.length
+    ? filtered.map(p=>`<div class="ps-option" onclick="psSelectEdit('${p.email}','${p.name.replace(/'/g,"\'")}')"> ${p.name}</div>`).join('')
+    : '<div style="padding:0.6rem 0.9rem;color:var(--text3);font-size:0.82rem;">Nema rezultata</div>';
+  drop.classList.add('open');
+}
+
+function psSelectEdit(email, name) {
+  document.getElementById('edit-team-captain').value = email;
+  document.getElementById('search-edit-captain').value = '';
+  document.getElementById('search-edit-captain').style.display = 'none';
+  document.getElementById('drop-edit-captain').classList.remove('open');
+  document.getElementById('badge-edit-captain-name').textContent = name;
+  document.getElementById('badge-edit-captain').classList.add('show');
+}
+
+function psClearEdit() {
+  document.getElementById('edit-team-captain').value = '';
+  document.getElementById('search-edit-captain').value = '';
+  document.getElementById('search-edit-captain').style.display = 'block';
+  document.getElementById('badge-edit-captain').classList.remove('show');
+}
+
+async function saveEditTeam() {
+  const name = document.getElementById('edit-team-name').value.trim();
+  const step = parseInt(document.getElementById('edit-team-step').value);
+  const position = parseInt(document.getElementById('edit-team-position').value);
+  const newCaptain = document.getElementById('edit-team-captain').value;
+
+  if(!name||!step||!position) { showToast('Ispuni sva polja!','error'); return; }
+
+  const updates = { name, nickname: name, step, position };
+  if(newCaptain) updates.captain_email = newCaptain;
+
+  const { error } = await sb.from('teams').update(updates).eq('id', editTeamId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+
+  showToast('Tim ažuriran! ✓','success');
+  closeModal('modal-team');
+  await loadAll(); renderAdmin();
+}
+
+async function removeMember(teamId, email) {
+  const team = allTeams.find(t=>t.id===teamId);
+  if(email === team?.captain_email) { showToast('Ne možeš ukloniti kapetana!','error'); return; }
+  if(!confirm('Ukloniti igrača iz tima?')) return;
+  const { error } = await sb.from('team_members').delete().eq('team_id',teamId).eq('player_email',email);
+  if(error) { showToast('Greška','error'); return; }
+  showToast('Član uklonjen.','');
+  await loadAll();
+  openEditTeam(teamId); // Osvježi modal
 }
 
 // ---- ADD MEMBER ----
