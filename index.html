@@ -443,7 +443,6 @@ function renderPyramid() {
           return `
             <div class="team-card ${isMyTeam?'my-team':''} ${canChallenge?'can-challenge':''} ${hasPendingChallenge&&!isMyTeam?'has-challenge':''}"
                  onclick="openTeam('${t.id}')">
-              <div class="team-pos">#${t.position}</div>
               <div class="team-nickname">${t.name}</div>
               <div class="team-captain">👑 ${captainName}</div>
               ${canChallenge ? `<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge('${t.id}')">⚔️ Izazovi</button>` : ''}
