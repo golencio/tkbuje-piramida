@@ -1082,7 +1082,7 @@ async function saveEditTeam() {
   if(error) { showToast('Greška: '+error.message,'error'); return; }
 
   showToast('Tim ažuriran! ✓','success');
-  closeModal('modal-team');
+  closeModal('modal-team'); 
   await loadAll(); renderAdmin();
 }
 
