@@ -282,7 +282,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const APP_URL = 'https://golencio.github.io/tkbuje-piramida';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let allTeams = [], allChallenges = [], allPlayers = [];
+let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
 let currentUser = null, currentPlayer = null, myTeam = null;
 let activeResultChallenge = null;
 
@@ -368,14 +368,16 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 
 // ---- LOAD DATA ----
 async function loadAll() {
-  const [{ data: teams }, { data: challenges }, { data: players }] = await Promise.all([
+  const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
     sb.from('teams').select('*').order('step').order('position'),
     sb.from('challenges').select('*').order('created_at', {ascending:false}),
-    sb.from('players').select('*').eq('active', true)
+    sb.from('players').select('*').eq('active', true),
+    sb.from('team_members').select('*')
   ]);
   allTeams = teams || [];
   allChallenges = challenges || [];
   allPlayers = players || [];
+  allMembers = members || [];
 
   // Nađi moj tim
   if(currentPlayer) {
@@ -482,7 +484,7 @@ async function openTeam(teamId) {
       <div class="team-avatar">${team.name.substring(0,2).toUpperCase()}</div>
       <div>
         <div style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;">${team.name}</div>
-        <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">Stepenica ${team.step} · Pozicija #${team.position}</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">Stepenica ${team.step}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
@@ -756,7 +758,7 @@ function renderAdmin() {
           return `<div style="display:grid;grid-template-columns:1fr auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.75rem;">
             <div>
               <div style="font-weight:600;font-size:0.88rem;">${t.nickname} <span style="color:var(--text3);font-weight:400;font-size:0.78rem;">${t.name}</span></div>
-              <div style="font-size:0.75rem;color:var(--text3);">St.${t.step} · Poz.${t.position} · 👑 ${captain?.name||t.captain_email}</div>
+              <div style="font-size:0.75rem;color:var(--text3);">Stepenica ${t.step} · 👑 ${captain?.name||t.captain_email}</div>
             </div>
             <button onclick="openEditTeam('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️ Edit</button>
             <button onclick="openAddMember('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">+ Član</button>
@@ -993,15 +995,10 @@ async function openEditTeam(teamId) {
       <label>Naziv tima *</label>
       <input type="text" id="edit-team-name" value="${team.name}"/>
     </div>
-    <div class="form-row">
-      <div class="form-group" style="margin:0">
-        <label>Stepenica</label>
-        <input type="number" id="edit-team-step" value="${team.step}" min="1"/>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label>Pozicija</label>
-        <input type="number" id="edit-team-position" value="${team.position}" min="1"/>
-      </div>
+    <div class="form-group">
+      <label>Stepenica</label>
+      <input type="number" id="edit-team-step" value="${team.step}" min="1"/>
+      <input type="hidden" id="edit-team-position" value="${team.position}"/>
     </div>
     <div class="form-group">
       <label>Novi kapetan</label>
