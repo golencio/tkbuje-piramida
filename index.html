@@ -200,6 +200,7 @@
     <nav>
       <button class="active" id="nav-piramida" onclick="showSection('piramida',this)">🔺 Piramida</button>
       <button id="nav-izazovi" onclick="showSection('izazovi',this)">⚔️ Izazovi <span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
+      <button id="nav-pravilnik" onclick="showSection('pravilnik',this)">📋 Pravilnik</button>
       <button class="admin-btn" id="admin-btn" style="display:none" onclick="showSection('admin',this)">⚙ Admin</button>
       <div class="user-badge" id="user-badge" style="display:none">
         <div class="user-avatar" id="user-initials">?</div>
@@ -219,6 +220,7 @@
   </div>
   <button onclick="mobileNav('piramida')" id="mob-piramida" class="active">🔺 Piramida</button>
   <button onclick="mobileNav('izazovi')" id="mob-izazovi">⚔️ Izazovi</button>
+  <button onclick="mobileNav('pravilnik')" id="mob-pravilnik">📋 Pravilnik</button>
   <button onclick="mobileNav('admin')" id="mob-admin" style="display:none">⚙ Admin</button>
   <button onclick="logout()" class="mob-logout">← Odjava</button>
 </div>
@@ -240,6 +242,91 @@
     </div>
   </section>
 
+  <!-- PRAVILNIK -->
+  <section id="sec-pravilnik" class="section">
+    <div style="max-width:700px;margin:0 auto;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;color:var(--text);">📋 Pravilnik Piramida Turnira</div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
+
+        <div style="background:var(--orange-glow);border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--orange);margin-bottom:0.25rem;">1. Struktura piramide</div>
+          <p style="font-size:0.88rem;color:var(--text2);line-height:1.6;">Piramida se sastoji od više stepenica s timovima raspoređenim po rangu. Svaki tim zauzima određenu stepenicu, a cilj je popeti se što više prema vrhu.</p>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">2. Sastav timova</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Svaki tim se sastoji od <strong style="color:var(--text);">najmanje 2 i najviše 3 igrača</strong></li>
+            <li>Svaki igrač može biti član <strong style="color:var(--text);">samo jednog tima</strong></li>
+            <li>Svaki tim ima <strong style="color:var(--text);">kapetana</strong> odgovornog za dogovaranje mečeva</li>
+            <li>Timove kreira admin kluba</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">3. Igranje mečeva</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Mečevi se igraju na <strong style="color:var(--orange);">dva dobivena seta</strong></li>
+            <li>Svaki kapetan određuje koji igrači iz tima igraju dogovoreni meč</li>
+            <li>Kapetan pobjedničkog tima unosi rezultat u aplikaciju</li>
+            <li><strong style="color:var(--text);">Admin kluba mora potvrditi</strong> rezultat</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">4. Izazovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Tim može izazvati samo tim <strong style="color:var(--text);">jednu stepenicu iznad</strong></li>
+            <li>Izazov može poslati <strong style="color:var(--text);">samo kapetan</strong> tima</li>
+            <li>Tim može imati <strong style="color:var(--text);">samo jedan aktivan izazov</strong> u isto vrijeme</li>
+            <li>Tim koji već ima aktivan izazov ne može biti izazvan</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">5. Rokovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Izazvani tim ima <strong style="color:var(--orange);">3 dana</strong> za odgovor na izazov</li>
+            <li>Neodgovaranje u roku smatra se <strong style="color:var(--text);">odbijanjem</strong></li>
+            <li>Nakon prihvaćanja, timovi imaju <strong style="color:var(--orange);">6 dana</strong> za igranje meča</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">6. Odbijanje izazova</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Izazvani tim ima pravo <strong style="color:var(--text);">jednom odbiti</strong> izazov od istog izazivača</li>
+            <li>Nakon odbijanja, tim ulazi u <strong style="color:var(--orange);">zaštitni rok od 3 dana</strong> — ne može biti izazvan</li>
+            <li>Ako izazvani tim odbije <strong style="color:var(--red);">drugi put</strong> od istog izazivača, timovi automatski <strong style="color:var(--red);">mijenjaju mjesta</strong> bez igranja meča</li>
+            <li>Brojač odbijanja se <strong style="color:var(--text);">resetira</strong> nakon svake zamjene mjesta</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">7. Rezultati i bodovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Nakon potvrde rezultata — ako je <strong style="color:var(--green);">pobijedio izazivač</strong> → timovi mijenjaju mjesta</li>
+            <li>Ako je <strong style="color:var(--text);">pobijedio izazvani</strong> → sve ostaje isto</li>
+            <li>Rezultati mečeva piramide <strong style="color:var(--text);">boduju se i u općoj ljestvici</strong> kluba</li>
+            <li>Zamjena mjesta zbog odbijanja <strong style="color:var(--text);">ne donosi bodove</strong></li>
+          </ul>
+        </div>
+
+        <div style="padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">8. Admin</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Admin može <strong style="color:var(--text);">poništiti odluku</strong> kapetana u slučaju greške</li>
+            <li>Admin može <strong style="color:var(--text);">prihvatiti ili odbiti</strong> izazov umjesto kapetana</li>
+            <li>Admin dodaje nove timove na dno piramide po potrebi</li>
+            <li>Svi sporovi rješavaju se uz posredovanje admina kluba</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- ADMIN -->
   <section id="sec-admin" class="section">
     <div class="section-title">⚙️ Admin Panel</div>
@@ -252,6 +339,17 @@
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-team')">×</button>
     <div id="team-modal-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Odabir igrača -->
+<div class="modal-overlay" id="modal-select-players">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-select-players')">×</button>
+    <div class="modal-title">Odaberi igrače koji igraju</div>
+    <p style="font-size:0.82rem;color:var(--text3);margin-bottom:1.25rem;">Tvoj tim ima 3 igrača — odaberi koja 2 igraju ovaj meč.</p>
+    <div id="select-players-list" style="margin-bottom:1rem;"></div>
+    <button class="btn-primary" id="confirm-players-btn" onclick="confirmPlayerSelection()">Potvrdi i pošalji izazov</button>
   </div>
 </div>
 
@@ -536,6 +634,98 @@ async function openTeam(teamId) {
   openModal('modal-team');
 }
 
+// ---- PLAYER SELECTION ----
+let pendingChallengeData = null;
+let selectedPlayers = new Set();
+let selectionMode = null; // 'challenge' or 'accept'
+let pendingAcceptId = null;
+
+function openSelectPlayers(teamId, members, challengedId) {
+  pendingChallengeData = { teamId, challengedId };
+  selectedPlayers = new Set();
+  selectionMode = 'challenge';
+  renderPlayerSelection(members);
+  openModal('modal-select-players');
+}
+
+function openSelectPlayersAccept(teamId, members, challengeId) {
+  pendingAcceptId = challengeId;
+  selectedPlayers = new Set();
+  selectionMode = 'accept';
+  renderPlayerSelection(members);
+  document.getElementById('confirm-players-btn').textContent = 'Potvrdi i prihvati izazov';
+  openModal('modal-select-players');
+}
+
+function renderPlayerSelection(members) {
+  const list = document.getElementById('select-players-list');
+  list.innerHTML = members.map(m => {
+    const player = allPlayers.find(p=>p.email===m.player_email);
+    const isCap = m.player_email === myTeam?.captain_email;
+    return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:var(--bg3);border-radius:10px;margin-bottom:0.5rem;cursor:pointer;border:1.5px solid var(--border);transition:all 0.2s;" 
+      id="player-sel-${m.player_email.replace(/[@.]/g,'_')}"
+      onclick="togglePlayerSelect('${m.player_email}', this)">
+      <div style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:0.7rem;" id="check-${m.player_email.replace(/[@.]/g,'_')}"></div>
+      <span style="font-weight:${isCap?'600':'400'};color:${isCap?'var(--orange)':'var(--text2)'};">${player?.name||m.player_email} ${isCap?'👑':''}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('confirm-players-btn').textContent = 'Potvrdi i pošalji izazov';
+}
+
+function togglePlayerSelect(email, el) {
+  if(selectedPlayers.has(email)) {
+    selectedPlayers.delete(email);
+    el.style.borderColor = 'var(--border)';
+    el.style.background = 'var(--bg3)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).textContent = '';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.borderColor = 'var(--border2)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.background = '';
+  } else {
+    if(selectedPlayers.size >= 2) { showToast('Možeš odabrati samo 2 igrača!','error'); return; }
+    selectedPlayers.add(email);
+    el.style.borderColor = 'var(--orange)';
+    el.style.background = 'var(--orange-glow)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).textContent = '✓';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.borderColor = 'var(--orange)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.background = 'var(--orange)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.color = 'white';
+  }
+}
+
+async function confirmPlayerSelection() {
+  if(selectedPlayers.size !== 2) { showToast('Moraš odabrati točno 2 igrača!','error'); return; }
+  const [p1, p2] = [...selectedPlayers];
+
+  if(selectionMode === 'challenge') {
+    const challenged = allTeams.find(t=>t.id===pendingChallengeData.challengedId);
+    if(!confirm('Izazvati tim "'+challenged?.name+'"?')) return;
+    const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
+    const { error } = await sb.from('challenges').insert({
+      challenger_id: myTeam.id,
+      challenged_id: pendingChallengeData.challengedId,
+      status: 'pending',
+      response_expires_at: responseExpires,
+      challenger_player1: p1,
+      challenger_player2: p2
+    });
+    if(error) { showToast('Greška: '+error.message,'error'); return; }
+    showToast('Izazov poslan! ⚔️','success');
+  } else {
+    const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
+    const { error } = await sb.from('challenges').update({
+      status: 'accepted',
+      match_expires_at: matchExpires,
+      challenged_player1: p1,
+      challenged_player2: p2
+    }).eq('id', pendingAcceptId);
+    if(error) { showToast('Greška: '+error.message,'error'); return; }
+    showToast('Izazov prihvaćen! Imate 6 dana za meč.','success');
+  }
+
+  closeModal('modal-select-players');
+  await loadAll();
+}
+
 // ---- SEND CHALLENGE ----
 async function sendChallenge(challengedId) {
   if(!myTeam) { showToast('Nisi član nijednog tima!', 'error'); return; }
@@ -554,6 +744,19 @@ async function sendChallenge(challengedId) {
   );
   if(inCooldown) { showToast('Tim je u zaštitnom roku — ne može biti izazvan!', 'error'); return; }
 
+  // Provjeri koliko članova ima moj tim
+  const { data: myMembers } = await sb.from('team_members').select('*').eq('team_id', myTeam.id);
+  
+  if(myMembers && myMembers.length === 3) {
+    // Odaberi 2 igrača koji igraju
+    openSelectPlayers(myTeam.id, myMembers, challengedId);
+    return;
+  }
+
+  // Tim ima 2 igrača - automatski igraju oba
+  const player1 = myMembers?.[0]?.player_email || null;
+  const player2 = myMembers?.[1]?.player_email || null;
+
   if(!confirm('Izazvati tim "'+challenged.name+'"?')) return;
 
   const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
@@ -561,7 +764,9 @@ async function sendChallenge(challengedId) {
     challenger_id: myTeam.id,
     challenged_id: challengedId,
     status: 'pending',
-    response_expires_at: responseExpires
+    response_expires_at: responseExpires,
+    challenger_player1: player1,
+    challenger_player2: player2
   });
   if(error) { showToast('Greška: '+error.message, 'error'); return; }
   showToast('Izazov poslan! ⚔️', 'success');
@@ -670,9 +875,23 @@ async function respondChallenge(challengeId, response) {
       showToast('Izazov odbijen (1/2). Tim može izazvati ponovo.', '');
     }
   } else {
-    // Prihvaćeno — rok za meč 6 dana od sada
+    // Prihvaćeno — provjeri koliko članova ima tim
+    const { data: myMembers } = await sb.from('team_members').select('*').eq('team_id', myTeam.id);
+    
+    if(myMembers && myMembers.length === 3) {
+      // Odaberi 2 igrača koji igraju
+      openSelectPlayersAccept(myTeam.id, myMembers, challengeId);
+      return;
+    }
+
+    // Tim ima 2 igrača - automatski igraju oba
     const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
-    await sb.from('challenges').update({ status:'accepted', match_expires_at:matchExpires }).eq('id',challengeId);
+    await sb.from('challenges').update({
+      status:'accepted',
+      match_expires_at: matchExpires,
+      challenged_player1: myMembers?.[0]?.player_email || null,
+      challenged_player2: myMembers?.[1]?.player_email || null
+    }).eq('id',challengeId);
     showToast('Izazov prihvaćen! Imate 6 dana za meč.', 'success');
   }
   await loadAll();
