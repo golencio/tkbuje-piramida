@@ -609,14 +609,24 @@ async function respondChallenge(challengeId, response) {
   if(!challenge) return;
 
   if(response==='declined') {
-    // Broji ukupna odbijanja između ova dva tima
-    const prevRejections = allChallenges.filter(x =>
+    // Nađi zadnji completed izazov između ova dva tima
+    const lastCompleted2 = allChallenges
+      .filter(x =>
+        x.challenger_id === challenge.challenger_id &&
+        x.challenged_id === challenge.challenged_id &&
+        x.status === 'completed'
+      )
+      .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+    const afterDate2 = lastCompleted2 ? new Date(lastCompleted2.created_at) : new Date(0);
+    const prevRejections2 = allChallenges.filter(x =>
       x.challenger_id === challenge.challenger_id &&
       x.challenged_id === challenge.challenged_id &&
-      (x.status === 'declined' || x.rejection_count > 0) &&
-      x.id !== challengeId
+      x.status === 'declined' &&
+      x.id !== challengeId &&
+      new Date(x.created_at) > afterDate2
     ).length;
-    const totalRejections = prevRejections + 1;
+    const totalRejections = prevRejections2 + 1;
 
     if(totalRejections >= 2) {
       if(!confirm('Ovo je drugo odbijanje! Timovi će automatski zamijeniti mjesta. Nastavi?')) return;
@@ -625,7 +635,7 @@ async function respondChallenge(challengeId, response) {
       showToast('Izazivač je pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄', 'success');
     } else {
       await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
-      showToast('Izazov odbijen. Tim može izazvati ponovo.', '');
+      showToast('Izazov odbijen (1/2). Tim može izazvati ponovo.', '');
     }
   } else {
     // Prihvaćeno — rok za meč 6 dana od sada
@@ -842,24 +852,35 @@ async function adminDeclineChallenge(challengeId) {
   const c = allChallenges.find(x=>x.id===challengeId);
   if(!c) return;
 
-  // Broji ukupna odbijanja između ova dva tima
+  // Nađi zadnji completed izazov između ova dva tima (zamjena mjesta)
+  const lastCompleted = allChallenges
+    .filter(x =>
+      x.challenger_id === c.challenger_id &&
+      x.challenged_id === c.challenged_id &&
+      x.status === 'completed'
+    )
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+  // Broji odbijanja samo NAKON zadnje zamjene mjesta
+  const afterDate = lastCompleted ? new Date(lastCompleted.created_at) : new Date(0);
   const prevRejections = allChallenges.filter(x =>
     x.challenger_id === c.challenger_id &&
     x.challenged_id === c.challenged_id &&
-    (x.status === 'declined' || x.rejection_count > 0) &&
-    x.id !== c.id
+    x.status === 'declined' &&
+    x.id !== c.id &&
+    new Date(x.created_at) > afterDate
   ).length;
 
   const totalRejections = prevRejections + 1;
 
   if(totalRejections >= 2) {
-    if(!confirm('Ovo je drugo odbijanje — timovi će zamijeniti mjesta. Nastavi?')) return;
+    if(!confirm('Ovo je drugo odbijanje od zadnje zamjene — timovi će zamijeniti mjesta. Nastavi?')) return;
     await swapTeams(c.challenger_id, c.challenged_id);
     await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:totalRejections }).eq('id',challengeId);
     showToast('Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄','success');
   } else {
     await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
-    showToast('Izazov odbijen. Izazivač može poslati još jedan izazov.','');
+    showToast('Izazov odbijen (1/2). Izazivač može poslati još jedan izazov.','');
   }
   await loadAll(); renderAdmin();
 }
