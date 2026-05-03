@@ -149,6 +149,19 @@
     .toast.success { background:var(--green-glow); color:var(--green); border-color:rgba(34,197,94,0.3); }
     .toast.error { background:var(--red-glow); color:var(--red); border-color:rgba(239,68,68,0.3); }
 
+    /* PLAYER SEARCH */
+    .ps-wrap { position:relative; }
+    .ps-input { width:100%; padding:0.65rem 0.9rem; background:var(--bg3); border:1px solid var(--border2); border-radius:10px; font-family:'Inter',sans-serif; font-size:0.88rem; color:var(--text); transition:border-color 0.2s; }
+    .ps-input:focus { outline:none; border-color:var(--orange); border-radius:10px 10px 0 0; }
+    .ps-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:var(--bg3); border:1px solid var(--orange); border-top:none; border-radius:0 0 10px 10px; z-index:100; max-height:180px; overflow-y:auto; box-shadow:0 12px 32px rgba(0,0,0,0.4); }
+    .ps-dropdown.open { display:block; }
+    .ps-option { padding:0.6rem 0.9rem; cursor:pointer; font-size:0.85rem; color:var(--text2); border-bottom:1px solid var(--border); transition:all 0.15s; }
+    .ps-option:last-child { border-bottom:none; }
+    .ps-option:hover { background:var(--bg4); color:var(--orange); }
+    .ps-badge { display:none; align-items:center; justify-content:space-between; padding:0.5rem 0.9rem; background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); border-radius:10px; font-size:0.85rem; color:var(--green); font-weight:600; margin-top:0.3rem; }
+    .ps-badge.show { display:flex; }
+    .ps-clear { background:none; border:none; color:var(--text3); cursor:pointer; font-size:1.1rem; line-height:1; padding:0; transition:color 0.15s; }
+    .ps-clear:hover { color:var(--red); }
     .empty { text-align:center; padding:2.5rem; color:var(--text3); font-size:0.88rem; }
     .loading { text-align:center; padding:3rem; color:var(--text3); }
     .spinner { width:32px; height:32px; border:2px solid var(--bg4); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 0.75rem; }
@@ -700,32 +713,36 @@ function renderAdmin() {
           <label>Naziv tima *</label>
           <input type="text" id="new-team-name" placeholder="npr. Tim Goleš"/>
         </div>
-        <div class="form-row">
-          <div class="form-group" style="margin:0">
-            <label>Kapetan *</label>
-            <select id="new-team-captain" onchange="updateMemberOptions()">
-              <option value="">— odaberi —</option>
-              ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
-            </select>
+        <div class="form-group">
+          <label>Stepenica <span style="color:var(--text3);font-weight:400">(prazno = automatski)</span></label>
+          <input type="number" id="new-team-step" placeholder="auto" min="1"/>
+        </div>
+        <div class="form-group">
+          <label>Kapetan *</label>
+          <div class="ps-wrap">
+            <input type="text" class="ps-input" id="search-captain" placeholder="Pretraži igrača..." oninput="psFilter('captain')" onfocus="psOpen('captain')" autocomplete="off"/>
+            <div class="ps-dropdown" id="drop-captain"></div>
           </div>
-          <div class="form-group" style="margin:0">
-            <label>Stepenica <span style="color:var(--text3);font-weight:400">(prazno = automatski)</span></label>
-            <input type="number" id="new-team-step" placeholder="auto" min="1"/>
-          </div>
+          <div class="ps-badge" id="badge-captain"><span id="badge-captain-name"></span><button class="ps-clear" onclick="psClear('captain')">×</button></div>
+          <input type="hidden" id="new-team-captain"/>
         </div>
         <div class="form-group">
           <label>Član 2 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
-          <select id="new-team-member2">
-            <option value="">— odaberi —</option>
-            ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
-          </select>
+          <div class="ps-wrap">
+            <input type="text" class="ps-input" id="search-member2" placeholder="Pretraži igrača..." oninput="psFilter('member2')" onfocus="psOpen('member2')" autocomplete="off"/>
+            <div class="ps-dropdown" id="drop-member2"></div>
+          </div>
+          <div class="ps-badge" id="badge-member2"><span id="badge-member2-name"></span><button class="ps-clear" onclick="psClear('member2')">×</button></div>
+          <input type="hidden" id="new-team-member2"/>
         </div>
         <div class="form-group">
           <label>Član 3 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
-          <select id="new-team-member3">
-            <option value="">— odaberi —</option>
-            ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
-          </select>
+          <div class="ps-wrap">
+            <input type="text" class="ps-input" id="search-member3" placeholder="Pretraži igrača..." oninput="psFilter('member3')" onfocus="psOpen('member3')" autocomplete="off"/>
+            <div class="ps-dropdown" id="drop-member3"></div>
+          </div>
+          <div class="ps-badge" id="badge-member3"><span id="badge-member3-name"></span><button class="ps-clear" onclick="psClear('member3')">×</button></div>
+          <input type="hidden" id="new-team-member3"/>
         </div>
         <button class="btn-primary" id="add-team-btn" onclick="addTeam()">+ Dodaj Tim</button>
       </div>
@@ -797,6 +814,92 @@ async function revertDecision() {
 }
 
 // ---- ADD TEAM ----
+// ---- PLAYER SEARCH HELPERS ----
+const PS_FIELDS = ['captain','member2','member3'];
+
+function psOpen(field) {
+  psFilter(field);
+  document.getElementById('drop-'+field).classList.add('open');
+}
+
+function psFilter(field) {
+  const query = document.getElementById('search-'+field)?.value.toLowerCase() || '';
+  const selectedEmails = PS_FIELDS
+    .filter(f=>f!==field)
+    .map(f=>document.getElementById('new-team-'+f)?.value)
+    .filter(Boolean);
+
+  const filtered = allPlayers.filter(p =>
+    p.name.toLowerCase().includes(query) && !selectedEmails.includes(p.email)
+  );
+
+  const drop = document.getElementById('drop-'+field);
+  drop.innerHTML = filtered.length
+    ? filtered.map(p=>`<div class="ps-option" onclick="psSelect('${field}','${p.email}','${p.name.replace(/'/g,"\'")}')"> ${p.name}</div>`).join('')
+    : '<div style="padding:0.6rem 0.9rem;color:var(--text3);font-size:0.82rem;">Nema rezultata</div>';
+  drop.classList.add('open');
+}
+
+function psSelect(field, email, name) {
+  document.getElementById('new-team-'+field).value = email;
+  document.getElementById('search-'+field).value = '';
+  document.getElementById('search-'+field).style.display = 'none';
+  document.getElementById('drop-'+field).classList.remove('open');
+  document.getElementById('badge-'+field+'-name').textContent = name;
+  document.getElementById('badge-'+field).classList.add('show');
+}
+
+function psClear(field) {
+  document.getElementById('new-team-'+field).value = '';
+  document.getElementById('search-'+field).value = '';
+  document.getElementById('search-'+field).style.display = 'block';
+  document.getElementById('badge-'+field).classList.remove('show');
+  document.getElementById('drop-'+field).classList.remove('open');
+}
+
+function psResetAll() {
+  PS_FIELDS.forEach(f => psClear(f));
+}
+
+// Modal member search
+function psOpenModal() {
+  psFilterModal();
+  document.getElementById('drop-add-member').classList.add('open');
+}
+
+function psFilterModal() {
+  const query = document.getElementById('search-add-member')?.value.toLowerCase() || '';
+  const filtered = allPlayers.filter(p => p.name.toLowerCase().includes(query));
+  const drop = document.getElementById('drop-add-member');
+  if(!drop) return;
+  drop.innerHTML = filtered.length
+    ? filtered.map(p=>`<div class="ps-option" onclick="psSelectModal('${p.email}','${p.name.replace(/'/g,"\'")}')"> ${p.name}</div>`).join('')
+    : '<div style="padding:0.6rem 0.9rem;color:var(--text3);font-size:0.82rem;">Nema rezultata</div>';
+  drop.classList.add('open');
+}
+
+function psSelectModal(email, name) {
+  document.getElementById('add-member-player').value = email;
+  document.getElementById('search-add-member').value = '';
+  document.getElementById('search-add-member').style.display = 'none';
+  document.getElementById('drop-add-member').classList.remove('open');
+  document.getElementById('badge-add-member-name').textContent = name;
+  document.getElementById('badge-add-member').classList.add('show');
+}
+
+function psClearModal() {
+  document.getElementById('add-member-player').value = '';
+  document.getElementById('search-add-member').value = '';
+  document.getElementById('search-add-member').style.display = 'block';
+  document.getElementById('badge-add-member').classList.remove('show');
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('.ps-wrap')) {
+    document.querySelectorAll('.ps-dropdown').forEach(d=>d.classList.remove('open'));
+  }
+});
+
 function updateMemberOptions() {
   // Ažuriraj member selectove da ne mogu odabrati isti email kao kapetan
   const captain = document.getElementById('new-team-captain').value;
@@ -814,6 +917,7 @@ async function addTeam() {
   const captain = document.getElementById('new-team-captain').value;
   const member2 = document.getElementById('new-team-member2').value;
   const member3 = document.getElementById('new-team-member3').value;
+  // captain je sada hidden input
   const stepInput = document.getElementById('new-team-step').value;
 
   if(!name||!captain) { showToast('Unesi naziv i kapetana!','error'); return; }
@@ -851,6 +955,10 @@ async function addTeam() {
   await sb.from('team_members').insert(memberInserts);
 
   btn.disabled=false; btn.textContent='+ Dodaj Tim';
+  // Reset forme
+  document.getElementById('new-team-name').value = '';
+  document.getElementById('new-team-step').value = '';
+  psResetAll();
   showToast(name+' dodan! ✓','success');
   await loadAll(); renderAdmin();
 }
@@ -861,13 +969,15 @@ function openAddMember(teamId) {
   addMemberTeamId = teamId;
   const team = allTeams.find(t=>t.id===teamId);
   const content = `
-    <div class="modal-title">Dodaj Člana — ${team?.nickname}</div>
+    <div class="modal-title">Dodaj Člana — ${team?.name}</div>
     <div class="form-group">
       <label>Igrač</label>
-      <select id="add-member-player">
-        <option value="">— odaberi —</option>
-        ${allPlayers.map(p=>`<option value="${p.email}">${p.name}</option>`).join('')}
-      </select>
+      <div class="ps-wrap">
+        <input type="text" class="ps-input" id="search-add-member" placeholder="Pretraži igrača..." oninput="psFilterModal()" onfocus="psOpenModal()" autocomplete="off"/>
+        <div class="ps-dropdown" id="drop-add-member"></div>
+      </div>
+      <div class="ps-badge" id="badge-add-member"><span id="badge-add-member-name"></span><button class="ps-clear" onclick="psClearModal()">×</button></div>
+      <input type="hidden" id="add-member-player"/>
     </div>
     <button class="btn-primary" onclick="addMember()">+ Dodaj</button>`;
   document.getElementById('team-modal-content').innerHTML = content;
