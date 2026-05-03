@@ -697,10 +697,30 @@ function renderAdmin() {
     return;
   }
 
-  // Pending results
   const pendingResults = allChallenges.filter(c=>c.status==='pending_result');
+  const pendingChallenges = allChallenges.filter(c=>c.status==='pending');
 
   document.getElementById('admin-container').innerHTML = `
+    <div class="admin-box">
+      <div class="admin-box-header">⚔️ Izazovi na čekanju — Admin prihvat (${pendingChallenges.length})</div>
+      <div class="admin-box-body">
+        ${pendingChallenges.length ? pendingChallenges.map(c => {
+          const t1=allTeams.find(t=>t.id===c.challenger_id);
+          const t2=allTeams.find(t=>t.id===c.challenged_id);
+          const expires = new Date(c.response_expires_at);
+          const diff = expires - new Date();
+          const hours = Math.max(0, Math.floor(diff/3600000));
+          return '<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
+            + '<div style="font-weight:600;margin-bottom:0.3rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
+            + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.75rem;">Rok: ' + hours + 'h · Odbijanja: ' + c.rejection_count + '/1</div>'
+            + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">'
+            + '<button class="btn-accept" onclick="adminAcceptChallenge('' + c.id + '')">✓ Prihvati umjesto kapetana</button>'
+            + '<button class="btn-decline" onclick="adminDeclineChallenge('' + c.id + '')">✕ Odbij umjesto kapetana</button>'
+            + '</div></div>';
+        }).join('') : '<div class="empty" style="padding:1rem;">Nema izazova na čekanju</div>'}
+      </div>
+    </div>
+
     <div class="admin-box">
       <div class="admin-box-header">📝 Rezultati na potvrdi (${pendingResults.length})</div>
       <div class="admin-box-body">
@@ -709,8 +729,8 @@ function renderAdmin() {
           const t2=allTeams.find(t=>t.id===c.challenged_id);
           const winner=allTeams.find(t=>t.id===c.result_winner_id);
           return `<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">
-            <div style="font-weight:600;margin-bottom:0.5rem;">⚔️ ${t1?.nickname} vs ${t2?.nickname}</div>
-            <div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.75rem;">Pobjednik: <strong>${winner?.nickname}</strong> · ${c.result_score||'—'}</div>
+            <div style="font-weight:600;margin-bottom:0.5rem;">⚔️ ${t1?.name} vs ${t2?.name}</div>
+            <div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.75rem;">Pobjednik: <strong>${winner?.name}</strong> · ${c.result_score||'—'}</div>
             <div style="display:flex;gap:0.5rem;">
               <button class="btn-accept" onclick="adminConfirmResult('${c.id}')">✓ Potvrdi</button>
               <button class="btn-decline" onclick="adminRejectResult('${c.id}')">✕ Odbij</button>
@@ -791,13 +811,40 @@ function renderAdmin() {
             ${allChallenges.filter(c=>['declined','accepted'].includes(c.status)).map(c=>{
               const t1=allTeams.find(t=>t.id===c.challenger_id);
               const t2=allTeams.find(t=>t.id===c.challenged_id);
-              return `<option value="${c.id}">${t1?.nickname} vs ${t2?.nickname} (${c.status})</option>`;
+              return `<option value="${c.id}">${t1?.name} vs ${t2?.name} (${c.status})</option>`;
             }).join('')}
           </select>
         </div>
         <button class="btn-primary" onclick="revertDecision()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">↩ Vrati na čekanje</button>
       </div>
     </div>`;
+}
+
+async function adminAcceptChallenge(challengeId) {
+  const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
+  const {error} = await sb.from('challenges').update({
+    status: 'accepted',
+    match_expires_at: matchExpires
+  }).eq('id', challengeId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Izazov prihvaćen! Tim ima 6 dana za meč.','success');
+  await loadAll(); renderAdmin();
+}
+
+async function adminDeclineChallenge(challengeId) {
+  const c = allChallenges.find(x=>x.id===challengeId);
+  if(!c) return;
+  const newCount = (c.rejection_count||0) + 1;
+  if(newCount >= 2) {
+    if(!confirm('Ovo je drugo odbijanje — timovi će zamijeniti mjesta. Nastavi?')) return;
+    await swapTeams(c.challenger_id, c.challenged_id);
+    await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:newCount }).eq('id',challengeId);
+    showToast('Izazivač pobijedio zbog dvostrukog odbijanja!','success');
+  } else {
+    await sb.from('challenges').update({ status:'declined', rejection_count:newCount }).eq('id',challengeId);
+    showToast('Izazov odbijen.','');
+  }
+  await loadAll(); renderAdmin();
 }
 
 async function adminConfirmResult(challengeId) {
