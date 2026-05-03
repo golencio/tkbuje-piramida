@@ -439,16 +439,29 @@ function renderPyramid() {
           const hasPendingChallenge = allChallenges.some(c=>
             (c.challenger_id===t.id || c.challenged_id===t.id) && ['pending','accepted'].includes(c.status)
           );
-          const captainName = allPlayers.find(p=>p.email===t.captain_email)?.name || t.captain_email;
-          return `
-            <div class="team-card ${isMyTeam?'my-team':''} ${canChallenge?'can-challenge':''} ${hasPendingChallenge&&!isMyTeam?'has-challenge':''}"
-                 onclick="openTeam('${t.id}')">
-              <div class="team-nickname">${t.name}</div>
-              <div class="team-captain">👑 ${captainName}</div>
-              ${canChallenge ? `<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge('${t.id}')">⚔️ Izazovi</button>` : ''}
-              ${isMyTeam ? '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>' : ''}
-              ${hasPendingChallenge ? '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--gold);">⏳ Aktivan izazov</div>' : ''}
-            </div>`;
+          const teamMembers = allMembers.filter(m => m.team_id === t.id);
+          let membersHTML = '';
+          teamMembers.forEach(m => {
+            const p = allPlayers.find(x => x.email === m.player_email);
+            const isCap = m.player_email === t.captain_email;
+            membersHTML += '<div style="font-size:0.72rem;color:' + (isCap ? 'var(--orange)' : 'var(--text2)') + ';">' + (isCap ? '👑 ' : '') + (p?.name || m.player_email) + '</div>';
+          });
+
+          let cardClass = 'team-card';
+          if(isMyTeam) cardClass += ' my-team';
+          if(canChallenge) cardClass += ' can-challenge';
+          if(hasPendingChallenge && !isMyTeam) cardClass += ' has-challenge';
+
+          let cardExtra = '';
+          if(canChallenge) cardExtra += '<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge(\'' + t.id + '\')">⚔️ Izazovi</button>';
+          if(isMyTeam) cardExtra += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>';
+          if(hasPendingChallenge) cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--gold);">⏳ Aktivan izazov</div>';
+
+          return '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')">'
+            + '<div class="team-nickname">' + t.name + '</div>'
+            + '<div style="margin:0.4rem 0;">' + membersHTML + '</div>'
+            + cardExtra
+            + '</div>';
         }).join('')}
       </div>
     </div>`;
@@ -1082,7 +1095,7 @@ async function saveEditTeam() {
   if(error) { showToast('Greška: '+error.message,'error'); return; }
 
   showToast('Tim ažuriran! ✓','success');
-  closeModal('modal-team'); 
+  closeModal('modal-team');
   await loadAll(); renderAdmin();
 }
 
