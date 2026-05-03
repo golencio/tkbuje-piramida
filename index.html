@@ -714,8 +714,8 @@ function renderAdmin() {
             + '<div style="font-weight:600;margin-bottom:0.3rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
             + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.75rem;">Rok: ' + hours + 'h · Odbijanja: ' + c.rejection_count + '/1</div>'
             + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">'
-            + '<button class="btn-accept" onclick="adminAcceptChallenge('' + c.id + '')">✓ Prihvati umjesto kapetana</button>'
-            + '<button class="btn-decline" onclick="adminDeclineChallenge('' + c.id + '')">✕ Odbij umjesto kapetana</button>'
+            + '<button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati umjesto kapetana</button>'
+            + '<button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij umjesto kapetana</button>'
             + '</div></div>';
         }).join('') : '<div class="empty" style="padding:1rem;">Nema izazova na čekanju</div>'}
       </div>
