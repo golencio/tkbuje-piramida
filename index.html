@@ -420,6 +420,16 @@ function renderPyramid() {
     busyTeams.add(c.challenged_id);
   });
 
+  // Timovi koji su odbili izazov u zadnja 3 dana (cooldown)
+  const cooldownTeams = new Set();
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
+  allChallenges.filter(c =>
+    c.status === 'declined' &&
+    new Date(c.updated_at) > threeDaysAgo
+  ).forEach(c => {
+    cooldownTeams.add(c.challenged_id); // Tim koji je odbio ne može biti izazvan
+  });
+
   // Moja stepenica
   const myStep = myTeam?.step;
   const aboveStep = myStep ? myStep - 1 : null;
@@ -435,7 +445,8 @@ function renderPyramid() {
       <div class="step-teams">
         ${teams.map(t => {
           const isMyTeam = myTeam?.id === t.id;
-          const canChallenge = !isMyTeam && isAbove && myTeam && !busyTeams.has(myTeam.id) && !busyTeams.has(t.id);
+          const inCooldown = cooldownTeams.has(t.id);
+          const canChallenge = !isMyTeam && isAbove && myTeam && !busyTeams.has(myTeam.id) && !busyTeams.has(t.id) && !inCooldown;
           const hasPendingChallenge = allChallenges.some(c=>
             (c.challenger_id===t.id || c.challenged_id===t.id) && ['pending','accepted'].includes(c.status)
           );
@@ -456,6 +467,17 @@ function renderPyramid() {
           if(canChallenge) cardExtra += '<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge(\'' + t.id + '\')">⚔️ Izazovi</button>';
           if(isMyTeam) cardExtra += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>';
           if(hasPendingChallenge) cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--gold);">⏳ Aktivan izazov</div>';
+          if(inCooldown && !isMyTeam) {
+            // Izračunaj preostalo vrijeme cooldowna
+            const lastDecline = allChallenges
+              .filter(c=>c.challenged_id===t.id && c.status==='declined')
+              .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at))[0];
+            if(lastDecline) {
+              const cooldownEnd = new Date(new Date(lastDecline.updated_at).getTime() + 3*24*60*60*1000);
+              const hoursLeft = Math.ceil((cooldownEnd - new Date()) / 3600000);
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">🛡 Zaštita još ' + hoursLeft + 'h</div>';
+            }
+          }
 
           return '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')">'
             + '<div class="team-nickname">' + t.name + '</div>'
@@ -522,7 +544,17 @@ async function sendChallenge(challengedId) {
   }
   const challenged = allTeams.find(t=>t.id===challengedId);
   if(!challenged) return;
-  if(!confirm('Izazvati tim "'+challenged.nickname+'"?')) return;
+
+  // Provjeri cooldown
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
+  const inCooldown = allChallenges.some(c =>
+    c.challenged_id === challengedId &&
+    c.status === 'declined' &&
+    new Date(c.updated_at) > threeDaysAgo
+  );
+  if(inCooldown) { showToast('Tim je u zaštitnom roku — ne može biti izazvan!', 'error'); return; }
+
+  if(!confirm('Izazvati tim "'+challenged.name+'"?')) return;
 
   const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
   const { error } = await sb.from('challenges').insert({
