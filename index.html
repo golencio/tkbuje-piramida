@@ -1376,7 +1376,7 @@ async function openEditTeam(teamId) {
         <button class="ps-clear" onclick="psClearModal()">×</button>
       </div>
       <input type="hidden" id="add-member-player"/>
-      <button class="btn-primary" onclick="addMember()" style="margin-top:0.5rem;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">+ Dodaj člana</button>
+      <button class="btn-primary" onclick="addMemberFromEdit('${teamId}')" style="margin-top:0.5rem;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">+ Dodaj člana</button>
     </div>` : '<div style="font-size:0.78rem;color:var(--text3);margin-top:0.5rem;">Tim ima maksimalno 3 člana.</div>'}
 
     <button class="btn-primary" onclick="saveEditTeam()" style="margin-top:1.25rem;">💾 Spremi promjene</button>`;
@@ -1467,23 +1467,38 @@ function openAddMember(teamId) {
   openModal('modal-team');
 }
 
-async function addMember() {
+async function addMemberFromEdit(teamId) {
+  addMemberTeamId = teamId;
+  await addMember(true);
+}
+
+async function addMember(fromEdit=false) {
   const email = document.getElementById('add-member-player').value;
   if(!email) { showToast('Odaberi igrača!','error'); return; }
+  if(!addMemberTeamId) { showToast('Greška: tim nije odabran!','error'); return; }
 
-  // Provjeri je li već u nekom timu
-  const { data: existing } = await sb.from('team_members').select('team_id').eq('player_email',email).single();
-  if(existing) { showToast('Igrač je već u timu!','error'); return; }
+  // Provjeri je li već u nekom timu (ignoriraj NULL team_id)
+  const { data: allTM } = await sb.from('team_members').select('team_id').eq('player_email', email);
+  const realMemberships = (allTM||[]).filter(x => x.team_id !== null);
+  if(realMemberships.length > 0) { showToast('Igrač je već u timu!','error'); return; }
 
   // Provjeri max 3 člana
-  const { data: members } = await sb.from('team_members').select('*').eq('team_id',addMemberTeamId);
+  const { data: members } = await sb.from('team_members').select('*').eq('team_id', addMemberTeamId);
   if(members && members.length >= 3) { showToast('Tim već ima maksimalno 3 člana!','error'); return; }
 
-  const { error } = await sb.from('team_members').insert({ team_id:addMemberTeamId, player_email:email });
+  // Obriši eventualne NULL zapise za ovog igrača
+  await sb.from('team_members').delete().eq('player_email', email).is('team_id', null);
+
+  const { error } = await sb.from('team_members').insert({ team_id: addMemberTeamId, player_email: email });
   if(error) { showToast('Greška: '+error.message,'error'); return; }
   showToast('Član dodan! ✓','success');
-  closeModal('modal-team');
-  await loadAll(); renderAdmin();
+  await loadAll();
+  if(fromEdit) {
+    openEditTeam(addMemberTeamId);
+  } else {
+    closeModal('modal-team');
+    renderAdmin();
+  }
 }
 
 async function deleteTeam(id, name) {
