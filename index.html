@@ -72,7 +72,7 @@
     .notif-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--red); color:white; font-size:0.65rem; font-weight:700; border-radius:50%; margin-left:4px; vertical-align:middle; }
 
     /* PIRAMIDA */
-    .pyramid-wrap { display:flex; flex-direction:column; gap:0.75rem; align-items:center; margin-bottom:2rem; }
+    .pyramid-wrap { display:flex; flex-direction:column; gap:1rem; align-items:center; margin-bottom:2rem; }
     .pyramid-step { width:100%; }
     .step-label { font-size:0.68rem; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; text-align:center; margin-bottom:0.5rem; }
     .step-teams { display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap; }
@@ -669,7 +669,7 @@ function renderPyramid() {
       }
     }
 
-    html += `<div class="pyramid-step">
+    html += `<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:14px;padding:0.75rem;">
       <div class="step-label" style="color:var(--red);">⚠️ Kaznena zona</div>
       <div class="step-teams">${penHTML}</div>
     </div>`;
