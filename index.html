@@ -290,6 +290,8 @@
             <li>Izazvani tim ima <strong style="color:var(--orange);">3 dana</strong> za odgovor na izazov</li>
             <li>Neodgovaranje u roku smatra se <strong style="color:var(--text);">odbijanjem</strong></li>
             <li>Nakon prihvaćanja, timovi imaju <strong style="color:var(--orange);">6 dana</strong> za igranje meča</li>
+            <li>Ako meč nije odigran u roku, admin može <strong style="color:var(--text);">produžiti rok</strong> ili evidentirati <strong style="color:var(--red);">predaju</strong></li>
+            <li>Tim koji preda gubi stepenicu, <strong style="color:var(--text);">predaja se ne upisuje u opću ljestvicu</strong></li>
           </ul>
         </div>
 
@@ -313,8 +315,21 @@
           </ul>
         </div>
 
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--red);margin-bottom:0.25rem;">8. Neaktivnost i kaznena zona</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Tim koji nije odigrao meč u piramidi <strong style="color:var(--orange);">20 dana</strong> pada u <strong style="color:var(--red);">kaznu</strong></li>
+            <li>Timovi na <strong style="color:var(--text);">stepenici 1</strong> su izuzeti — nemaju koga izazvati</li>
+            <li>Svaki tim vidi <strong style="color:var(--text);">odbrojavanje</strong> do kazne na svojoj kartici</li>
+            <li>Kad tim padne u kaznu, nasumični timovi s nižih stepenica se pomiču gore</li>
+            <li><strong style="color:var(--red);">Kaznena zona</strong> funkcionira kao najdonja stepenica — u nju se ne pada porazom</li>
+            <li>Kažnjeni tim izaziva timove na zadnjoj pravoj stepenici — ako pobijedi, vraća se u piramidu</li>
+            <li>Odbrojavanje se <strong style="color:var(--text);">resetira</strong> čim tim odigra potvrđeni meč</li>
+          </ul>
+        </div>
+
         <div style="padding:1rem 1.5rem;">
-          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">8. Admin</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">9. Admin</div>
           <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
             <li>Admin može <strong style="color:var(--text);">poništiti odluku</strong> kapetana u slučaju greške</li>
             <li>Admin može <strong style="color:var(--text);">prihvatiti ili odbiti</strong> izazov umjesto kapetana</li>
@@ -485,6 +500,7 @@ async function loadAll() {
 
   // Notifikacije
   updateNotifBadge();
+  await checkPenalties();
   renderPyramid();
   renderChallenges();
 }
@@ -507,8 +523,9 @@ function renderPyramid() {
   // Grupiranje po stepenicama
   const steps = {};
   allTeams.forEach(t => {
-    if(!steps[t.step]) steps[t.step] = [];
-    steps[t.step].push(t);
+    const s = t.penalty ? 0 : t.step;
+    if(!steps[s]) steps[s] = [];
+    steps[s].push(t);
   });
 
   // Timovi koji imaju aktivan izazov
@@ -533,8 +550,10 @@ function renderPyramid() {
   const aboveStep = myStep ? myStep - 1 : null;
 
   const maxStep = Math.max(...Object.keys(steps).map(Number));
+  const haspenalty = steps[0] && steps[0].length > 0;
 
   let html = '';
+  // Prikaži stepenice od 1 do max, pa kaznu na dnu
   for(let s=1; s<=maxStep; s++) {
     const teams = steps[s] || [];
     const isAbove = s === aboveStep;
@@ -544,7 +563,14 @@ function renderPyramid() {
         ${teams.map(t => {
           const isMyTeam = myTeam?.id === t.id;
           const inCooldown = cooldownTeams.has(t.id);
-          const canChallenge = !isMyTeam && isAbove && myTeam && !busyTeams.has(myTeam.id) && !busyTeams.has(t.id) && !inCooldown;
+          // Iz kaznene zone mogu izazvati samo timove na zadnjoj stepenici
+          const myStepEffective = myTeam?.penalty ? 0 : myTeam?.step;
+          const tStepEffective = t.penalty ? 0 : t.step;
+          const isAboveEffective = myTeam && (
+            (!myTeam.penalty && tStepEffective === myStepEffective - 1) ||
+            (myTeam.penalty && tStepEffective === maxStep)
+          );
+          const canChallenge = !isMyTeam && isAboveEffective && myTeam && !busyTeams.has(myTeam.id) && !busyTeams.has(t.id) && !inCooldown && myTeam.captain_email === currentPlayer?.email;
           const hasPendingChallenge = allChallenges.some(c=>
             (c.challenger_id===t.id || c.challenged_id===t.id) && ['pending','accepted'].includes(c.status)
           );
@@ -566,7 +592,6 @@ function renderPyramid() {
           if(isMyTeam) cardExtra += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>';
           if(hasPendingChallenge) cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--gold);">⏳ Aktivan izazov</div>';
           if(inCooldown && !isMyTeam) {
-            // Izračunaj preostalo vrijeme cooldowna
             const lastDecline = allChallenges
               .filter(c=>c.challenged_id===t.id && c.status==='declined')
               .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at))[0];
@@ -574,6 +599,20 @@ function renderPyramid() {
               const cooldownEnd = new Date(new Date(lastDecline.updated_at).getTime() + 3*24*60*60*1000);
               const hoursLeft = Math.ceil((cooldownEnd - new Date()) / 3600000);
               cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">🛡 Zaštita još ' + hoursLeft + 'h</div>';
+            }
+          }
+
+          // Odbrojavanje do kazne (stepenica 2+, nije u kazni)
+          if(!t.penalty && t.step > 1) {
+            const lastMatch = t.last_match_at ? new Date(t.last_match_at) : new Date(t.created_at);
+            const daysInactive = Math.floor((new Date() - lastMatch) / (1000*60*60*24));
+            const daysLeft = 20 - daysInactive;
+            if(daysLeft <= 0) {
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);font-weight:600;">⚠️ Kazna!</div>';
+            } else if(daysLeft <= 5) {
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">⚠️ Kazna za ' + daysLeft + ' dan(a)</div>';
+            } else {
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--text3);">📅 ' + daysLeft + ' dana do kazne</div>';
             }
           }
 
@@ -586,6 +625,56 @@ function renderPyramid() {
       </div>
     </div>`;
   }
+  // Kaznena zona na dnu
+  if(haspenalty) {
+    const penTeams = steps[0];
+    let penHTML = '';
+    penTeams.forEach(t => {
+      const teamMembers = allMembers.filter(m => m.team_id === t.id);
+      let membersHTML = '';
+      teamMembers.forEach(m => {
+        const p = allPlayers.find(x => x.email === m.player_email);
+        const isCap = m.player_email === t.captain_email;
+        membersHTML += '<div style="font-size:0.72rem;color:' + (isCap ? 'var(--orange)' : 'var(--text2)') + ';">' + (isCap ? '👑 ' : '') + (p?.name || m.player_email) + '</div>';
+      });
+
+      const busyT = allChallenges.filter(c => ['pending','accepted'].includes(c.status) && (c.challenger_id===t.id||c.challenged_id===t.id)).length > 0;
+      const lowestStep = maxStep;
+      const canChallengeFromPenalty = myTeam?.id === t.id && !busyT && myTeam?.captain_email === currentPlayer?.email;
+      
+      // Timovi na zadnjoj stepenici koji mogu biti izazvani iz kaznene zone
+      const isMyTeam = myTeam?.id === t.id;
+
+      let cardClass = 'team-card';
+      if(isMyTeam) cardClass += ' my-team';
+      cardClass += ' has-challenge'; // narančasta bordura za kaznu
+
+      penHTML += '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')" style="border-color:var(--red);">'
+        + '<div class="team-nickname" style="color:var(--text);">' + t.name + '</div>'
+        + '<div style="margin:0.4rem 0;">' + membersHTML + '</div>'
+        + '<div style="font-size:0.68rem;color:var(--red);margin-top:0.3rem;">⚠️ Kaznena zona</div>'
+        + (isMyTeam ? '<div style="font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>' : '')
+        + '</div>';
+    });
+
+    // Gumbi za izazov iz kaznene zone
+    if(myTeam?.penalty && myTeam?.captain_email === currentPlayer?.email) {
+      const busyMyTeam = allChallenges.filter(c => ['pending','accepted'].includes(c.status) && (c.challenger_id===myTeam.id||c.challenged_id===myTeam.id)).length > 0;
+      if(!busyMyTeam) {
+        const targetsOnLowest = (steps[maxStep]||[]).filter(t => {
+          const busy = allChallenges.filter(c => ['pending','accepted'].includes(c.status) && (c.challenger_id===t.id||c.challenged_id===t.id)).length > 0;
+          return !busy;
+        });
+        // Dodaj challenge btn na timove na zadnjoj stepenici u głównoj petlji - handled below
+      }
+    }
+
+    html += `<div class="pyramid-step">
+      <div class="step-label" style="color:var(--red);">⚠️ Kaznena zona</div>
+      <div class="step-teams">${penHTML}</div>
+    </div>`;
+  }
+
   container.innerHTML = `<div class="pyramid-wrap">${html}</div>`;
 }
 
@@ -811,8 +900,8 @@ function renderChallenges() {
       </div>`;
     }
 
-    const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined' };
-    const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano' };
+    const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined', surrendered:'s-declined', pending_result:'s-pending' };
+    const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano', surrendered:'Predaja', pending_result:'Čeka potvrdu' };
 
     let actions = '';
     if(c.status==='pending' && isChallenged && iAmCaptain) {
@@ -966,9 +1055,39 @@ function renderAdmin() {
   }
 
   const pendingResults = allChallenges.filter(c=>c.status==='pending_result');
+  const now = new Date();
+  const expiredMatches = allChallenges.filter(c=>
+    c.status==='accepted' &&
+    c.match_expires_at &&
+    new Date(c.match_expires_at) < now
+  );
   const pendingChallenges = allChallenges.filter(c=>c.status==='pending');
 
   document.getElementById('admin-container').innerHTML = `
+    <div class="admin-box">
+      <div class="admin-box-header">⏰ Istekli mečevi (${expiredMatches.length})</div>
+      <div class="admin-box-body">
+        ${expiredMatches.length ? expiredMatches.map(c => {
+          const t1=allTeams.find(t=>t.id===c.challenger_id);
+          const t2=allTeams.find(t=>t.id===c.challenged_id);
+          const expiredDate = new Date(c.match_expires_at).toLocaleDateString('hr-HR');
+          return '<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
+            + '<div style="font-weight:600;margin-bottom:0.3rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
+            + '<div style="font-size:0.78rem;color:var(--red);margin-bottom:0.75rem;">⏰ Rok istekao: ' + expiredDate + '</div>'
+            + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.5rem;">Odaberi tim koji je predao:</div>'
+            + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">'
+            + '<button class="btn-decline" onclick="adminSurrender(\'' + c.id + '\',\'' + c.challenger_id + '\')">🏳 Predaja: ' + (t1?.name||'?') + '</button>'
+            + '<button class="btn-decline" onclick="adminSurrender(\'' + c.id + '\',\'' + c.challenged_id + '\')">🏳 Predaja: ' + (t2?.name||'?') + '</button>'
+            + '</div>'
+            + '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
+            + '<input type="number" id="extend-days-' + c.id + '" placeholder="dana" min="1" max="14" style="width:80px;padding:0.35rem 0.5rem;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:0.82rem;"/>'
+            + '<button onclick="adminExtendDeadline(\'' + c.id + '\')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.35rem 0.75rem;border-radius:6px;cursor:pointer;font-size:0.78rem;">📅 Produži rok</button>'
+            + '</div>'
+            + '</div>';
+        }).join('') : '<div class="empty" style="padding:1rem;">Nema isteklih mečeva ✓</div>'}
+      </div>
+    </div>
+
     <div class="admin-box">
       <div class="admin-box-header">⚔️ Izazovi na čekanju — Admin prihvat (${pendingChallenges.length})</div>
       <div class="admin-box-body">
@@ -1055,13 +1174,15 @@ function renderAdmin() {
       <div>
         ${allTeams.map(t => {
           const captain = allPlayers.find(p=>p.email===t.captain_email);
-          return `<div style="display:grid;grid-template-columns:1fr auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.75rem;">
+          return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.5rem;">
             <div>
-              <div style="font-weight:600;font-size:0.88rem;">${t.nickname} <span style="color:var(--text3);font-weight:400;font-size:0.78rem;">${t.name}</span></div>
+              <div style="font-weight:600;font-size:0.88rem;">${t.name}</div>
               <div style="font-size:0.75rem;color:var(--text3);">Stepenica ${t.step} · 👑 ${captain?.name||t.captain_email}</div>
             </div>
             <button onclick="openEditTeam('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️ Edit</button>
             <button onclick="openAddMember('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">+ Član</button>
+            ${t.step > 1 && !t.penalty ? `<button onclick="adminSimulatePenalty('${t.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">⚠️ Kazna</button>` : ''}
+            ${t.penalty ? `<span style="font-size:0.72rem;color:var(--red);padding:0.3rem 0.5rem;">⚠️ U kazni</span>` : ''}
             <button onclick="deleteTeam('${t.id}','${t.name}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🗑</button>
           </div>`;
         }).join('')}
@@ -1136,14 +1257,64 @@ async function adminDeclineChallenge(challengeId) {
   await loadAll(); renderAdmin();
 }
 
+async function adminSurrender(challengeId, surrenderId) {
+  const c = allChallenges.find(x=>x.id===challengeId);
+  const surrenderTeam = allTeams.find(t=>t.id===surrenderId);
+  if(!confirm('Evidentirati predaju tima "'+surrenderTeam?.name+'"? Timovi će zamijeniti mjesta. Meč se NE upisuje u ljestvicu.')) return;
+
+  // Tim koji je predao ide na nižu stepenicu — zamjena mjesta
+  const winnerId = surrenderId === c.challenger_id ? c.challenged_id : c.challenger_id;
+  await swapTeams(winnerId, surrenderId); // winner dobiva višu poziciju
+
+  await sb.from('challenges').update({
+    status: 'surrendered',
+    result_winner_id: winnerId,
+    updated_at: new Date().toISOString()
+  }).eq('id', challengeId);
+  showToast('Predaja evidentirana. Timovi su zamijenili mjesta. 🔄','success');
+  await loadAll(); renderAdmin();
+}
+
+async function adminExtendDeadline(challengeId) {
+  const days = parseInt(document.getElementById('extend-days-'+challengeId)?.value);
+  if(!days || days < 1 || days > 14) { showToast('Unesi broj dana (1-14)!','error'); return; }
+  const c = allChallenges.find(x=>x.id===challengeId);
+  const newExpiry = new Date(Math.max(new Date(), new Date(c.match_expires_at)) + days*24*60*60*1000).toISOString();
+  const { error } = await sb.from('challenges').update({
+    match_expires_at: newExpiry,
+    updated_at: new Date().toISOString()
+  }).eq('id', challengeId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Rok produžen za '+days+' dana! 📅','success');
+  await loadAll(); renderAdmin();
+}
+
 async function adminConfirmResult(challengeId) {
   const c = allChallenges.find(x=>x.id===challengeId);
   if(!c) return;
 
-  // Zamijeni mjesta ako je pobijedio izazivač
+  const challenger = allTeams.find(t=>t.id===c.challenger_id);
+  const challenged = allTeams.find(t=>t.id===c.challenged_id);
+
   if(c.result_winner_id === c.challenger_id) {
-    await swapTeams(c.challenger_id, c.challenged_id);
+    // Izazivač pobijedio
+    if(challenger?.penalty) {
+      // Iz kaznene zone — vrati u piramidu
+      await returnFromPenalty(challengeId, c.challenger_id);
+    } else {
+      await swapTeams(c.challenger_id, c.challenged_id);
+    }
+  } else {
+    // Izazvani pobijedio — sve ostaje, samo ažuriraj last_match_at
+    if(challenger?.penalty) {
+      // Kažnjeni ostaje u kazni, poraženi ostaje gdje jest
+      await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
+    }
   }
+
+  // Ažuriraj last_match_at za oba tima
+  await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
+  await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenged_id);
 
   await sb.from('challenges').update({ status:'completed', updated_at:new Date().toISOString() }).eq('id',challengeId);
   showToast('Rezultat potvrđen! ✓','success');
@@ -1507,6 +1678,70 @@ async function deleteTeam(id, name) {
   await sb.from('teams').delete().eq('id',id);
   showToast(name+' obrisan.','');
   await loadAll(); renderAdmin();
+}
+
+// ---- PENALTY SYSTEM ----
+async function checkPenalties() {
+  const now = new Date();
+  for(const team of allTeams) {
+    if(team.penalty || team.step === 1) continue; // Stepenica 1 je izuzeta
+    const lastMatch = team.last_match_at ? new Date(team.last_match_at) : new Date(team.created_at);
+    const daysSince = (now - lastMatch) / (1000*60*60*24);
+    if(daysSince >= 20) {
+      await applyPenalty(team);
+    }
+  }
+}
+
+async function applyPenalty(team) {
+  // 1. Spremi originalnu stepenicu
+  await sb.from('teams').update({
+    penalty: true,
+    original_step: team.step
+  }).eq('id', team.id);
+
+  // 2. Pomakni nasumični tim bez aktivnih mečeva sa svake stepenice ispod gore
+  const maxStep = Math.max(...allTeams.map(t => t.step));
+  for(let s = team.step; s <= maxStep; s++) {
+    const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty && t.id !== team.id);
+    const available = teamsOnStep.filter(t => {
+      return !allChallenges.some(c => 
+        ['pending','accepted'].includes(c.status) && 
+        (c.challenger_id===t.id || c.challenged_id===t.id)
+      );
+    });
+    if(available.length > 0) {
+      const lucky = available[Math.floor(Math.random() * available.length)];
+      await sb.from('teams').update({ step: s - 1 }).eq('id', lucky.id);
+    }
+  }
+
+  showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
+  await loadAll();
+}
+
+async function adminSimulatePenalty(teamId) {
+  const team = allTeams.find(t => t.id === teamId);
+  if(!team) return;
+  if(team.step === 1) { showToast('Timovi na stepenici 1 su izuzeti od kazne!', 'error'); return; }
+  if(team.penalty) { showToast('Tim je već u kaznenoj zoni!', 'error'); return; }
+  if(!confirm('Simulirati kaznu za tim "' + team.name + '"?')) return;
+  await applyPenalty(team);
+  showToast(team.name + ' premješten u kaznu! ✓', 'success');
+  await loadAll(); renderAdmin();
+}
+
+async function returnFromPenalty(challengeId, penaltyTeamId) {
+  // Tim iz kaznene zone je pobijedio — vraća ga u piramidu
+  const team = allTeams.find(t => t.id === penaltyTeamId);
+  if(!team) return;
+  const targetStep = Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
+  await sb.from('teams').update({
+    penalty: false,
+    step: targetStep,
+    original_step: null,
+    last_match_at: new Date().toISOString()
+  }).eq('id', penaltyTeamId);
 }
 
 // ---- INIT ----
