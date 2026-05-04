@@ -553,22 +553,21 @@ function renderPyramid() {
   const haspenalty = steps[0] && steps[0].length > 0;
 
   let html = '';
-  const stepBgColors = [
-    'rgba(255,255,255,0.07)',
-    'rgba(255,255,255,0.05)',
-    'rgba(255,255,255,0.03)',
-    'rgba(255,255,255,0.015)',
-    'rgba(255,255,255,0.008)',
+  // Boje okvira po stepenicama: zlatna -> narančasta -> zelena -> plava -> siva
+  const stepStyles = [
+    { bg: 'rgba(245,158,11,0.06)',  border: 'rgba(245,158,11,0.35)',  color: '#f59e0b' }, // 1 - zlatna
+    { bg: 'rgba(255,107,43,0.05)',  border: 'rgba(255,107,43,0.3)',   color: '#ff6b2b' }, // 2 - narančasta
+    { bg: 'rgba(34,197,94,0.04)',   border: 'rgba(34,197,94,0.25)',   color: '#22c55e' }, // 3 - zelena
+    { bg: 'rgba(59,130,246,0.04)',  border: 'rgba(59,130,246,0.22)',  color: '#3b82f6' }, // 4 - plava
+    { bg: 'rgba(148,163,184,0.03)', border: 'rgba(148,163,184,0.18)', color: '#94a3b8' }, // 5+ - siva
   ];
   for(let s=1; s<=maxStep; s++) {
     const teams = steps[s] || [];
     const isAbove = s === aboveStep;
-    const stepBg = stepBgColors[s-1] || stepBgColors[stepBgColors.length-1];
-    const stepBorderTop = s > 1 ? 'border-top:1px solid rgba(255,255,255,0.06);' : '';
+    const style = stepStyles[s-1] || stepStyles[stepStyles.length-1];
     const stepLabelText = s === 1 ? '🏆 Stepenica 1' : 'Stepenica ' + s;
-    const stepLabelStyle = s === 1 ? 'color:var(--gold);' : '';
-    html += `<div class="pyramid-step" style="background:${stepBg};${stepBorderTop}padding:1rem 1.25rem;">
-      <div class="step-label" style="${stepLabelStyle}">${stepLabelText}</div>
+    html += `<div class="pyramid-step" style="background:${style.bg};border-left:3px solid ${style.border};padding:1rem 1.25rem;${s>1?'border-top:1px solid rgba(255,255,255,0.05);':''}">
+      <div class="step-label" style="color:${style.color};">${stepLabelText}</div>
       <div class="step-teams">
         ${teams.map(t => {
           const isMyTeam = myTeam?.id === t.id;
