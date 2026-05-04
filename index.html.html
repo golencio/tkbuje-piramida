@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TK Buje — Piramida</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d; --bg2: #141414; --bg3: #1a1a1a; --bg4: #222222;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0; --text2: #c8c8c8; --text3: #888888;
+      --orange: #ff6b2b; --orange2: #ff8c55; --orange-glow: rgba(255,107,43,0.15);
+      --green: #22c55e; --green2: #16a34a; --green-glow: rgba(34,197,94,0.12);
+      --red: #ef4444; --red-glow: rgba(239,68,68,0.12);
+      --gold: #f59e0b; --blue: #3b82f6; --blue-glow: rgba(59,130,246,0.12);
+      --radius: 14px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
+
+    /* LOGIN */
+    .login-screen { display:none; position:fixed; inset:0; background:var(--bg); z-index:1000; align-items:center; justify-content:center; flex-direction:column; }
+    .login-screen.show { display:flex; }
+    .login-bg { position:absolute; inset:0; background:radial-gradient(ellipse at 30% 20%, rgba(255,107,43,0.08) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(59,130,246,0.06) 0%, transparent 60%); }
+    .login-box { position:relative; background:var(--bg2); border:1px solid var(--border2); border-radius:24px; padding:2.5rem 2rem; width:100%; max-width:360px; text-align:center; box-shadow:0 40px 80px rgba(0,0,0,0.6); }
+    .login-logo { font-family:'Space Grotesk',sans-serif; font-size:2rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; }
+    .login-logo span { color:var(--orange); }
+    .login-sub { font-size:0.75rem; color:var(--text3); text-transform:uppercase; letter-spacing:3px; margin-bottom:2rem; }
+    .btn-google { display:flex; align-items:center; justify-content:center; gap:0.75rem; width:100%; background:var(--bg3); border:1px solid var(--border2); color:var(--text); font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:500; padding:0.85rem 1.5rem; border-radius:12px; cursor:pointer; transition:all 0.2s; }
+    .btn-google:hover { background:var(--bg4); border-color:var(--orange); color:var(--orange); }
+    .btn-google img { width:18px; height:18px; }
+
+    /* HEADER */
+    header { background:rgba(13,13,13,0.9); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:0 1.25rem; position:sticky; top:0; z-index:200; }
+    .header-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:56px; }
+    .logo { font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:700; color:var(--text); }
+    .logo span { color:var(--orange); }
+    .logo small { font-size:0.7rem; color:var(--text3); font-weight:400; margin-left:0.4rem; letter-spacing:1px; text-transform:uppercase; }
+    nav { display:flex; gap:0.15rem; align-items:center; }
+    nav button { background:none; border:none; color:var(--text2); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:500; padding:0.4rem 0.85rem; border-radius:8px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    nav button:hover { color:var(--text); background:var(--bg3); }
+    nav button.active { color:var(--orange); background:var(--orange-glow); }
+    .admin-btn { border:1px solid var(--border) !important; }
+    .admin-btn.on { color:var(--green) !important; background:var(--green-glow) !important; border-color:rgba(34,197,94,0.3) !important; }
+    .user-badge { display:flex; align-items:center; gap:0.5rem; }
+    .user-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--orange),var(--orange2)); display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:700; color:white; flex-shrink:0; }
+    .btn-logout { background:none; border:1px solid var(--border); color:var(--text3); font-size:0.72rem; padding:0.25rem 0.6rem; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+    .btn-logout:hover { color:var(--red); border-color:var(--red); }
+    .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:0.4rem; background:none; border:none; }
+    .hamburger span { display:block; width:22px; height:2px; background:var(--text2); border-radius:2px; transition:all 0.3s; }
+    .hamburger.open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity:0; }
+    .hamburger.open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+    .mobile-menu { display:none; position:fixed; top:56px; left:0; right:0; background:rgba(13,13,13,0.97); backdrop-filter:blur(20px); z-index:199; padding:0.75rem 1rem 1.25rem; border-bottom:1px solid var(--border); }
+    .mobile-menu.open { display:block; }
+    .mobile-menu button { display:block; width:100%; text-align:left; background:none; border:none; color:var(--text2); font-family:'Inter',sans-serif; font-size:0.95rem; font-weight:500; padding:0.7rem 0.5rem; border-bottom:1px solid var(--border); cursor:pointer; }
+    .mobile-menu button.active { color:var(--orange); }
+    .mobile-menu .mob-logout { color:var(--red) !important; border-bottom:none; }
+    .mobile-user { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 0.5rem 1rem; border-bottom:1px solid var(--border); margin-bottom:0.25rem; }
+
+    /* MAIN */
+    main { max-width:1100px; margin:0 auto; padding:1.5rem 1.25rem; }
+    .section { display:none; }
+    .section.active { display:block; }
+
+    /* NOTIFICATION BADGE */
+    .notif-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--red); color:white; font-size:0.65rem; font-weight:700; border-radius:50%; margin-left:4px; vertical-align:middle; }
+
+    /* PIRAMIDA */
+    .pyramid-wrap { display:flex; flex-direction:column; gap:0.75rem; align-items:center; margin-bottom:2rem; }
+    .pyramid-step { width:100%; }
+    .step-label { font-size:0.68rem; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; text-align:center; margin-bottom:0.5rem; }
+    .step-teams { display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap; }
+    .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:0.9rem 1.1rem; cursor:pointer; transition:all 0.2s; min-width:140px; max-width:200px; flex:1; text-align:center; position:relative; }
+    .team-card:hover { border-color:var(--border2); background:var(--bg3); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+    .team-card.my-team { border-color:var(--orange); background:var(--orange-glow); }
+    .team-card.can-challenge { border-color:var(--blue); }
+    .team-card.can-challenge:hover { background:var(--blue-glow); }
+    .team-card.has-challenge { border-color:var(--gold); background:rgba(245,158,11,0.08); }
+    .team-nickname { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; }
+    .team-name { font-size:0.72rem; color:var(--text3); margin-bottom:0.5rem; }
+    .team-captain { font-size:0.72rem; color:var(--text2); }
+    .team-pos { position:absolute; top:0.5rem; right:0.6rem; font-family:'Space Grotesk',sans-serif; font-size:0.72rem; font-weight:700; color:var(--text3); }
+    .challenge-btn { margin-top:0.6rem; width:100%; background:var(--blue-glow); border:1px solid rgba(59,130,246,0.3); color:var(--blue); font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:600; padding:0.35rem; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+    .challenge-btn:hover { background:var(--blue); color:white; }
+
+    /* IZAZOVI */
+    .challenge-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem 1.25rem; margin-bottom:0.75rem; animation:fadeUp 0.3s ease both; }
+    .challenge-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem; }
+    .challenge-title { font-family:'Space Grotesk',sans-serif; font-size:0.95rem; font-weight:700; color:var(--text); }
+    .challenge-meta { font-size:0.75rem; color:var(--text3); margin-top:0.15rem; }
+    .challenge-actions { display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .btn-accept { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,0.25); padding:0.4rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-accept:hover { background:var(--green2); color:white; }
+    .btn-decline { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.2); padding:0.4rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-decline:hover { background:var(--red); color:white; }
+    .timer-wrap { display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; }
+    .timer { font-family:'Space Grotesk',sans-serif; font-weight:700; }
+    .timer.urgent { color:var(--red); }
+    .timer.ok { color:var(--gold); }
+    .status-pill { font-size:0.68rem; font-weight:600; padding:0.2rem 0.65rem; border-radius:20px; letter-spacing:0.5px; text-transform:uppercase; }
+    .s-pending { background:rgba(245,158,11,0.1); color:var(--gold); border:1px solid rgba(245,158,11,0.2); }
+    .s-accepted { background:var(--blue-glow); color:var(--blue); border:1px solid rgba(59,130,246,0.2); }
+    .s-completed { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,0.2); }
+    .s-declined { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.2); }
+
+    /* MODALI */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:500; align-items:center; justify-content:center; padding:1rem; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--bg2); border:1px solid var(--border2); border-radius:20px; padding:1.75rem; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; position:relative; animation:fadeUp 0.25s ease; }
+    .modal-title { font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:700; color:var(--text); margin-bottom:1.25rem; }
+    .modal-close { position:absolute; top:1.1rem; right:1.1rem; background:var(--bg3); border:1px solid var(--border); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; cursor:pointer; color:var(--text2); transition:all 0.2s; }
+    .modal-close:hover { color:var(--text); background:var(--bg4); }
+
+    /* FORMS */
+    .form-group { margin-bottom:0.9rem; }
+    .form-group label { display:block; font-size:0.72rem; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.4rem; }
+    .form-group input, .form-group select { width:100%; padding:0.65rem 0.9rem; background:var(--bg3); border:1px solid var(--border2); border-radius:10px; font-family:'Inter',sans-serif; font-size:0.88rem; color:var(--text); transition:border-color 0.2s; }
+    .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--orange); }
+    .form-group input::placeholder { color:var(--text3); }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+    .btn-primary { width:100%; background:var(--orange); color:white; border:none; padding:0.8rem; border-radius:10px; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s; margin-top:0.5rem; }
+    .btn-primary:hover { background:var(--orange2); }
+    .btn-primary:disabled { background:var(--bg4); color:var(--text3); cursor:not-allowed; }
+
+    /* TEAM DETAIL */
+    .team-detail-header { display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; }
+    .team-avatar { width:52px; height:52px; border-radius:14px; background:linear-gradient(135deg,var(--orange),var(--orange2)); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:1.3rem; font-weight:700; color:white; flex-shrink:0; }
+    .member-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.88rem; }
+    .member-row:last-child { border-bottom:none; }
+    .captain-tag { font-size:0.65rem; background:var(--orange-glow); color:var(--orange); border:1px solid rgba(255,107,43,0.3); padding:0.15rem 0.5rem; border-radius:20px; font-weight:600; }
+
+    /* ADMIN SECTION */
+    .admin-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:1.25rem; }
+    .admin-box-header { padding:0.85rem 1.25rem; background:var(--bg3); border-bottom:1px solid var(--border); font-size:0.85rem; font-weight:600; color:var(--text2); }
+    .admin-box-body { padding:1.25rem; }
+
+    /* SECTION TITLE */
+    .section-title { font-family:'Space Grotesk',sans-serif; font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:1.25rem; display:flex; align-items:center; gap:0.5rem; }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(100px); background:var(--bg3); color:var(--text); border:1px solid var(--border2); padding:0.7rem 1.5rem; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:9999; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.4); }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+    .toast.success { background:var(--green-glow); color:var(--green); border-color:rgba(34,197,94,0.3); }
+    .toast.error { background:var(--red-glow); color:var(--red); border-color:rgba(239,68,68,0.3); }
+
+    /* PLAYER SEARCH */
+    .ps-wrap { position:relative; }
+    .ps-input { width:100%; padding:0.65rem 0.9rem; background:var(--bg3); border:1px solid var(--border2); border-radius:10px; font-family:'Inter',sans-serif; font-size:0.88rem; color:var(--text); transition:border-color 0.2s; }
+    .ps-input:focus { outline:none; border-color:var(--orange); border-radius:10px 10px 0 0; }
+    .ps-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:var(--bg3); border:1px solid var(--orange); border-top:none; border-radius:0 0 10px 10px; z-index:100; max-height:180px; overflow-y:auto; box-shadow:0 12px 32px rgba(0,0,0,0.4); }
+    .ps-dropdown.open { display:block; }
+    .ps-option { padding:0.6rem 0.9rem; cursor:pointer; font-size:0.85rem; color:var(--text2); border-bottom:1px solid var(--border); transition:all 0.15s; }
+    .ps-option:last-child { border-bottom:none; }
+    .ps-option:hover { background:var(--bg4); color:var(--orange); }
+    .ps-badge { display:none; align-items:center; justify-content:space-between; padding:0.5rem 0.9rem; background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); border-radius:10px; font-size:0.85rem; color:var(--green); font-weight:600; margin-top:0.3rem; }
+    .ps-badge.show { display:flex; }
+    .ps-clear { background:none; border:none; color:var(--text3); cursor:pointer; font-size:1.1rem; line-height:1; padding:0; transition:color 0.15s; }
+    .ps-clear:hover { color:var(--red); }
+    .empty { text-align:center; padding:2.5rem; color:var(--text3); font-size:0.88rem; }
+    .loading { text-align:center; padding:3rem; color:var(--text3); }
+    .spinner { width:32px; height:32px; border:2px solid var(--bg4); border-top-color:var(--orange); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 0.75rem; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    footer { text-align:center; padding:1.5rem; color:var(--text3); font-size:0.72rem; border-top:1px solid var(--border); margin-top:2rem; }
+
+    @media(max-width:700px) {
+      nav { display:none; }
+      .hamburger { display:flex; }
+      .step-teams { gap:0.5rem; }
+      .team-card { min-width:120px; padding:0.75rem; }
+      .form-row { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <div class="login-logo">TK <span>Buje</span></div>
+    <div class="login-sub">Piramida Turnir</div>
+    <button class="btn-google" onclick="loginWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+      Prijava s Google računom
+    </button>
+    <p style="font-size:0.72rem;color:var(--text3);margin-top:1rem;">Samo registrirani članovi kluba</p>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">TK <span>Buje</span> <small>Piramida</small></div>
+    <nav>
+      <button class="active" id="nav-piramida" onclick="showSection('piramida',this)">🔺 Piramida</button>
+      <button id="nav-izazovi" onclick="showSection('izazovi',this)">⚔️ Izazovi <span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
+      <button id="nav-pravilnik" onclick="showSection('pravilnik',this)">📋 Pravilnik</button>
+      <button class="admin-btn" id="admin-btn" style="display:none" onclick="showSection('admin',this)">⚙ Admin</button>
+      <div class="user-badge" id="user-badge" style="display:none">
+        <div class="user-avatar" id="user-initials">?</div>
+        <button class="btn-logout" onclick="logout()">Odjava</button>
+      </div>
+    </nav>
+    <button class="hamburger" id="hamburger" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="mobile-menu" id="mobile-menu">
+  <div class="mobile-user" id="mob-user" style="display:none">
+    <div class="user-avatar" id="mob-initials">?</div>
+    <span style="color:var(--text);font-weight:600;font-size:0.9rem;" id="mob-name"></span>
+  </div>
+  <button onclick="mobileNav('piramida')" id="mob-piramida" class="active">🔺 Piramida</button>
+  <button onclick="mobileNav('izazovi')" id="mob-izazovi">⚔️ Izazovi</button>
+  <button onclick="mobileNav('pravilnik')" id="mob-pravilnik">📋 Pravilnik</button>
+  <button onclick="mobileNav('admin')" id="mob-admin" style="display:none">⚙ Admin</button>
+  <button onclick="logout()" class="mob-logout">← Odjava</button>
+</div>
+
+<main>
+  <!-- PIRAMIDA -->
+  <section id="sec-piramida" class="section active">
+    <div class="section-title">🔺 Piramida Timova</div>
+    <div id="pyramid-container">
+      <div class="loading"><div class="spinner"></div>Učitavam...</div>
+    </div>
+  </section>
+
+  <!-- IZAZOVI -->
+  <section id="sec-izazovi" class="section">
+    <div class="section-title">⚔️ Izazovi</div>
+    <div id="challenges-container">
+      <div class="loading"><div class="spinner"></div>Učitavam...</div>
+    </div>
+  </section>
+
+  <!-- PRAVILNIK -->
+  <section id="sec-pravilnik" class="section">
+    <div style="max-width:700px;margin:0 auto;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;color:var(--text);">📋 Pravilnik Piramida Turnira</div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
+
+        <div style="background:var(--orange-glow);border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--orange);margin-bottom:0.25rem;">1. Struktura piramide</div>
+          <p style="font-size:0.88rem;color:var(--text2);line-height:1.6;">Piramida se sastoji od više stepenica s timovima raspoređenim po rangu. Svaki tim zauzima određenu stepenicu, a cilj je popeti se što više prema vrhu.</p>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">2. Sastav timova</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Svaki tim se sastoji od <strong style="color:var(--text);">najmanje 2 i najviše 3 igrača</strong></li>
+            <li>Svaki igrač može biti član <strong style="color:var(--text);">samo jednog tima</strong></li>
+            <li>Svaki tim ima <strong style="color:var(--text);">kapetana</strong> odgovornog za dogovaranje mečeva</li>
+            <li>Timove kreira admin kluba</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">3. Igranje mečeva</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Mečevi se igraju na <strong style="color:var(--orange);">dva dobivena seta</strong></li>
+            <li>Svaki kapetan određuje koji igrači iz tima igraju dogovoreni meč</li>
+            <li>Kapetan pobjedničkog tima unosi rezultat u aplikaciju</li>
+            <li><strong style="color:var(--text);">Admin kluba mora potvrditi</strong> rezultat</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">4. Izazovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Tim može izazvati samo tim <strong style="color:var(--text);">jednu stepenicu iznad</strong></li>
+            <li>Izazov može poslati <strong style="color:var(--text);">samo kapetan</strong> tima</li>
+            <li>Tim može imati <strong style="color:var(--text);">samo jedan aktivan izazov</strong> u isto vrijeme</li>
+            <li>Tim koji već ima aktivan izazov ne može biti izazvan</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">5. Rokovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Izazvani tim ima <strong style="color:var(--orange);">3 dana</strong> za odgovor na izazov</li>
+            <li>Neodgovaranje u roku smatra se <strong style="color:var(--text);">odbijanjem</strong></li>
+            <li>Nakon prihvaćanja, timovi imaju <strong style="color:var(--orange);">6 dana</strong> za igranje meča</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">6. Odbijanje izazova</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Izazvani tim ima pravo <strong style="color:var(--text);">jednom odbiti</strong> izazov od istog izazivača</li>
+            <li>Nakon odbijanja, tim ulazi u <strong style="color:var(--orange);">zaštitni rok od 3 dana</strong> — ne može biti izazvan</li>
+            <li>Ako izazvani tim odbije <strong style="color:var(--red);">drugi put</strong> od istog izazivača, timovi automatski <strong style="color:var(--red);">mijenjaju mjesta</strong> bez igranja meča</li>
+            <li>Brojač odbijanja se <strong style="color:var(--text);">resetira</strong> nakon svake zamjene mjesta</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">7. Rezultati i bodovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Nakon potvrde rezultata — ako je <strong style="color:var(--green);">pobijedio izazivač</strong> → timovi mijenjaju mjesta</li>
+            <li>Ako je <strong style="color:var(--text);">pobijedio izazvani</strong> → sve ostaje isto</li>
+            <li>Rezultati mečeva piramide <strong style="color:var(--text);">boduju se i u općoj ljestvici</strong> kluba</li>
+            <li>Zamjena mjesta zbog odbijanja <strong style="color:var(--text);">ne donosi bodove</strong></li>
+          </ul>
+        </div>
+
+        <div style="padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">8. Admin</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Admin može <strong style="color:var(--text);">poništiti odluku</strong> kapetana u slučaju greške</li>
+            <li>Admin može <strong style="color:var(--text);">prihvatiti ili odbiti</strong> izazov umjesto kapetana</li>
+            <li>Admin dodaje nove timove na dno piramide po potrebi</li>
+            <li>Svi sporovi rješavaju se uz posredovanje admina kluba</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="sec-admin" class="section">
+    <div class="section-title">⚙️ Admin Panel</div>
+    <div id="admin-container"></div>
+  </section>
+</main>
+
+<!-- MODAL: Detalji tima -->
+<div class="modal-overlay" id="modal-team">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-team')">×</button>
+    <div id="team-modal-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Odabir igrača -->
+<div class="modal-overlay" id="modal-select-players">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-select-players')">×</button>
+    <div class="modal-title">Odaberi igrače koji igraju</div>
+    <p style="font-size:0.82rem;color:var(--text3);margin-bottom:1.25rem;">Tvoj tim ima 3 igrača — odaberi koja 2 igraju ovaj meč.</p>
+    <div id="select-players-list" style="margin-bottom:1rem;"></div>
+    <button class="btn-primary" id="confirm-players-btn" onclick="confirmPlayerSelection()">Potvrdi i pošalji izazov</button>
+  </div>
+</div>
+
+<!-- MODAL: Unos rezultata -->
+<div class="modal-overlay" id="modal-result">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-result')">×</button>
+    <div class="modal-title">Unesi Rezultat</div>
+    <div id="result-match-info" style="background:var(--bg3);border-radius:10px;padding:0.75rem;margin-bottom:1rem;font-size:0.88rem;color:var(--text2);"></div>
+    <div class="form-group">
+      <label>Pobjednički tim *</label>
+      <select id="result-winner"></select>
+    </div>
+    <div class="form-group">
+      <label>Rezultat (npr. 6:4, 7:5) *</label>
+      <input type="text" id="result-score" placeholder="6:4, 6:3"/>
+    </div>
+    <button class="btn-primary" id="submit-result-btn" onclick="submitResult()">Pošalji na potvrdu</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>© 2026 TK Buje Piramida · Powered by Supabase</footer>
+
+<script>
+const SUPABASE_URL = 'https://aglbdjyljbzzpddrshno.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnbGJkanlsamJ6enBkZHJzaG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTQxOTcsImV4cCI6MjA5MzIzMDE5N30.NEOJnMJiUHCEGa27xkPf2HM00KEFZC5DjcDpC6t8U6Q';
+const APP_URL = 'https://golencio.github.io/tkbuje-piramida';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
+let currentUser = null, currentPlayer = null, myTeam = null;
+let activeResultChallenge = null;
+
+// ---- TOAST ----
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3200);
+}
+
+// ---- AUTH ----
+async function loginWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: APP_URL }});
+  if(error) showToast('Greška: '+error.message, 'error');
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function handleAuth() {
+  const { data:{ session }} = await sb.auth.getSession();
+  if(!session) { document.getElementById('login-screen').classList.add('show'); return false; }
+  currentUser = session.user;
+  const { data: player } = await sb.from('players').select('*').eq('email', currentUser.email).single();
+  if(!player) {
+    document.getElementById('login-screen').classList.add('show');
+    document.getElementById('login-screen').querySelector('.login-box').innerHTML = `
+      <div class="login-logo">TK <span>Buje</span></div>
+      <div style="margin-top:1.5rem;">
+        <div style="font-size:2.5rem;">🚫</div>
+        <h3 style="font-size:1rem;font-weight:700;color:var(--text);margin:0.75rem 0 0.5rem;">Nisi registrirani član</h3>
+        <p style="font-size:0.8rem;color:var(--text3);margin-bottom:1.5rem;">${currentUser.email}</p>
+        <button class="btn-google" onclick="logout()">← Odjava</button>
+      </div>`;
+    return false;
+  }
+  currentPlayer = player;
+  const initials = player.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('user-initials').textContent = initials;
+  document.getElementById('user-badge').style.display = 'flex';
+  document.getElementById('mob-initials').textContent = initials;
+  document.getElementById('mob-name').textContent = player.name;
+  document.getElementById('mob-user').style.display = 'flex';
+  document.getElementById('login-screen').classList.remove('show');
+  if(player.is_admin) {
+    document.getElementById('admin-btn').style.display = 'inline-flex';
+    document.getElementById('admin-btn').classList.add('on');
+    document.getElementById('mob-admin').style.display = 'block';
+  }
+  return true;
+}
+
+// ---- NAV ----
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='admin') renderAdmin();
+}
+
+function toggleMenu() {
+  document.getElementById('mobile-menu').classList.toggle('open');
+  document.getElementById('hamburger').classList.toggle('open');
+}
+
+function mobileNav(id) {
+  document.querySelectorAll('.mobile-menu button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('mob-'+id)?.classList.add('active');
+  showSection(id, document.getElementById('nav-'+id));
+  document.getElementById('mobile-menu').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
+});
+
+// ---- LOAD DATA ----
+async function loadAll() {
+  const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
+    sb.from('teams').select('*').order('step').order('position'),
+    sb.from('challenges').select('*').order('created_at', {ascending:false}),
+    sb.from('players').select('*').eq('active', true),
+    sb.from('team_members').select('*')
+  ]);
+  allTeams = teams || [];
+  allChallenges = challenges || [];
+  allPlayers = players || [];
+  allMembers = members || [];
+
+  // Nađi moj tim
+  if(currentPlayer) {
+    const { data: myMembership } = await sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single();
+    if(myMembership) myTeam = allTeams.find(t=>t.id===myMembership.team_id) || null;
+  }
+
+  // Notifikacije
+  updateNotifBadge();
+  renderPyramid();
+  renderChallenges();
+}
+
+function updateNotifBadge() {
+  if(!myTeam) return;
+  const pending = allChallenges.filter(c =>
+    c.challenged_id === myTeam.id && c.status === 'pending'
+  ).length;
+  const badge = document.getElementById('notif-badge');
+  if(pending > 0) { badge.style.display='inline-flex'; badge.textContent=pending; }
+  else { badge.style.display='none'; }
+}
+
+// ---- RENDER PYRAMID ----
+function renderPyramid() {
+  const container = document.getElementById('pyramid-container');
+  if(!allTeams.length) { container.innerHTML='<div class="empty">Nema timova u piramidi.</div>'; return; }
+
+  // Grupiranje po stepenicama
+  const steps = {};
+  allTeams.forEach(t => {
+    if(!steps[t.step]) steps[t.step] = [];
+    steps[t.step].push(t);
+  });
+
+  // Timovi koji imaju aktivan izazov
+  const busyTeams = new Set();
+  allChallenges.filter(c=>['pending','accepted'].includes(c.status)).forEach(c => {
+    busyTeams.add(c.challenger_id);
+    busyTeams.add(c.challenged_id);
+  });
+
+  // Timovi koji su odbili izazov u zadnja 3 dana (cooldown)
+  const cooldownTeams = new Set();
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
+  allChallenges.filter(c =>
+    c.status === 'declined' &&
+    new Date(c.updated_at) > threeDaysAgo
+  ).forEach(c => {
+    cooldownTeams.add(c.challenged_id); // Tim koji je odbio ne može biti izazvan
+  });
+
+  // Moja stepenica
+  const myStep = myTeam?.step;
+  const aboveStep = myStep ? myStep - 1 : null;
+
+  const maxStep = Math.max(...Object.keys(steps).map(Number));
+
+  let html = '';
+  for(let s=1; s<=maxStep; s++) {
+    const teams = steps[s] || [];
+    const isAbove = s === aboveStep;
+    html += `<div class="pyramid-step">
+      <div class="step-label">Stepenica ${s}</div>
+      <div class="step-teams">
+        ${teams.map(t => {
+          const isMyTeam = myTeam?.id === t.id;
+          const inCooldown = cooldownTeams.has(t.id);
+          const canChallenge = !isMyTeam && isAbove && myTeam && !busyTeams.has(myTeam.id) && !busyTeams.has(t.id) && !inCooldown;
+          const hasPendingChallenge = allChallenges.some(c=>
+            (c.challenger_id===t.id || c.challenged_id===t.id) && ['pending','accepted'].includes(c.status)
+          );
+          const teamMembers = allMembers.filter(m => m.team_id === t.id);
+          let membersHTML = '';
+          teamMembers.forEach(m => {
+            const p = allPlayers.find(x => x.email === m.player_email);
+            const isCap = m.player_email === t.captain_email;
+            membersHTML += '<div style="font-size:0.72rem;color:' + (isCap ? 'var(--orange)' : 'var(--text2)') + ';">' + (isCap ? '👑 ' : '') + (p?.name || m.player_email) + '</div>';
+          });
+
+          let cardClass = 'team-card';
+          if(isMyTeam) cardClass += ' my-team';
+          if(canChallenge) cardClass += ' can-challenge';
+          if(hasPendingChallenge && !isMyTeam) cardClass += ' has-challenge';
+
+          let cardExtra = '';
+          if(canChallenge) cardExtra += '<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge(\'' + t.id + '\')">⚔️ Izazovi</button>';
+          if(isMyTeam) cardExtra += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>';
+          if(hasPendingChallenge) cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--gold);">⏳ Aktivan izazov</div>';
+          if(inCooldown && !isMyTeam) {
+            // Izračunaj preostalo vrijeme cooldowna
+            const lastDecline = allChallenges
+              .filter(c=>c.challenged_id===t.id && c.status==='declined')
+              .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at))[0];
+            if(lastDecline) {
+              const cooldownEnd = new Date(new Date(lastDecline.updated_at).getTime() + 3*24*60*60*1000);
+              const hoursLeft = Math.ceil((cooldownEnd - new Date()) / 3600000);
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">🛡 Zaštita još ' + hoursLeft + 'h</div>';
+            }
+          }
+
+          return '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')">'
+            + '<div class="team-nickname">' + t.name + '</div>'
+            + '<div style="margin:0.4rem 0;">' + membersHTML + '</div>'
+            + cardExtra
+            + '</div>';
+        }).join('')}
+      </div>
+    </div>`;
+  }
+  container.innerHTML = `<div class="pyramid-wrap">${html}</div>`;
+}
+
+// ---- OPEN TEAM ----
+async function openTeam(teamId) {
+  const team = allTeams.find(t=>t.id===teamId);
+  if(!team) return;
+  const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
+  const captain = allPlayers.find(p=>p.email===team.captain_email);
+  const memberList = (members||[]).map(m => {
+    const player = allPlayers.find(p=>p.email===m.player_email);
+    const isCaptain = m.player_email === team.captain_email;
+    return `<div class="member-row">
+      <span style="font-weight:${isCaptain?'600':'400'};color:${isCaptain?'var(--text)':'var(--text2)'};">${player?.name||m.player_email}</span>
+      ${isCaptain ? '<span class="captain-tag">Kapetan</span>' : ''}
+    </div>`;
+  }).join('');
+
+  // Tim statistika iz izazova
+  const teamChallenges = allChallenges.filter(c=>
+    c.status==='completed' && (c.challenger_id===teamId||c.challenged_id===teamId)
+  );
+  const wins = teamChallenges.filter(c=>c.result_winner_id===teamId).length;
+  const losses = teamChallenges.length - wins;
+
+  document.getElementById('team-modal-content').innerHTML = `
+    <div class="team-detail-header">
+      <div class="team-avatar">${team.name.substring(0,2).toUpperCase()}</div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;">${team.name}</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">Stepenica ${team.step}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
+      <div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;color:var(--green);">${wins}</div>
+        <div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Pobjede</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;color:var(--red);">${losses}</div>
+        <div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Porazi</div>
+      </div>
+    </div>
+    <div style="font-size:0.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:0.6rem;">Članovi</div>
+    <div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">${memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>'}</div>`;
+  openModal('modal-team');
+}
+
+// ---- PLAYER SELECTION ----
+let pendingChallengeData = null;
+let selectedPlayers = new Set();
+let selectionMode = null; // 'challenge' or 'accept'
+let pendingAcceptId = null;
+
+function openSelectPlayers(teamId, members, challengedId) {
+  pendingChallengeData = { teamId, challengedId };
+  selectedPlayers = new Set();
+  selectionMode = 'challenge';
+  renderPlayerSelection(members);
+  openModal('modal-select-players');
+}
+
+function openSelectPlayersAccept(teamId, members, challengeId) {
+  pendingAcceptId = challengeId;
+  selectedPlayers = new Set();
+  selectionMode = 'accept';
+  renderPlayerSelection(members);
+  document.getElementById('confirm-players-btn').textContent = 'Potvrdi i prihvati izazov';
+  openModal('modal-select-players');
+}
+
+function renderPlayerSelection(members) {
+  const list = document.getElementById('select-players-list');
+  list.innerHTML = members.map(m => {
+    const player = allPlayers.find(p=>p.email===m.player_email);
+    const isCap = m.player_email === myTeam?.captain_email;
+    return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:var(--bg3);border-radius:10px;margin-bottom:0.5rem;cursor:pointer;border:1.5px solid var(--border);transition:all 0.2s;" 
+      id="player-sel-${m.player_email.replace(/[@.]/g,'_')}"
+      onclick="togglePlayerSelect('${m.player_email}', this)">
+      <div style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:0.7rem;" id="check-${m.player_email.replace(/[@.]/g,'_')}"></div>
+      <span style="font-weight:${isCap?'600':'400'};color:${isCap?'var(--orange)':'var(--text2)'};">${player?.name||m.player_email} ${isCap?'👑':''}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('confirm-players-btn').textContent = 'Potvrdi i pošalji izazov';
+}
+
+function togglePlayerSelect(email, el) {
+  if(selectedPlayers.has(email)) {
+    selectedPlayers.delete(email);
+    el.style.borderColor = 'var(--border)';
+    el.style.background = 'var(--bg3)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).textContent = '';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.borderColor = 'var(--border2)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.background = '';
+  } else {
+    if(selectedPlayers.size >= 2) { showToast('Možeš odabrati samo 2 igrača!','error'); return; }
+    selectedPlayers.add(email);
+    el.style.borderColor = 'var(--orange)';
+    el.style.background = 'var(--orange-glow)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).textContent = '✓';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.borderColor = 'var(--orange)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.background = 'var(--orange)';
+    document.getElementById('check-'+email.replace(/[@.]/g,'_')).style.color = 'white';
+  }
+}
+
+async function confirmPlayerSelection() {
+  if(selectedPlayers.size !== 2) { showToast('Moraš odabrati točno 2 igrača!','error'); return; }
+  const [p1, p2] = [...selectedPlayers];
+
+  if(selectionMode === 'challenge') {
+    const challenged = allTeams.find(t=>t.id===pendingChallengeData.challengedId);
+    if(!confirm('Izazvati tim "'+challenged?.name+'"?')) return;
+    const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
+    const { error } = await sb.from('challenges').insert({
+      challenger_id: myTeam.id,
+      challenged_id: pendingChallengeData.challengedId,
+      status: 'pending',
+      response_expires_at: responseExpires,
+      challenger_player1: p1,
+      challenger_player2: p2
+    });
+    if(error) { showToast('Greška: '+error.message,'error'); return; }
+    showToast('Izazov poslan! ⚔️','success');
+  } else {
+    const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
+    const { error } = await sb.from('challenges').update({
+      status: 'accepted',
+      match_expires_at: matchExpires,
+      challenged_player1: p1,
+      challenged_player2: p2
+    }).eq('id', pendingAcceptId);
+    if(error) { showToast('Greška: '+error.message,'error'); return; }
+    showToast('Izazov prihvaćen! Imate 6 dana za meč.','success');
+  }
+
+  closeModal('modal-select-players');
+  await loadAll();
+}
+
+// ---- SEND CHALLENGE ----
+async function sendChallenge(challengedId) {
+  if(!myTeam) { showToast('Nisi član nijednog tima!', 'error'); return; }
+  if(myTeam.captain_email !== currentPlayer.email) {
+    showToast('Samo kapetan može slati izazove!', 'error'); return;
+  }
+  const challenged = allTeams.find(t=>t.id===challengedId);
+  if(!challenged) return;
+
+  // Provjeri cooldown
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
+  const inCooldown = allChallenges.some(c =>
+    c.challenged_id === challengedId &&
+    c.status === 'declined' &&
+    new Date(c.updated_at) > threeDaysAgo
+  );
+  if(inCooldown) { showToast('Tim je u zaštitnom roku — ne može biti izazvan!', 'error'); return; }
+
+  // Provjeri koliko članova ima moj tim
+  const { data: myMembers } = await sb.from('team_members').select('*').eq('team_id', myTeam.id);
+  
+  if(myMembers && myMembers.length === 3) {
+    // Odaberi 2 igrača koji igraju
+    openSelectPlayers(myTeam.id, myMembers, challengedId);
+    return;
+  }
+
+  // Tim ima 2 igrača - automatski igraju oba
+  const player1 = myMembers?.[0]?.player_email || null;
+  const player2 = myMembers?.[1]?.player_email || null;
+
+  if(!confirm('Izazvati tim "'+challenged.name+'"?')) return;
+
+  const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
+  const { error } = await sb.from('challenges').insert({
+    challenger_id: myTeam.id,
+    challenged_id: challengedId,
+    status: 'pending',
+    response_expires_at: responseExpires,
+    challenger_player1: player1,
+    challenger_player2: player2
+  });
+  if(error) { showToast('Greška: '+error.message, 'error'); return; }
+  showToast('Izazov poslan! ⚔️', 'success');
+  await loadAll();
+}
+
+// ---- RENDER CHALLENGES ----
+function renderChallenges() {
+  const container = document.getElementById('challenges-container');
+  if(!allChallenges.length) { container.innerHTML='<div class="empty">Nema izazova.</div>'; return; }
+
+  const now = new Date();
+
+  // Expire pending challenges
+  allChallenges.forEach(async c => {
+    if(c.status==='pending' && new Date(c.response_expires_at) < now) {
+      // Rok istekao — automatski odbijanje
+      await handleExpired(c);
+    }
+  });
+
+  const html = allChallenges.map((c,i) => {
+    const challenger = allTeams.find(t=>t.id===c.challenger_id);
+    const challenged = allTeams.find(t=>t.id===c.challenged_id);
+    if(!challenger||!challenged) return '';
+
+    const isMyChallenge = myTeam && (c.challenger_id===myTeam.id||c.challenged_id===myTeam.id);
+    const isChallenged = myTeam && c.challenged_id===myTeam.id;
+    const iAmCaptain = myTeam?.captain_email === currentPlayer?.email;
+
+    // Timer
+    const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
+    let timerHtml = '';
+    if(expires && ['pending','accepted'].includes(c.status)) {
+      const diff = expires - now;
+      const hours = Math.floor(diff/3600000);
+      const days = Math.floor(hours/24);
+      const urgent = diff < 24*60*60*1000;
+      timerHtml = `<div class="timer-wrap">
+        <span style="color:var(--text3);font-size:0.72rem;">${c.status==='pending'?'Rok odgovora:':'Rok meča:'}</span>
+        <span class="timer ${urgent?'urgent':'ok'}">${days>0?days+'d ':''} ${hours%24}h</span>
+      </div>`;
+    }
+
+    const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined' };
+    const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano' };
+
+    let actions = '';
+    if(c.status==='pending' && isChallenged && iAmCaptain) {
+      actions = `
+        <button class="btn-accept" onclick="respondChallenge('${c.id}','accepted')">✓ Prihvati</button>
+        <button class="btn-decline" onclick="respondChallenge('${c.id}','declined')">✕ Odbij</button>`;
+    }
+    if(c.status==='accepted' && isMyChallenge) {
+      actions = `<button class="btn-accept" onclick="openResultModal('${c.id}')">📝 Unesi rezultat</button>`;
+    }
+
+    return `<div class="challenge-card" style="animation-delay:${i*0.05}s;${!isMyChallenge?'opacity:0.6;':''}">
+      <div class="challenge-header">
+        <div>
+          <div class="challenge-title">⚔️ ${challenger.nickname} vs ${challenged.nickname}</div>
+          <div class="challenge-meta">${new Date(c.created_at).toLocaleDateString('hr-HR')} · Odbijanja: ${c.rejection_count}/1</div>
+        </div>
+        <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||c.status}</span>
+      </div>
+      ${timerHtml}
+      ${actions ? `<div class="challenge-actions" style="margin-top:0.75rem;">${actions}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  container.innerHTML = html || '<div class="empty">Nema izazova.</div>';
+}
+
+// ---- RESPOND TO CHALLENGE ----
+async function respondChallenge(challengeId, response) {
+  const challenge = allChallenges.find(c=>c.id===challengeId);
+  if(!challenge) return;
+
+  if(response==='declined') {
+    // Nađi zadnji completed izazov između ova dva tima
+    const lastCompleted2 = allChallenges
+      .filter(x =>
+        x.challenger_id === challenge.challenger_id &&
+        x.challenged_id === challenge.challenged_id &&
+        x.status === 'completed'
+      )
+      .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+    const afterDate2 = lastCompleted2 ? new Date(lastCompleted2.created_at) : new Date(0);
+    const prevRejections2 = allChallenges.filter(x =>
+      x.challenger_id === challenge.challenger_id &&
+      x.challenged_id === challenge.challenged_id &&
+      x.status === 'declined' &&
+      x.id !== challengeId &&
+      new Date(x.created_at) > afterDate2
+    ).length;
+    const totalRejections = prevRejections2 + 1;
+
+    if(totalRejections >= 2) {
+      if(!confirm('Ovo je drugo odbijanje! Timovi će automatski zamijeniti mjesta. Nastavi?')) return;
+      await swapTeams(challenge.challenger_id, challenge.challenged_id);
+      await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:totalRejections }).eq('id',challengeId);
+      showToast('Izazivač je pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄', 'success');
+    } else {
+      await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
+      showToast('Izazov odbijen (1/2). Tim može izazvati ponovo.', '');
+    }
+  } else {
+    // Prihvaćeno — provjeri koliko članova ima tim
+    const { data: myMembers } = await sb.from('team_members').select('*').eq('team_id', myTeam.id);
+    
+    if(myMembers && myMembers.length === 3) {
+      // Odaberi 2 igrača koji igraju
+      openSelectPlayersAccept(myTeam.id, myMembers, challengeId);
+      return;
+    }
+
+    // Tim ima 2 igrača - automatski igraju oba
+    const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
+    await sb.from('challenges').update({
+      status:'accepted',
+      match_expires_at: matchExpires,
+      challenged_player1: myMembers?.[0]?.player_email || null,
+      challenged_player2: myMembers?.[1]?.player_email || null
+    }).eq('id',challengeId);
+    showToast('Izazov prihvaćen! Imate 6 dana za meč.', 'success');
+  }
+  await loadAll();
+}
+
+// ---- HANDLE EXPIRED ----
+async function handleExpired(challenge) {
+  const newCount = (challenge.rejection_count||0) + 1;
+  if(newCount >= 2) {
+    await swapTeams(challenge.challenger_id, challenge.challenged_id);
+    await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:newCount }).eq('id',challenge.id);
+  } else {
+    await sb.from('challenges').update({ status:'declined', rejection_count:newCount }).eq('id',challenge.id);
+  }
+}
+
+// ---- SWAP TEAMS ----
+async function swapTeams(challengerId, challengedId) {
+  const t1 = allTeams.find(t=>t.id===challengerId);
+  const t2 = allTeams.find(t=>t.id===challengedId);
+  if(!t1||!t2) return;
+  await Promise.all([
+    sb.from('teams').update({ step:t2.step, position:t2.position }).eq('id',challengerId),
+    sb.from('teams').update({ step:t1.step, position:t1.position }).eq('id',challengedId)
+  ]);
+  showToast('Timovi su zamijenili mjesta! 🔄', 'success');
+}
+
+// ---- RESULT MODAL ----
+function openResultModal(challengeId) {
+  const challenge = allChallenges.find(c=>c.id===challengeId);
+  if(!challenge) return;
+  activeResultChallenge = challenge;
+  const t1 = allTeams.find(t=>t.id===challenge.challenger_id);
+  const t2 = allTeams.find(t=>t.id===challenge.challenged_id);
+  document.getElementById('result-match-info').innerHTML = `⚔️ <strong>${t1?.nickname}</strong> vs <strong>${t2?.nickname}</strong>`;
+  document.getElementById('result-winner').innerHTML = `
+    <option value="">— odaberi pobjednika —</option>
+    <option value="${t1?.id}">${t1?.nickname}</option>
+    <option value="${t2?.id}">${t2?.nickname}</option>`;
+  document.getElementById('result-score').value = '';
+  openModal('modal-result');
+}
+
+async function submitResult() {
+  const winnerId = document.getElementById('result-winner').value;
+  const score = document.getElementById('result-score').value.trim();
+  if(!winnerId||!score) { showToast('Ispuni sva polja!','error'); return; }
+
+  const btn = document.getElementById('submit-result-btn');
+  btn.disabled=true; btn.textContent='Šaljem...';
+
+  const { error } = await sb.from('challenges').update({
+    status: 'pending_result',
+    result_winner_id: winnerId,
+    result_score: score,
+    updated_at: new Date().toISOString()
+  }).eq('id', activeResultChallenge.id);
+
+  btn.disabled=false; btn.textContent='Pošalji na potvrdu';
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Rezultat poslan adminu na potvrdu! ✓','success');
+  closeModal('modal-result');
+  await loadAll();
+}
+
+// ---- ADMIN ----
+function renderAdmin() {
+  if(!currentPlayer?.is_admin) {
+    document.getElementById('admin-container').innerHTML='<div class="empty">⛔ Nemaš admin ovlasti.</div>';
+    return;
+  }
+
+  const pendingResults = allChallenges.filter(c=>c.status==='pending_result');
+  const pendingChallenges = allChallenges.filter(c=>c.status==='pending');
+
+  document.getElementById('admin-container').innerHTML = `
+    <div class="admin-box">
+      <div class="admin-box-header">⚔️ Izazovi na čekanju — Admin prihvat (${pendingChallenges.length})</div>
+      <div class="admin-box-body">
+        ${pendingChallenges.length ? pendingChallenges.map(c => {
+          const t1=allTeams.find(t=>t.id===c.challenger_id);
+          const t2=allTeams.find(t=>t.id===c.challenged_id);
+          const expires = new Date(c.response_expires_at);
+          const diff = expires - new Date();
+          const hours = Math.max(0, Math.floor(diff/3600000));
+          return '<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
+            + '<div style="font-weight:600;margin-bottom:0.3rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
+            + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.75rem;">Rok: ' + hours + 'h · Odbijanja: ' + c.rejection_count + '/1</div>'
+            + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">'
+            + '<button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati umjesto kapetana</button>'
+            + '<button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij umjesto kapetana</button>'
+            + '</div></div>';
+        }).join('') : '<div class="empty" style="padding:1rem;">Nema izazova na čekanju</div>'}
+      </div>
+    </div>
+
+    <div class="admin-box">
+      <div class="admin-box-header">📝 Rezultati na potvrdi (${pendingResults.length})</div>
+      <div class="admin-box-body">
+        ${pendingResults.length ? pendingResults.map(c => {
+          const t1=allTeams.find(t=>t.id===c.challenger_id);
+          const t2=allTeams.find(t=>t.id===c.challenged_id);
+          const winner=allTeams.find(t=>t.id===c.result_winner_id);
+          return `<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">
+            <div style="font-weight:600;margin-bottom:0.5rem;">⚔️ ${t1?.name} vs ${t2?.name}</div>
+            <div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.75rem;">Pobjednik: <strong>${winner?.name}</strong> · ${c.result_score||'—'}</div>
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn-accept" onclick="adminConfirmResult('${c.id}')">✓ Potvrdi</button>
+              <button class="btn-decline" onclick="adminRejectResult('${c.id}')">✕ Odbij</button>
+            </div>
+          </div>`;
+        }).join('') : '<div class="empty" style="padding:1rem;">Nema rezultata na čekanju</div>'}
+      </div>
+    </div>
+
+    <div class="admin-box">
+      <div class="admin-box-header">➕ Dodaj Tim</div>
+      <div class="admin-box-body">
+        <div class="form-group">
+          <label>Naziv tima *</label>
+          <input type="text" id="new-team-name" placeholder="npr. Tim Goleš"/>
+        </div>
+        <div class="form-group">
+          <label>Stepenica <span style="color:var(--text3);font-weight:400">(prazno = automatski)</span></label>
+          <input type="number" id="new-team-step" placeholder="auto" min="1"/>
+        </div>
+        <div class="form-group">
+          <label>Kapetan *</label>
+          <div class="ps-wrap">
+            <input type="text" class="ps-input" id="search-captain" placeholder="Pretraži igrača..." oninput="psFilter('captain')" onfocus="psOpen('captain')" autocomplete="off"/>
+            <div class="ps-dropdown" id="drop-captain"></div>
+          </div>
+          <div class="ps-badge" id="badge-captain"><span id="badge-captain-name"></span><button class="ps-clear" onclick="psClear('captain')">×</button></div>
+          <input type="hidden" id="new-team-captain"/>
+        </div>
+        <div class="form-group">
+          <label>Član 2 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
+          <div class="ps-wrap">
+            <input type="text" class="ps-input" id="search-member2" placeholder="Pretraži igrača..." oninput="psFilter('member2')" onfocus="psOpen('member2')" autocomplete="off"/>
+            <div class="ps-dropdown" id="drop-member2"></div>
+          </div>
+          <div class="ps-badge" id="badge-member2"><span id="badge-member2-name"></span><button class="ps-clear" onclick="psClear('member2')">×</button></div>
+          <input type="hidden" id="new-team-member2"/>
+        </div>
+        <div class="form-group">
+          <label>Član 3 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
+          <div class="ps-wrap">
+            <input type="text" class="ps-input" id="search-member3" placeholder="Pretraži igrača..." oninput="psFilter('member3')" onfocus="psOpen('member3')" autocomplete="off"/>
+            <div class="ps-dropdown" id="drop-member3"></div>
+          </div>
+          <div class="ps-badge" id="badge-member3"><span id="badge-member3-name"></span><button class="ps-clear" onclick="psClear('member3')">×</button></div>
+          <input type="hidden" id="new-team-member3"/>
+        </div>
+        <button class="btn-primary" id="add-team-btn" onclick="addTeam()">+ Dodaj Tim</button>
+      </div>
+    </div>
+
+    <div class="admin-box">
+      <div class="admin-box-header">👥 Upravljanje Timovima (${allTeams.length})</div>
+      <div>
+        ${allTeams.map(t => {
+          const captain = allPlayers.find(p=>p.email===t.captain_email);
+          return `<div style="display:grid;grid-template-columns:1fr auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.75rem;">
+            <div>
+              <div style="font-weight:600;font-size:0.88rem;">${t.nickname} <span style="color:var(--text3);font-weight:400;font-size:0.78rem;">${t.name}</span></div>
+              <div style="font-size:0.75rem;color:var(--text3);">Stepenica ${t.step} · 👑 ${captain?.name||t.captain_email}</div>
+            </div>
+            <button onclick="openEditTeam('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️ Edit</button>
+            <button onclick="openAddMember('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">+ Član</button>
+            <button onclick="deleteTeam('${t.id}','${t.name}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🗑</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="admin-box">
+      <div class="admin-box-header">🔄 Vraćanje odluke</div>
+      <div class="admin-box-body">
+        <p style="font-size:0.82rem;color:var(--text3);margin-bottom:1rem;">Ako je kapetan pogrešno stisnuo, odaberi izazov i vrati status:</p>
+        <div class="form-group">
+          <label>Izazov</label>
+          <select id="revert-challenge-select">
+            <option value="">— odaberi —</option>
+            ${allChallenges.filter(c=>['declined','accepted'].includes(c.status)).map(c=>{
+              const t1=allTeams.find(t=>t.id===c.challenger_id);
+              const t2=allTeams.find(t=>t.id===c.challenged_id);
+              return `<option value="${c.id}">${t1?.name} vs ${t2?.name} (${c.status})</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <button class="btn-primary" onclick="revertDecision()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">↩ Vrati na čekanje</button>
+      </div>
+    </div>`;
+}
+
+async function adminAcceptChallenge(challengeId) {
+  const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
+  const {error} = await sb.from('challenges').update({
+    status: 'accepted',
+    match_expires_at: matchExpires
+  }).eq('id', challengeId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Izazov prihvaćen! Tim ima 6 dana za meč.','success');
+  await loadAll(); renderAdmin();
+}
+
+async function adminDeclineChallenge(challengeId) {
+  const c = allChallenges.find(x=>x.id===challengeId);
+  if(!c) return;
+
+  // Nađi zadnji completed izazov između ova dva tima (zamjena mjesta)
+  const lastCompleted = allChallenges
+    .filter(x =>
+      x.challenger_id === c.challenger_id &&
+      x.challenged_id === c.challenged_id &&
+      x.status === 'completed'
+    )
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+  // Broji odbijanja samo NAKON zadnje zamjene mjesta
+  const afterDate = lastCompleted ? new Date(lastCompleted.created_at) : new Date(0);
+  const prevRejections = allChallenges.filter(x =>
+    x.challenger_id === c.challenger_id &&
+    x.challenged_id === c.challenged_id &&
+    x.status === 'declined' &&
+    x.id !== c.id &&
+    new Date(x.created_at) > afterDate
+  ).length;
+
+  const totalRejections = prevRejections + 1;
+
+  if(totalRejections >= 2) {
+    if(!confirm('Ovo je drugo odbijanje od zadnje zamjene — timovi će zamijeniti mjesta. Nastavi?')) return;
+    await swapTeams(c.challenger_id, c.challenged_id);
+    await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:totalRejections }).eq('id',challengeId);
+    showToast('Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄','success');
+  } else {
+    await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
+    showToast('Izazov odbijen (1/2). Izazivač može poslati još jedan izazov.','');
+  }
+  await loadAll(); renderAdmin();
+}
+
+async function adminConfirmResult(challengeId) {
+  const c = allChallenges.find(x=>x.id===challengeId);
+  if(!c) return;
+
+  // Zamijeni mjesta ako je pobijedio izazivač
+  if(c.result_winner_id === c.challenger_id) {
+    await swapTeams(c.challenger_id, c.challenged_id);
+  }
+
+  await sb.from('challenges').update({ status:'completed', updated_at:new Date().toISOString() }).eq('id',challengeId);
+  showToast('Rezultat potvrđen! ✓','success');
+  await loadAll(); renderAdmin();
+}
+
+async function adminRejectResult(challengeId) {
+  await sb.from('challenges').update({ status:'accepted', result_winner_id:null, result_score:null }).eq('id',challengeId);
+  showToast('Rezultat odbijen, meč ostaje aktivan.','');
+  await loadAll(); renderAdmin();
+}
+
+async function revertDecision() {
+  const id = document.getElementById('revert-challenge-select').value;
+  if(!id) { showToast('Odaberi izazov!','error'); return; }
+  await sb.from('challenges').update({ status:'pending', rejection_count:0 }).eq('id',id);
+  showToast('Izazov vraćen na čekanje. ↩','success');
+  await loadAll(); renderAdmin();
+}
+
+// ---- ADD TEAM ----
+// ---- PLAYER SEARCH HELPERS ----
+const PS_FIELDS = ['captain','member2','member3'];
+
+function psOpen(field) {
+  psFilter(field);
+  document.getElementById('drop-'+field).classList.add('open');
+}
+
+function psFilter(field) {
+  const query = document.getElementById('search-'+field)?.value.toLowerCase() || '';
+  const selectedEmails = PS_FIELDS
+    .filter(f=>f!==field)
+    .map(f=>document.getElementById('new-team-'+f)?.value)
+    .filter(Boolean);
+
+  const filtered = allPlayers.filter(p =>
+    p.name.toLowerCase().includes(query) && !selectedEmails.includes(p.email)
+  );
+
+  const drop = document.getElementById('drop-'+field);
+  drop.innerHTML = filtered.length
+    ? filtered.map(p=>`<div class="ps-option" onclick="psSelect('${field}','${p.email}','${p.name.replace(/'/g,"\'")}')"> ${p.name}</div>`).join('')
+    : '<div style="padding:0.6rem 0.9rem;color:var(--text3);font-size:0.82rem;">Nema rezultata</div>';
+  drop.classList.add('open');
+}
+
+function psSelect(field, email, name) {
+  document.getElementById('new-team-'+field).value = email;
+  document.getElementById('search-'+field).value = '';
+  document.getElementById('search-'+field).style.display = 'none';
+  document.getElementById('drop-'+field).classList.remove('open');
+  document.getElementById('badge-'+field+'-name').textContent = name;
+  document.getElementById('badge-'+field).classList.add('show');
+}
+
+function psClear(field) {
+  document.getElementById('new-team-'+field).value = '';
+  document.getElementById('search-'+field).value = '';
+  document.getElementById('search-'+field).style.display = 'block';
+  document.getElementById('badge-'+field).classList.remove('show');
+  document.getElementById('drop-'+field).classList.remove('open');
+}
+
+function psResetAll() {
+  PS_FIELDS.forEach(f => psClear(f));
+}
+
+// Modal member search
+function psOpenModal() {
+  psFilterModal();
+  document.getElementById('drop-add-member').classList.add('open');
+}
+
+function psFilterModal() {
+  const query = document.getElementById('search-add-member')?.value.toLowerCase() || '';
+  const filtered = allPlayers.filter(p => p.name.toLowerCase().includes(query));
+  const drop = document.getElementById('drop-add-member');
+  if(!drop) return;
+  drop.innerHTML = filtered.length
+    ? filtered.map(p=>`<div class="ps-option" onclick="psSelectModal('${p.email}','${p.name.replace(/'/g,"\'")}')"> ${p.name}</div>`).join('')
+    : '<div style="padding:0.6rem 0.9rem;color:var(--text3);font-size:0.82rem;">Nema rezultata</div>';
+  drop.classList.add('open');
+}
+
+function psSelectModal(email, name) {
+  document.getElementById('add-member-player').value = email;
+  document.getElementById('search-add-member').value = '';
+  document.getElementById('search-add-member').style.display = 'none';
+  document.getElementById('drop-add-member').classList.remove('open');
+  document.getElementById('badge-add-member-name').textContent = name;
+  document.getElementById('badge-add-member').classList.add('show');
+}
+
+function psClearModal() {
+  document.getElementById('add-member-player').value = '';
+  document.getElementById('search-add-member').value = '';
+  document.getElementById('search-add-member').style.display = 'block';
+  document.getElementById('badge-add-member').classList.remove('show');
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('.ps-wrap')) {
+    document.querySelectorAll('.ps-dropdown').forEach(d=>d.classList.remove('open'));
+  }
+});
+
+function updateMemberOptions() {
+  // Ažuriraj member selectove da ne mogu odabrati isti email kao kapetan
+  const captain = document.getElementById('new-team-captain').value;
+  ['new-team-member2','new-team-member3'].forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    Array.from(sel.options).forEach(opt => {
+      opt.disabled = opt.value && opt.value === captain;
+    });
+  });
+}
+
+async function addTeam() {
+  const name = document.getElementById('new-team-name').value.trim();
+  const captain = document.getElementById('new-team-captain').value;
+  const member2 = document.getElementById('new-team-member2').value;
+  const member3 = document.getElementById('new-team-member3').value;
+  // captain je sada hidden input
+  const stepInput = document.getElementById('new-team-step').value;
+
+  if(!name||!captain) { showToast('Unesi naziv i kapetana!','error'); return; }
+
+  // Provjeri duplikate
+  const members = [captain, member2, member3].filter(Boolean);
+  if(new Set(members).size !== members.length) { showToast('Isti igrač ne može biti dva puta u timu!','error'); return; }
+
+  // Provjeri jesu li igrači već u nekom timu
+  for(const email of members) {
+    const { data: existing } = await sb.from('team_members').select('team_id').eq('player_email',email).single();
+    if(existing) {
+      const player = allPlayers.find(p=>p.email===email);
+      showToast((player?.name||email)+' je već u drugom timu!','error');
+      return;
+    }
+  }
+
+  // Automatski odabir stepenice
+  const maxStep = allTeams.length ? Math.max(...allTeams.map(t=>t.step)) : 0;
+  const step = stepInput ? parseInt(stepInput) : maxStep + 1;
+  const posInStep = allTeams.filter(t=>t.step===step).length + 1;
+
+  const btn = document.getElementById('add-team-btn');
+  btn.disabled=true; btn.textContent='Dodajem...';
+
+  const { data: team, error } = await sb.from('teams').insert({
+    name, nickname: name, captain_email: captain, step, position: posInStep
+  }).select().single();
+
+  if(error) { btn.disabled=false; btn.textContent='+ Dodaj Tim'; showToast('Greška: '+error.message,'error'); return; }
+
+  // Dodaj sve članove
+  const memberInserts = members.map(email => ({ team_id: team.id, player_email: email }));
+  await sb.from('team_members').insert(memberInserts);
+
+  btn.disabled=false; btn.textContent='+ Dodaj Tim';
+  // Reset forme
+  document.getElementById('new-team-name').value = '';
+  document.getElementById('new-team-step').value = '';
+  psResetAll();
+  showToast(name+' dodan! ✓','success');
+  await loadAll(); renderAdmin();
+}
+
+// ---- EDIT TEAM ----
+let editTeamId = null;
+
+async function openEditTeam(teamId) {
+  editTeamId = teamId;
+  const team = allTeams.find(t=>t.id===teamId);
+  if(!team) return;
+
+  const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
+  const memberEmails = (members||[]).map(m=>m.player_email);
+
+  // Buildaj prikaz članova s opcijom uklanjanja
+  const membersHTML = memberEmails.map(email => {
+    const player = allPlayers.find(p=>p.email===email);
+    const isCaptain = email === team.captain_email;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg3);border-radius:8px;margin-bottom:0.4rem;">
+      <span style="font-size:0.88rem;font-weight:${isCaptain?'600':'400'};color:${isCaptain?'var(--orange)':'var(--text2)'};">
+        ${player?.name||email} ${isCaptain?'👑':''}
+      </span>
+      ${!isCaptain?`<button onclick="removeMember('${teamId}','${email}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.9rem;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">✕</button>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('team-modal-content').innerHTML = `
+    <div class="modal-title">Uredi Tim</div>
+    <div class="form-group">
+      <label>Naziv tima *</label>
+      <input type="text" id="edit-team-name" value="${team.name}"/>
+    </div>
+    <div class="form-group">
+      <label>Stepenica</label>
+      <input type="number" id="edit-team-step" value="${team.step}" min="1"/>
+      <input type="hidden" id="edit-team-position" value="${team.position}"/>
+    </div>
+    <div class="form-group">
+      <label>Novi kapetan</label>
+      <div class="ps-wrap">
+        <input type="text" class="ps-input" id="search-edit-captain" placeholder="Pretraži novog kapetana..." oninput="psFilterEdit()" onfocus="psOpenEdit()" autocomplete="off"/>
+        <div class="ps-dropdown" id="drop-edit-captain"></div>
+      </div>
+      <div class="ps-badge" id="badge-edit-captain">
+        <span id="badge-edit-captain-name"></span>
+        <button class="ps-clear" onclick="psClearEdit()">×</button>
+      </div>
+      <input type="hidden" id="edit-team-captain"/>
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem;">Trenutni kapetan: <strong style="color:var(--orange);">${allPlayers.find(p=>p.email===team.captain_email)?.name||team.captain_email}</strong></div>
+    </div>
+
+    <div style="font-size:0.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:1rem 0 0.5rem;">Trenutni članovi</div>
+    ${membersHTML}
+    ${memberEmails.length < 3 ? `
+    <div style="margin-top:0.75rem;">
+      <div style="font-size:0.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem;">Dodaj novog člana</div>
+      <div class="ps-wrap">
+        <input type="text" class="ps-input" id="search-add-member" placeholder="Pretraži igrača..." oninput="psFilterModal()" onfocus="psOpenModal()" autocomplete="off"/>
+        <div class="ps-dropdown" id="drop-add-member"></div>
+      </div>
+      <div class="ps-badge" id="badge-add-member">
+        <span id="badge-add-member-name"></span>
+        <button class="ps-clear" onclick="psClearModal()">×</button>
+      </div>
+      <input type="hidden" id="add-member-player"/>
+      <button class="btn-primary" onclick="addMemberFromEdit('${teamId}')" style="margin-top:0.5rem;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">+ Dodaj člana</button>
+    </div>` : '<div style="font-size:0.78rem;color:var(--text3);margin-top:0.5rem;">Tim ima maksimalno 3 člana.</div>'}
+
+    <button class="btn-primary" onclick="saveEditTeam()" style="margin-top:1.25rem;">💾 Spremi promjene</button>`;
+
+  openModal('modal-team');
+}
+
+function psOpenEdit() {
+  psFilterEdit();
+  document.getElementById('drop-edit-captain').classList.add('open');
+}
+
+function psFilterEdit() {
+  const q = document.getElementById('search-edit-captain')?.value.toLowerCase()||'';
+  const filtered = allPlayers.filter(p=>p.name.toLowerCase().includes(q));
+  const drop = document.getElementById('drop-edit-captain');
+  if(!drop) return;
+  drop.innerHTML = filtered.length
+    ? filtered.map(p=>`<div class="ps-option" onclick="psSelectEdit('${p.email}','${p.name.replace(/'/g,"\'")}')"> ${p.name}</div>`).join('')
+    : '<div style="padding:0.6rem 0.9rem;color:var(--text3);font-size:0.82rem;">Nema rezultata</div>';
+  drop.classList.add('open');
+}
+
+function psSelectEdit(email, name) {
+  document.getElementById('edit-team-captain').value = email;
+  document.getElementById('search-edit-captain').value = '';
+  document.getElementById('search-edit-captain').style.display = 'none';
+  document.getElementById('drop-edit-captain').classList.remove('open');
+  document.getElementById('badge-edit-captain-name').textContent = name;
+  document.getElementById('badge-edit-captain').classList.add('show');
+}
+
+function psClearEdit() {
+  document.getElementById('edit-team-captain').value = '';
+  document.getElementById('search-edit-captain').value = '';
+  document.getElementById('search-edit-captain').style.display = 'block';
+  document.getElementById('badge-edit-captain').classList.remove('show');
+}
+
+async function saveEditTeam() {
+  const name = document.getElementById('edit-team-name').value.trim();
+  const step = parseInt(document.getElementById('edit-team-step').value);
+  const position = parseInt(document.getElementById('edit-team-position').value);
+  const newCaptain = document.getElementById('edit-team-captain').value;
+
+  if(!name||!step||!position) { showToast('Ispuni sva polja!','error'); return; }
+
+  const updates = { name, nickname: name, step, position };
+  if(newCaptain) updates.captain_email = newCaptain;
+
+  const { error } = await sb.from('teams').update(updates).eq('id', editTeamId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+
+  showToast('Tim ažuriran! ✓','success');
+  closeModal('modal-team');
+  await loadAll(); renderAdmin();
+}
+
+async function removeMember(teamId, email) {
+  const team = allTeams.find(t=>t.id===teamId);
+  if(email === team?.captain_email) { showToast('Ne možeš ukloniti kapetana!','error'); return; }
+  if(!confirm('Ukloniti igrača iz tima?')) return;
+  const { error } = await sb.from('team_members').delete().eq('team_id',teamId).eq('player_email',email);
+  if(error) { showToast('Greška','error'); return; }
+  showToast('Član uklonjen.','');
+  await loadAll();
+  openEditTeam(teamId); // Osvježi modal
+}
+
+// ---- ADD MEMBER ----
+let addMemberTeamId = null;
+function openAddMember(teamId) {
+  addMemberTeamId = teamId;
+  const team = allTeams.find(t=>t.id===teamId);
+  const content = `
+    <div class="modal-title">Dodaj Člana — ${team?.name}</div>
+    <div class="form-group">
+      <label>Igrač</label>
+      <div class="ps-wrap">
+        <input type="text" class="ps-input" id="search-add-member" placeholder="Pretraži igrača..." oninput="psFilterModal()" onfocus="psOpenModal()" autocomplete="off"/>
+        <div class="ps-dropdown" id="drop-add-member"></div>
+      </div>
+      <div class="ps-badge" id="badge-add-member"><span id="badge-add-member-name"></span><button class="ps-clear" onclick="psClearModal()">×</button></div>
+      <input type="hidden" id="add-member-player"/>
+    </div>
+    <button class="btn-primary" onclick="addMember()">+ Dodaj</button>`;
+  document.getElementById('team-modal-content').innerHTML = content;
+  openModal('modal-team');
+}
+
+async function addMemberFromEdit(teamId) {
+  addMemberTeamId = teamId;
+  await addMember(true);
+}
+
+async function addMember(fromEdit=false) {
+  const email = document.getElementById('add-member-player').value;
+  if(!email) { showToast('Odaberi igrača!','error'); return; }
+  if(!addMemberTeamId) { showToast('Greška: tim nije odabran!','error'); return; }
+
+  // Provjeri je li već u nekom timu (ignoriraj NULL team_id)
+  const { data: allTM } = await sb.from('team_members').select('team_id').eq('player_email', email);
+  const realMemberships = (allTM||[]).filter(x => x.team_id !== null);
+  if(realMemberships.length > 0) { showToast('Igrač je već u timu!','error'); return; }
+
+  // Provjeri max 3 člana
+  const { data: members } = await sb.from('team_members').select('*').eq('team_id', addMemberTeamId);
+  if(members && members.length >= 3) { showToast('Tim već ima maksimalno 3 člana!','error'); return; }
+
+  // Obriši eventualne NULL zapise za ovog igrača
+  await sb.from('team_members').delete().eq('player_email', email).is('team_id', null);
+
+  const { error } = await sb.from('team_members').insert({ team_id: addMemberTeamId, player_email: email });
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Član dodan! ✓','success');
+  await loadAll();
+  if(fromEdit) {
+    openEditTeam(addMemberTeamId);
+  } else {
+    closeModal('modal-team');
+    renderAdmin();
+  }
+}
+
+async function deleteTeam(id, name) {
+  if(!confirm('Obrisati tim "'+name+'"?')) return;
+  await sb.from('team_members').delete().eq('team_id',id);
+  await sb.from('teams').delete().eq('id',id);
+  showToast(name+' obrisan.','');
+  await loadAll(); renderAdmin();
+}
+
+// ---- INIT ----
+async function init() {
+  const ok = await handleAuth();
+  if(ok) await loadAll();
+  sb.auth.onAuthStateChange(async (event) => {
+    if(event==='SIGNED_IN') { const ok=await handleAuth(); if(ok) await loadAll(); }
+  });
+
+  // Auto-refresh svakih 60 sekundi
+  setInterval(loadAll, 60000);
+}
+
+init();
+</script>
+</body>
+</html>
