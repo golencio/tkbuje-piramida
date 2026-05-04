@@ -1182,7 +1182,7 @@ function renderAdmin() {
             <button onclick="openEditTeam('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️ Edit</button>
             <button onclick="openAddMember('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">+ Član</button>
             ${t.step > 1 && !t.penalty ? `<button onclick="adminSimulatePenalty('${t.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">⚠️ Kazna</button>` : ''}
-            ${t.penalty ? `<span style="font-size:0.72rem;color:var(--red);padding:0.3rem 0.5rem;">⚠️ U kazni</span>` : ''}
+            ${t.penalty ? `<button onclick="adminRemovePenalty('${t.id}')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">↩ Izvadi iz kazne</button>` : ''}
             <button onclick="deleteTeam('${t.id}','${t.name}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🗑</button>
           </div>`;
         }).join('')}
@@ -1694,22 +1694,19 @@ async function checkPenalties() {
 }
 
 async function applyPenalty(team) {
-  // 1. Spremi originalnu stepenicu
-  await sb.from('teams').update({
-    penalty: true,
-    original_step: team.step
-  }).eq('id', team.id);
+  await sb.from('teams').update({ penalty: true, original_step: team.step }).eq('id', team.id);
 
-  // 2. Pomakni nasumični tim bez aktivnih mečeva sa svake stepenice ispod gore
+  // Pomakni nasumični tim SAMO sa stepenica ispod kažnjene prema gore
+  // Stepenice IZNAD kažnjene ostaju netaknute!
   const maxStep = Math.max(...allTeams.map(t => t.step));
-  for(let s = team.step; s <= maxStep; s++) {
-    const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty && t.id !== team.id);
-    const available = teamsOnStep.filter(t => {
-      return !allChallenges.some(c => 
-        ['pending','accepted'].includes(c.status) && 
+  for(let s = team.step + 1; s <= maxStep; s++) {
+    const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty);
+    const available = teamsOnStep.filter(t =>
+      !allChallenges.some(c =>
+        ['pending','accepted'].includes(c.status) &&
         (c.challenger_id===t.id || c.challenged_id===t.id)
-      );
-    });
+      )
+    );
     if(available.length > 0) {
       const lucky = available[Math.floor(Math.random() * available.length)];
       await sb.from('teams').update({ step: s - 1 }).eq('id', lucky.id);
@@ -1728,6 +1725,16 @@ async function adminSimulatePenalty(teamId) {
   if(!confirm('Simulirati kaznu za tim "' + team.name + '"?')) return;
   await applyPenalty(team);
   showToast(team.name + ' premješten u kaznu! ✓', 'success');
+  await loadAll(); renderAdmin();
+}
+
+async function adminRemovePenalty(teamId) {
+  const team = allTeams.find(t => t.id === teamId);
+  if(!team) return;
+  if(!confirm('Izvaditi tim "' + team.name + '" iz kazne i vratiti ga na originalnu stepenicu?')) return;
+  const originalStep = team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
+  await sb.from('teams').update({ penalty: false, step: originalStep, original_step: null }).eq('id', teamId);
+  showToast(team.name + ' vraćen iz kazne! ✓', 'success');
   await loadAll(); renderAdmin();
 }
 
