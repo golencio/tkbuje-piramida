@@ -72,7 +72,7 @@
     .notif-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--red); color:white; font-size:0.65rem; font-weight:700; border-radius:50%; margin-left:4px; vertical-align:middle; }
 
     /* PIRAMIDA */
-    .pyramid-wrap { display:flex; flex-direction:column; gap:1rem; align-items:center; margin-bottom:2rem; }
+    .pyramid-wrap { display:flex; flex-direction:column; gap:0; align-items:stretch; margin-bottom:2rem; border-radius:16px; overflow:hidden; border:1px solid var(--border); }
     .pyramid-step { width:100%; }
     .step-label { font-size:0.68rem; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; text-align:center; margin-bottom:0.5rem; }
     .step-teams { display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap; }
@@ -318,7 +318,7 @@
         <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
           <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--red);margin-bottom:0.25rem;">8. Neaktivnost i kaznena zona</div>
           <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
-            <li>Tim koji nije odigrao meč u piramidi <strong style="color:var(--orange);">20 dana</strong> pada u <strong style="color:var(--red);">kaznu</strong></li>
+            <li>Tim koji nije odigrao meč u piramidi <strong style="color:var(--orange);">15 dana</strong> pada u <strong style="color:var(--red);">kaznu</strong></li>
             <li>Timovi na <strong style="color:var(--text);">stepenici 1</strong> su izuzeti — nemaju koga izazvati</li>
             <li>Svaki tim vidi <strong style="color:var(--text);">odbrojavanje</strong> do kazne na svojoj kartici</li>
             <li>Kad tim padne u kaznu, nasumični timovi s nižih stepenica se pomiču gore</li>
@@ -553,12 +553,22 @@ function renderPyramid() {
   const haspenalty = steps[0] && steps[0].length > 0;
 
   let html = '';
-  // Prikaži stepenice od 1 do max, pa kaznu na dnu
+  const stepBgColors = [
+    'rgba(255,255,255,0.07)',
+    'rgba(255,255,255,0.05)',
+    'rgba(255,255,255,0.03)',
+    'rgba(255,255,255,0.015)',
+    'rgba(255,255,255,0.008)',
+  ];
   for(let s=1; s<=maxStep; s++) {
     const teams = steps[s] || [];
     const isAbove = s === aboveStep;
-    html += `<div class="pyramid-step">
-      <div class="step-label">Stepenica ${s}</div>
+    const stepBg = stepBgColors[s-1] || stepBgColors[stepBgColors.length-1];
+    const stepBorderTop = s > 1 ? 'border-top:1px solid rgba(255,255,255,0.06);' : '';
+    const stepLabelText = s === 1 ? '🏆 Stepenica 1' : 'Stepenica ' + s;
+    const stepLabelStyle = s === 1 ? 'color:var(--gold);' : '';
+    html += `<div class="pyramid-step" style="background:${stepBg};${stepBorderTop}padding:1rem 1.25rem;">
+      <div class="step-label" style="${stepLabelStyle}">${stepLabelText}</div>
       <div class="step-teams">
         ${teams.map(t => {
           const isMyTeam = myTeam?.id === t.id;
@@ -606,7 +616,7 @@ function renderPyramid() {
           if(!t.penalty && t.step > 1) {
             const lastMatch = t.last_match_at ? new Date(t.last_match_at) : new Date(t.created_at);
             const daysInactive = Math.floor((new Date() - lastMatch) / (1000*60*60*24));
-            const daysLeft = 20 - daysInactive;
+            const daysLeft = 15 - daysInactive;
             if(daysLeft <= 0) {
               cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);font-weight:600;">⚠️ Kazna!</div>';
             } else if(daysLeft <= 5) {
@@ -1717,7 +1727,7 @@ async function checkPenalties() {
     if(team.penalty || team.step === 1) continue; // Stepenica 1 je izuzeta
     const lastMatch = team.last_match_at ? new Date(team.last_match_at) : new Date(team.created_at);
     const daysSince = (now - lastMatch) / (1000*60*60*24);
-    if(daysSince >= 20) {
+    if(daysSince >= 15) {
       await applyPenalty(team);
     }
   }
