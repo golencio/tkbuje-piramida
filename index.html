@@ -1371,6 +1371,10 @@ async function saveEditChallenge() {
   const btn = document.getElementById('save-edit-challenge-btn');
   btn.disabled=true; btn.textContent='Spremam...';
 
+  // Spremi stari pobjednik prije promjene
+  const oldChallenge = allChallenges.find(x=>x.id===editChallengeId);
+  const oldWinnerId = oldChallenge?.result_winner_id;
+
   const { error } = await sb.from('challenges').update({
     result_winner_id: winnerId,
     result_score: score,
@@ -1380,7 +1384,25 @@ async function saveEditChallenge() {
 
   btn.disabled=false; btn.textContent='💾 Spremi promjene';
   if(error) { showToast('Greška: '+error.message,'error'); return; }
-  showToast('Meč ažuriran! ✓','success');
+
+  // Ako se pobjednik promijenio — automatski zamijeni mjesta timova
+  if(oldWinnerId && winnerId !== oldWinnerId && ['completed','surrendered'].includes(status)) {
+    await loadAll();
+    const c = oldChallenge;
+    const challenger = allTeams.find(t=>t.id===c.challenger_id);
+    const challenged = allTeams.find(t=>t.id===c.challenged_id);
+
+    if(challenger && challenged) {
+      // Novi pobjednik je izazivač ali je i dalje na nižoj stepenici → popni ga
+      // Novi pobjednik je izazvani ali je izazivač gore → vrati ga dolje
+      // U oba slučaja — zamijeni mjesta
+      await swapTeams(c.challenger_id, c.challenged_id);
+      showToast('Pobjednik ispravljen — timovi zamijenili mjesta! 🔄', 'success');
+    }
+  } else {
+    showToast('Meč ažuriran! ✓', 'success');
+  }
+
   closeModal('modal-edit-challenge');
   await loadAll(); renderAdmin();
 }
