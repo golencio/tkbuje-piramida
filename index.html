@@ -520,7 +520,8 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 });
 
 // ---- LOAD DATA ----
-async function loadAll() {
+async function loadAll(options = {}) {
+  const shouldCheckPenalties = options.checkPenalties === true;
   const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
     sb.from('teams').select('*').order('step').order('position'),
     sb.from('challenges').select('*').order('created_at', {ascending:false}),
@@ -538,11 +539,18 @@ async function loadAll() {
     if(myMembership) myTeam = allTeams.find(t=>t.id===myMembership.team_id) || null;
   }
 
-  // Notifikacije
+  // Notifikacije i prikaz
   updateNotifBadge();
-  await checkPenalties();
+
+  // VAŽNO: provjera kazni više se ne vrti na svakom automatskom refreshu.
+  // To je znalo zagušiti aplikaciju jer može pokrenuti više Supabase update-a i novi loadAll().
+  if(shouldCheckPenalties) await checkPenalties();
+
   renderPyramid();
   renderChallenges();
+
+  // Ako je admin panel otvoren, osvježi i njega, ali samo nakon što su podaci već učitani.
+  if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
 }
 
 
@@ -1926,8 +1934,8 @@ async function applyPenalty(team) {
   }
 
   showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
-  await loadAll();
 }
+
 
 async function adminSimulatePenalty(teamId) {
   const team = allTeams.find(t => t.id === teamId);
@@ -1973,7 +1981,7 @@ async function returnFromPenalty(challengeId, penaltyTeamId) {
   }).eq('id', penaltyTeamId);
 }
 
-// ---- SAFE REFRESH / INIT v2 ----
+// ---- SAFE REFRESH / INIT v3 ----
 let isRefreshing = false;
 let refreshTimer = null;
 let watchdogTimer = null;
@@ -1989,9 +1997,22 @@ function withTimeout(promise, ms, label = 'Operacija') {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }
 
+function isUserBusy() {
+  const active = document.activeElement;
+  const typing = active && ['INPUT','SELECT','TEXTAREA'].includes(active.tagName);
+  const modalOpen = !!document.querySelector('.modal-overlay.open');
+  const adminOpen = document.getElementById('sec-admin')?.classList.contains('active');
+  return typing || modalOpen || adminOpen;
+}
+
 async function safeLoadAll(reason = 'auto') {
   if(isRefreshing) return;
   if(!currentPlayer) return;
+
+  // Nemoj automatskim refreshom prekidati admin uređivanje, otvoreni modal ili unos u polje.
+  // Korisničke akcije i ručni pozivi i dalje rade normalno.
+  if(['interval','watchdog','visible','focus','online'].includes(reason) && isUserBusy()) return;
+
   if(!navigator.onLine) {
     showToast('Nema internet veze. Pokušat ću ponovno kad se veza vrati.', 'error');
     return;
@@ -1999,8 +2020,7 @@ async function safeLoadAll(reason = 'auto') {
 
   isRefreshing = true;
   try {
-    // Ako Supabase ili mreža zapnu, ne dopuštamo da aplikacija ostane blokirana zauvijek.
-    await withTimeout(loadAll(), 15000, 'Osvježavanje');
+    await withTimeout(loadAll({ checkPenalties: reason === 'init' }), 15000, 'Osvježavanje');
     lastSuccessfulRefresh = Date.now();
     refreshFailures = 0;
   } catch (error) {
@@ -2008,8 +2028,8 @@ async function safeLoadAll(reason = 'auto') {
     console.error('Greška kod osvježavanja aplikacije (' + reason + '):', error);
 
     if(refreshFailures >= 2) {
-      showToast('Veza je zapela. Osvježavam stranicu...', 'error');
-      setTimeout(() => location.reload(), 1200);
+      showToast('Veza je zapela. Ručno osvježi stranicu ako se ne oporavi.', 'error');
+      refreshFailures = 0;
     } else {
       showToast('Veza se prekinula. Pokušavam ponovno...', 'error');
     }
@@ -2022,25 +2042,22 @@ function setupAutoRefresh() {
   if(refreshTimer) clearInterval(refreshTimer);
   if(watchdogTimer) clearInterval(watchdogTimer);
 
-  // Redovno osvježavanje.
-  refreshTimer = setInterval(() => safeLoadAll('interval'), 60000);
+  refreshTimer = setInterval(() => safeLoadAll('interval'), 90000);
 
-  // Dodatni nadzor: ako je stranica vidljiva, a dugo nije bilo uspješnog osvježavanja,
-  // pokreni oporavak. Ovo pomaže kad browser ili Supabase veza ostanu u čudnom stanju.
   watchdogTimer = setInterval(() => {
-    const tooLongSinceRefresh = Date.now() - lastSuccessfulRefresh > 120000;
-    if(document.visibilityState === 'visible' && tooLongSinceRefresh) {
+    const tooLongSinceRefresh = Date.now() - lastSuccessfulRefresh > 180000;
+    if(document.visibilityState === 'visible' && tooLongSinceRefresh && !isUserBusy()) {
       safeLoadAll('watchdog');
     }
-  }, 30000);
+  }, 45000);
 
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'visible') {
-      setTimeout(() => safeLoadAll('visible'), 300);
+      setTimeout(() => safeLoadAll('visible'), 1200);
     }
   });
 
-  window.addEventListener('focus', () => safeLoadAll('focus'));
+  window.addEventListener('focus', () => setTimeout(() => safeLoadAll('focus'), 1200));
   window.addEventListener('online', () => safeLoadAll('online'));
 
   window.addEventListener('error', (event) => {
