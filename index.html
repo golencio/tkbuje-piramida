@@ -707,14 +707,18 @@ async function openTeam(teamId) {
   if(!team) return;
   const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
   const captain = allPlayers.find(p=>p.email===team.captain_email);
-  const memberList = (members||[]).map(m => {
+  const membersSorted = [...(members||[])].sort((a,b) => 
+    a.player_email === team.captain_email ? -1 : b.player_email === team.captain_email ? 1 : 0
+  );
+  let memberList = '';
+  membersSorted.forEach(m => {
     const player = allPlayers.find(p=>p.email===m.player_email);
     const isCaptain = m.player_email === team.captain_email;
-    return `<div class="member-row">
-      <span style="font-weight:${isCaptain?'600':'400'};color:${isCaptain?'var(--text)':'var(--text2)'};">${player?.name||m.player_email}</span>
-      ${isCaptain ? '<span class="captain-tag">Kapetan</span>' : ''}
-    </div>`;
-  }).join('');
+    memberList += '<div class="member-row">'
+      + '<span style="font-weight:'+(isCaptain?'600':'400')+';color:'+(isCaptain?'var(--text)':'var(--text2)')+';">'+(player?.name||m.player_email)+'</span>'
+      + (isCaptain ? '<span class="captain-tag">Kapetan</span>' : '')
+      + '</div>';
+  });
 
   // Tim statistika iz izazova
   const teamChallenges = allChallenges.filter(c=>
@@ -751,34 +755,32 @@ async function openTeam(teamId) {
     matchesHTML = '<div class="empty" style="padding:1rem;">Nema odigranih mečeva.</div>';
   }
 
-  document.getElementById('team-modal-content').innerHTML = `
-    <div class="team-detail-header">
-      <div class="team-avatar">${team.name.substring(0,2).toUpperCase()}</div>
-      <div>
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;">${team.name}</div>
-        <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">${team.penalty?'⚠️ Kaznena zona':'Stepenica '+team.step}</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
-      <div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;color:var(--green);">${wins}</div>
-        <div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Pobjede</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">
-        <div style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;color:var(--red);">${losses}</div>
-        <div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Porazi</div>
-      </div>
-    </div>
-    <div class="modal-tabs">
-      <button class="modal-tab active" onclick="switchTab('team-tab-clanovi',this)">👥 Članovi</button>
-      <button class="modal-tab" onclick="switchTab('team-tab-mecevi',this)">🎾 Mečevi (${allTeamMatches.length})</button>
-    </div>
-    <div class="tab-content active" id="team-tab-clanovi">
-      <div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">${memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>'}</div>
-    </div>
-    <div class="tab-content" id="team-tab-mecevi">
-      <div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">${matchesHTML}</div>
-    </div>`;
+  const statsHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">'
+    + '<div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">'
+    + '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:1.8rem;font-weight:700;color:var(--green);">'+wins+'</div>'
+    + '<div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Pobjede</div></div>'
+    + '<div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">'
+    + '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:1.8rem;font-weight:700;color:var(--red);">'+losses+'</div>'
+    + '<div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Porazi</div></div>'
+    + '</div>';
+
+  document.getElementById('team-modal-content').innerHTML =
+    '<div class="team-detail-header">'
+    + '<div class="team-avatar">'+team.name.substring(0,2).toUpperCase()+'</div>'
+    + '<div><div style="font-family:\'Space Grotesk\',sans-serif;font-size:1.2rem;font-weight:700;">'+team.name+'</div>'
+    + '<div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">'+(team.penalty?'⚠️ Kaznena zona':'Stepenica '+team.step)+'</div>'
+    + '</div></div>'
+    + statsHTML
+    + '<div class="modal-tabs">'
+    + '<button class="modal-tab active" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'
+    + '<button class="modal-tab" onclick="switchTab(\'team-tab-mecevi\',this)">🎾 Mečevi ('+allTeamMatches.length+')</button>'
+    + '</div>'
+    + '<div class="tab-content active" id="team-tab-clanovi">'
+    + '<div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">'+(memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>')+'</div>'
+    + '</div>'
+    + '<div class="tab-content" id="team-tab-mecevi">'
+    + '<div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">'+matchesHTML+'</div>'
+    + '</div>';
   openModal('modal-team');
 }
 
