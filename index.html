@@ -131,6 +131,12 @@
     /* TEAM DETAIL */
     .team-detail-header { display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; }
     .team-avatar { width:52px; height:52px; border-radius:14px; background:linear-gradient(135deg,var(--orange),var(--orange2)); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:1.3rem; font-weight:700; color:white; flex-shrink:0; }
+    .modal-tabs { display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem; }
+    .modal-tab { background:none; border:none; color:var(--text3); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:500; padding:0.4rem 0.85rem; border-radius:8px; cursor:pointer; transition:all 0.2s; }
+    .modal-tab:hover { color:var(--text); background:var(--bg3); }
+    .modal-tab.active { color:var(--orange); background:var(--orange-glow); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
     .member-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.88rem; }
     .member-row:last-child { border-bottom:none; }
     .captain-tag { font-size:0.65rem; background:var(--orange-glow); color:var(--orange); border:1px solid rgba(255,107,43,0.3); padding:0.15rem 0.5rem; border-radius:20px; font-weight:600; }
@@ -471,6 +477,14 @@ function mobileNav(id) {
   showSection(id, document.getElementById('nav-'+id));
   document.getElementById('mobile-menu').classList.remove('open');
   document.getElementById('hamburger').classList.remove('open');
+}
+
+function switchTab(id, btn) {
+  const modal = btn.closest('.modal');
+  modal.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  modal.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
