@@ -1959,20 +1959,46 @@ async function returnFromPenalty(challengeId, penaltyTeamId) {
   }).eq('id', penaltyTeamId);
 }
 
-// ---- SAFE REFRESH / INIT ----
+// ---- SAFE REFRESH / INIT v2 ----
 let isRefreshing = false;
 let refreshTimer = null;
+let watchdogTimer = null;
+let lastSuccessfulRefresh = Date.now();
+let refreshFailures = 0;
 
-async function safeLoadAll() {
+function withTimeout(promise, ms, label = 'Operacija') {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(label + ' traje predugo')), ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+}
+
+async function safeLoadAll(reason = 'auto') {
   if(isRefreshing) return;
   if(!currentPlayer) return;
+  if(!navigator.onLine) {
+    showToast('Nema internet veze. Pokušat ću ponovno kad se veza vrati.', 'error');
+    return;
+  }
 
   isRefreshing = true;
   try {
-    await loadAll();
+    // Ako Supabase ili mreža zapnu, ne dopuštamo da aplikacija ostane blokirana zauvijek.
+    await withTimeout(loadAll(), 15000, 'Osvježavanje');
+    lastSuccessfulRefresh = Date.now();
+    refreshFailures = 0;
   } catch (error) {
-    console.error('Greška kod osvježavanja aplikacije:', error);
-    showToast('Veza se prekinula. Pokušavam ponovno osvježiti...', 'error');
+    refreshFailures++;
+    console.error('Greška kod osvježavanja aplikacije (' + reason + '):', error);
+
+    if(refreshFailures >= 2) {
+      showToast('Veza je zapela. Osvježavam stranicu...', 'error');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast('Veza se prekinula. Pokušavam ponovno...', 'error');
+    }
   } finally {
     isRefreshing = false;
   }
@@ -1980,29 +2006,43 @@ async function safeLoadAll() {
 
 function setupAutoRefresh() {
   if(refreshTimer) clearInterval(refreshTimer);
+  if(watchdogTimer) clearInterval(watchdogTimer);
 
-  // Auto-refresh svakih 60 sekundi, ali kroz sigurnu funkciju
-  refreshTimer = setInterval(safeLoadAll, 60000);
+  // Redovno osvježavanje.
+  refreshTimer = setInterval(() => safeLoadAll('interval'), 60000);
 
-  // Kad se korisnik vrati na tab/prozor nakon mirovanja
+  // Dodatni nadzor: ako je stranica vidljiva, a dugo nije bilo uspješnog osvježavanja,
+  // pokreni oporavak. Ovo pomaže kad browser ili Supabase veza ostanu u čudnom stanju.
+  watchdogTimer = setInterval(() => {
+    const tooLongSinceRefresh = Date.now() - lastSuccessfulRefresh > 120000;
+    if(document.visibilityState === 'visible' && tooLongSinceRefresh) {
+      safeLoadAll('watchdog');
+    }
+  }, 30000);
+
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'visible') {
-      setTimeout(safeLoadAll, 300);
+      setTimeout(() => safeLoadAll('visible'), 300);
     }
   });
 
-  // Kad browser opet dobije fokus
-  window.addEventListener('focus', safeLoadAll);
+  window.addEventListener('focus', () => safeLoadAll('focus'));
+  window.addEventListener('online', () => safeLoadAll('online'));
 
-  // Kad se internet veza vrati
-  window.addEventListener('online', safeLoadAll);
+  window.addEventListener('error', (event) => {
+    console.error('JavaScript greška:', event.error || event.message);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Neuhvaćena promise greška:', event.reason);
+  });
 }
 
 async function init() {
   const ok = await handleAuth();
-  if(ok) await safeLoadAll();
+  if(ok) await safeLoadAll('init');
   sb.auth.onAuthStateChange(async (event) => {
-    if(event==='SIGNED_IN') { const ok=await handleAuth(); if(ok) await safeLoadAll(); }
+    if(event==='SIGNED_IN') { const ok=await handleAuth(); if(ok) await safeLoadAll('signed-in'); }
   });
 
   setupAutoRefresh();
