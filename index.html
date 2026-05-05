@@ -545,6 +545,19 @@ async function loadAll() {
   renderChallenges();
 }
 
+
+function getSortedTeamMembers(teamId, captainEmail, membersList = allMembers) {
+  return [...(membersList || []).filter(m => m.team_id === teamId)].sort((a, b) => {
+    const aCaptain = a.player_email === captainEmail;
+    const bCaptain = b.player_email === captainEmail;
+    if (aCaptain && !bCaptain) return -1;
+    if (!aCaptain && bCaptain) return 1;
+    const aPlayer = allPlayers.find(p => p.email === a.player_email);
+    const bPlayer = allPlayers.find(p => p.email === b.player_email);
+    return (aPlayer?.name || a.player_email).localeCompare(bPlayer?.name || b.player_email, 'hr');
+  });
+}
+
 function updateNotifBadge() {
   if(!myTeam) return;
   const pending = allChallenges.filter(c =>
@@ -623,7 +636,7 @@ function renderPyramid() {
           const hasPendingChallenge = allChallenges.some(c=>
             (c.challenger_id===t.id || c.challenged_id===t.id) && ['pending','accepted'].includes(c.status)
           );
-          const teamMembers = allMembers.filter(m => m.team_id === t.id);
+          const teamMembers = getSortedTeamMembers(t.id, t.captain_email);
           let membersHTML = '';
           teamMembers.forEach(m => {
             const p = allPlayers.find(x => x.email === m.player_email);
@@ -679,7 +692,7 @@ function renderPyramid() {
     const penTeams = steps[0];
     let penHTML = '';
     penTeams.forEach(t => {
-      const teamMembers = allMembers.filter(m => m.team_id === t.id);
+      const teamMembers = getSortedTeamMembers(t.id, t.captain_email);
       let membersHTML = '';
       teamMembers.forEach(m => {
         const p = allPlayers.find(x => x.email === m.player_email);
@@ -1692,7 +1705,8 @@ async function openEditTeam(teamId) {
   if(!team) return;
 
   const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
-  const memberEmails = (members||[]).map(m=>m.player_email);
+  const membersSorted = getSortedTeamMembers(teamId, team.captain_email, members || []);
+  const memberEmails = membersSorted.map(m=>m.player_email);
 
   // Buildaj prikaz članova s opcijom uklanjanja
   const membersHTML = memberEmails.map(email => {
