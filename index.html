@@ -1959,16 +1959,53 @@ async function returnFromPenalty(challengeId, penaltyTeamId) {
   }).eq('id', penaltyTeamId);
 }
 
-// ---- INIT ----
-async function init() {
-  const ok = await handleAuth();
-  if(ok) await loadAll();
-  sb.auth.onAuthStateChange(async (event) => {
-    if(event==='SIGNED_IN') { const ok=await handleAuth(); if(ok) await loadAll(); }
+// ---- SAFE REFRESH / INIT ----
+let isRefreshing = false;
+let refreshTimer = null;
+
+async function safeLoadAll() {
+  if(isRefreshing) return;
+  if(!currentPlayer) return;
+
+  isRefreshing = true;
+  try {
+    await loadAll();
+  } catch (error) {
+    console.error('Greška kod osvježavanja aplikacije:', error);
+    showToast('Veza se prekinula. Pokušavam ponovno osvježiti...', 'error');
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+function setupAutoRefresh() {
+  if(refreshTimer) clearInterval(refreshTimer);
+
+  // Auto-refresh svakih 60 sekundi, ali kroz sigurnu funkciju
+  refreshTimer = setInterval(safeLoadAll, 60000);
+
+  // Kad se korisnik vrati na tab/prozor nakon mirovanja
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') {
+      setTimeout(safeLoadAll, 300);
+    }
   });
 
-  // Auto-refresh svakih 60 sekundi
-  setInterval(loadAll, 60000);
+  // Kad browser opet dobije fokus
+  window.addEventListener('focus', safeLoadAll);
+
+  // Kad se internet veza vrati
+  window.addEventListener('online', safeLoadAll);
+}
+
+async function init() {
+  const ok = await handleAuth();
+  if(ok) await safeLoadAll();
+  sb.auth.onAuthStateChange(async (event) => {
+    if(event==='SIGNED_IN') { const ok=await handleAuth(); if(ok) await safeLoadAll(); }
+  });
+
+  setupAutoRefresh();
 }
 
 init();
