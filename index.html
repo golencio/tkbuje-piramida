@@ -6,8 +6,7 @@
   <title>TK Buje — Piramida</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- v3.0 -->
-  
+  <!-- v2.1 -->
   <style>
     :root {
       --bg: #0d0d0d; --bg2: #141414; --bg3: #1a1a1a; --bg4: #222222;
@@ -362,6 +361,31 @@
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-team')">×</button>
     <div id="team-modal-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Edit meča (admin) -->
+<div class="modal-overlay" id="modal-edit-challenge">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-edit-challenge')">×</button>
+    <div class="modal-title">Uredi Meč</div>
+    <div class="form-group">
+      <label>Pobjednički tim *</label>
+      <select id="edit-ch-winner"></select>
+    </div>
+    <div class="form-group">
+      <label>Rezultat</label>
+      <input type="text" id="edit-ch-score" placeholder="6:4, 6:3"/>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="edit-ch-status">
+        <option value="completed">Završeno</option>
+        <option value="surrendered">Predaja</option>
+        <option value="accepted">Prihvaćeno (vrati u igru)</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="save-edit-challenge-btn" onclick="saveEditChallenge()">💾 Spremi promjene</button>
   </div>
 </div>
 
@@ -1118,6 +1142,7 @@ function renderAdmin() {
   }
 
   const pendingResults = allChallenges.filter(c=>c.status==='pending_result');
+  const completedChallenges = allChallenges.filter(c=>['completed','surrendered'].includes(c.status)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   const now = new Date();
   const expiredMatches = allChallenges.filter(c=>
     c.status==='accepted' &&
@@ -1299,7 +1324,65 @@ function renderAdmin() {
         </div>
         <button class="btn-primary" onclick="revertDecision()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">↩ Vrati na čekanje</button>
       </div>
+    </div>
+
+    <div class="admin-box">
+      <div class="admin-box-header">🎾 Svi odigrani mečevi (${completedChallenges.length})</div>
+      <div>
+        ${completedChallenges.length ? completedChallenges.map(c => {
+          const t1 = allTeams.find(t=>t.id===c.challenger_id);
+          const t2 = allTeams.find(t=>t.id===c.challenged_id);
+          const winner = allTeams.find(t=>t.id===c.result_winner_id);
+          const isSurrender = c.status === 'surrendered';
+          return '<div style="display:grid;grid-template-columns:1fr auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.75rem;">'
+            + '<div>'
+            + '<div style="font-weight:600;font-size:0.85rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
+            + '<div style="font-size:0.75rem;color:var(--text3);">🏆 ' + (winner?.name||'?') + ' · ' + (c.result_score||'—') + (isSurrender?' · predaja':'') + ' · ' + new Date(c.created_at).toLocaleDateString('hr-HR') + '</div>'
+            + '</div>'
+            + '<button onclick="openEditChallenge(\'' + c.id + '\')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️</button>'
+            + '</div>';
+        }).join('') : '<div class="empty" style="padding:1rem;">Nema odigranih mečeva.</div>'}
+      </div>
     </div>`;
+}
+
+let editChallengeId = null;
+
+function openEditChallenge(id) {
+  editChallengeId = id;
+  const c = allChallenges.find(x=>x.id===id);
+  if(!c) return;
+  const t1 = allTeams.find(t=>t.id===c.challenger_id);
+  const t2 = allTeams.find(t=>t.id===c.challenged_id);
+  document.getElementById('edit-ch-winner').innerHTML =
+    '<option value="'+c.challenger_id+'">'+(t1?.name||'?')+'</option>'
+    + '<option value="'+c.challenged_id+'">'+(t2?.name||'?')+'</option>';
+  document.getElementById('edit-ch-winner').value = c.result_winner_id || c.challenger_id;
+  document.getElementById('edit-ch-score').value = c.result_score || '';
+  document.getElementById('edit-ch-status').value = c.status;
+  openModal('modal-edit-challenge');
+}
+
+async function saveEditChallenge() {
+  const winnerId = document.getElementById('edit-ch-winner').value;
+  const score = document.getElementById('edit-ch-score').value.trim();
+  const status = document.getElementById('edit-ch-status').value;
+
+  const btn = document.getElementById('save-edit-challenge-btn');
+  btn.disabled=true; btn.textContent='Spremam...';
+
+  const { error } = await sb.from('challenges').update({
+    result_winner_id: winnerId,
+    result_score: score,
+    status: status,
+    updated_at: new Date().toISOString()
+  }).eq('id', editChallengeId);
+
+  btn.disabled=false; btn.textContent='💾 Spremi promjene';
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Meč ažuriran! ✓','success');
+  closeModal('modal-edit-challenge');
+  await loadAll(); renderAdmin();
 }
 
 async function adminAcceptChallenge(challengeId) {
