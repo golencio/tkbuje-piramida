@@ -709,12 +709,40 @@ async function openTeam(teamId) {
   const wins = teamChallenges.filter(c=>c.result_winner_id===teamId).length;
   const losses = teamChallenges.length - wins;
 
+  // Mečevi tima
+  const allTeamMatches = allChallenges.filter(c=>
+    ['completed','surrendered'].includes(c.status) &&
+    (c.challenger_id===teamId||c.challenged_id===teamId)
+  ).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+
+  let matchesHTML = '';
+  if(allTeamMatches.length) {
+    allTeamMatches.forEach(c => {
+      const isWin = c.result_winner_id === teamId;
+      const opponentId = c.challenger_id===teamId ? c.challenged_id : c.challenger_id;
+      const opponent = allTeams.find(t=>t.id===opponentId);
+      const isSurrender = c.status === 'surrendered';
+      matchesHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--border);">'
+        + '<div>'
+        + '<span style="font-weight:600;font-size:0.85rem;color:'+(isWin?'var(--green)':'var(--red)')+';">'+(isWin?'↑ Pobjeda':'↓ Poraz')+'</span>'
+        + '<span style="font-size:0.78rem;color:var(--text2);margin-left:0.5rem;">vs '+(opponent?.name||'?')+'</span>'
+        + (isSurrender?'<span style="font-size:0.68rem;color:var(--text3);margin-left:0.4rem;">(predaja)</span>':'')
+        + '</div>'
+        + '<div style="text-align:right;">'
+        + '<div style="font-size:0.82rem;font-weight:600;">'+(c.result_score||'—')+'</div>'
+        + '<div style="font-size:0.72rem;color:var(--text3);">'+new Date(c.created_at).toLocaleDateString('hr-HR')+'</div>'
+        + '</div></div>';
+    });
+  } else {
+    matchesHTML = '<div class="empty" style="padding:1rem;">Nema odigranih mečeva.</div>';
+  }
+
   document.getElementById('team-modal-content').innerHTML = `
     <div class="team-detail-header">
       <div class="team-avatar">${team.name.substring(0,2).toUpperCase()}</div>
       <div>
         <div style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700;">${team.name}</div>
-        <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">Stepenica ${team.step}</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">${team.penalty?'⚠️ Kaznena zona':'Stepenica '+team.step}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
@@ -727,8 +755,16 @@ async function openTeam(teamId) {
         <div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Porazi</div>
       </div>
     </div>
-    <div style="font-size:0.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:0.6rem;">Članovi</div>
-    <div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">${memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>'}</div>`;
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchTab('team-tab-clanovi',this)">👥 Članovi</button>
+      <button class="modal-tab" onclick="switchTab('team-tab-mecevi',this)">🎾 Mečevi (${allTeamMatches.length})</button>
+    </div>
+    <div class="tab-content active" id="team-tab-clanovi">
+      <div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">${memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>'}</div>
+    </div>
+    <div class="tab-content" id="team-tab-mecevi">
+      <div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">${matchesHTML}</div>
+    </div>`;
   openModal('modal-team');
 }
 
