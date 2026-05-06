@@ -1944,8 +1944,9 @@ async function adminSimulatePenalty(teamId) {
   if(team.penalty) { showToast('Tim je već u kaznenoj zoni!', 'error'); return; }
   if(!confirm('Simulirati kaznu za tim "' + team.name + '"?')) return;
   await applyPenalty(team);
+  await loadAll();
   showToast(team.name + ' premješten u kaznu! ✓', 'success');
-  await loadAll(); renderAdmin();
+  renderAdmin();
 }
 
 async function adminRemoveCooldown(challengeId) {
@@ -2020,7 +2021,7 @@ async function safeLoadAll(reason = 'auto') {
 
   isRefreshing = true;
   try {
-    await withTimeout(loadAll({ checkPenalties: reason === 'init' }), 15000, 'Osvježavanje');
+    await withTimeout(loadAll({ checkPenalties: reason === 'init' }), 30000, 'Osvježavanje');
     lastSuccessfulRefresh = Date.now();
     refreshFailures = 0;
   } catch (error) {
@@ -2042,7 +2043,7 @@ function setupAutoRefresh() {
   if(refreshTimer) clearInterval(refreshTimer);
   if(watchdogTimer) clearInterval(watchdogTimer);
 
-  refreshTimer = setInterval(() => safeLoadAll('interval'), 90000);
+  refreshTimer = setInterval(() => safeLoadAll('interval'), 120000);
 
   watchdogTimer = setInterval(() => {
     const tooLongSinceRefresh = Date.now() - lastSuccessfulRefresh > 180000;
