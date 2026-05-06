@@ -2043,6 +2043,17 @@ async function safeLoadAll(reason = 'auto') {
   }
 }
 
+function setupKeepalive() {
+  // Ping Supabase svake 4 minute da drži vezu živom
+  setInterval(async () => {
+    try {
+      await sb.from('teams').select('id').limit(1);
+    } catch(e) {
+      // Tihi fail - watchdog će se pobrinuti za reconnect
+    }
+  }, 10 * 1000);
+}
+
 function setupAutoRefresh() {
   if(refreshTimer) clearInterval(refreshTimer);
   if(watchdogTimer) clearInterval(watchdogTimer);
@@ -2094,6 +2105,7 @@ async function init() {
   });
 
   setupAutoRefresh();
+  setupKeepalive();
 }
 
 init();
