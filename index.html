@@ -2012,7 +2012,7 @@ async function safeLoadAll(reason = 'auto') {
 
   // Nemoj automatskim refreshom prekidati admin uređivanje, otvoreni modal ili unos u polje.
   // Korisničke akcije i ručni pozivi i dalje rade normalno.
-  if(['interval','watchdog','visible','focus','online'].includes(reason) && isUserBusy()) return;
+  if(['interval','watchdog','visible','focus'].includes(reason) && isUserBusy()) return;
 
   if(!navigator.onLine) {
     showToast('Nema internet veze. Pokušat ću ponovno kad se veza vrati.', 'error');
@@ -2029,7 +2029,11 @@ async function safeLoadAll(reason = 'auto') {
     console.error('Greška kod osvježavanja aplikacije (' + reason + '):', error);
 
     if(refreshFailures >= 2) {
-      showToast('Veza je zapela. Ručno osvježi stranicu ako se ne oporavi.', 'error');
+      showToast('Veza je spora. Pokušavam ponovo...', 'error');
+      // Pokušaj ponovo nakon 3 sekunde
+      setTimeout(() => {
+        if(!isRefreshing) safeLoadAll('watchdog-retry');
+      }, 3000);
       refreshFailures = 0;
     } else {
       showToast('Veza se prekinula. Pokušavam ponovno...', 'error');
@@ -2059,7 +2063,19 @@ function setupAutoRefresh() {
   });
 
   window.addEventListener('focus', () => setTimeout(() => safeLoadAll('focus'), 1200));
-  window.addEventListener('online', () => safeLoadAll('online'));
+  window.addEventListener('online', () => {
+    showToast('Veza uspostavljena! Osvježavam...', 'success');
+    // Kad se veza vrati - uvijek refreshaj, ignoriraj isUserBusy
+    if(isRefreshing) return;
+    isRefreshing = true;
+    loadAll({ checkPenalties: false }).then(() => {
+      isRefreshing = false;
+      lastSuccessfulRefresh = Date.now();
+      renderPyramid();
+      renderChallenges();
+      if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+    }).catch(() => { isRefreshing = false; });
+  });
 
   window.addEventListener('error', (event) => {
     console.error('JavaScript greška:', event.error || event.message);
