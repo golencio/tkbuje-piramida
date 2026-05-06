@@ -2043,15 +2043,38 @@ async function safeLoadAll(reason = 'auto') {
   }
 }
 
+async function pingSupabase() {
+  try {
+    await sb.from('teams').select('id').limit(1);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
 function setupKeepalive() {
-  // Ping Supabase svake 4 minute da drži vezu živom
+  // Ping svakih 10 sekundi dok je tab aktivan
   setInterval(async () => {
-    try {
-      await sb.from('teams').select('id').limit(1);
-    } catch(e) {
-      // Tihi fail - watchdog će se pobrinuti za reconnect
+    if(document.visibilityState === 'visible') {
+      await pingSupabase();
     }
   }, 10 * 1000);
+
+  // Kad se vrati na tab - odmah pinguaj i refreshaj
+  document.addEventListener('visibilitychange', async () => {
+    if(document.visibilityState === 'visible') {
+      const ok = await pingSupabase();
+      if(ok) {
+        safeLoadAll('visible');
+      } else {
+        // Veza još nije spremna - pokušaj ponovo
+        setTimeout(async () => {
+          await pingSupabase();
+          safeLoadAll('visible');
+        }, 2000);
+      }
+    }
+  });
 }
 
 function setupAutoRefresh() {
