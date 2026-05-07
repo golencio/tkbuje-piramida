@@ -151,6 +151,8 @@
     .section-title { font-family:'Space Grotesk',sans-serif; font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:1.25rem; display:flex; align-items:center; gap:0.5rem; }
 
     /* TOAST */
+    .refresh-banner { display:none; position:fixed; top:64px; left:50%; transform:translateX(-50%); background:var(--orange); color:white; padding:0.6rem 1.25rem; border-radius:10px; font-size:0.85rem; font-weight:600; z-index:9998; cursor:pointer; box-shadow:0 4px 20px rgba(255,107,43,0.4); transition:all 0.3s; white-space:nowrap; }
+    .refresh-banner.show { display:block; }
     .toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(100px); background:var(--bg3); color:var(--text); border:1px solid var(--border2); padding:0.7rem 1.5rem; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:9999; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.4); }
     .toast.show { transform:translateX(-50%) translateY(0); }
     .toast.success { background:var(--green-glow); color:var(--green); border-color:rgba(34,197,94,0.3); }
@@ -418,6 +420,7 @@
   </div>
 </div>
 
+<div class="refresh-banner" id="refresh-banner" onclick="dismissRefreshBanner()">🔄 Klikni za osvježavanje podataka</div>
 <div class="toast" id="toast"></div>
 <footer>© 2026 TK Buje Piramida · Powered by Supabase</footer>
 
@@ -971,19 +974,18 @@ async function sendChallenge(challengedId) {
 }
 
 // ---- RENDER CHALLENGES ----
-function renderChallenges() {
+async function renderChallenges() {
   const container = document.getElementById('challenges-container');
   if(!allChallenges.length) { container.innerHTML='<div class="empty">Nema izazova.</div>'; return; }
 
   const now = new Date();
 
-  // Expire pending challenges
-  allChallenges.forEach(async c => {
+  // Expire pending challenges - koristimo for...of da čekamo svaki upit
+  for(const c of allChallenges) {
     if(c.status==='pending' && new Date(c.response_expires_at) < now) {
-      // Rok istekao — automatski odbijanje
       await handleExpired(c);
     }
-  });
+  }
 
   const html = allChallenges.map((c,i) => {
     const challenger = allTeams.find(t=>t.id===c.challenger_id);
@@ -1096,12 +1098,41 @@ async function respondChallenge(challengeId, response) {
 
 // ---- HANDLE EXPIRED ----
 async function handleExpired(challenge) {
-  const newCount = (challenge.rejection_count||0) + 1;
-  if(newCount >= 2) {
+  // Broji odbijanja samo NAKON zadnje zamjene mjesta između ova dva tima
+  const lastCompleted = allChallenges
+    .filter(x =>
+      x.challenger_id === challenge.challenger_id &&
+      x.challenged_id === challenge.challenged_id &&
+      x.status === 'completed'
+    )
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+  const afterDate = lastCompleted ? new Date(lastCompleted.created_at) : new Date(0);
+  const prevRejections = allChallenges.filter(x =>
+    x.challenger_id === challenge.challenger_id &&
+    x.challenged_id === challenge.challenged_id &&
+    x.status === 'declined' &&
+    x.id !== challenge.id &&
+    new Date(x.created_at) > afterDate
+  ).length;
+
+  const totalRejections = prevRejections + 1;
+
+  if(totalRejections >= 2) {
     await swapTeams(challenge.challenger_id, challenge.challenged_id);
-    await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:newCount }).eq('id',challenge.id);
+    await sb.from('challenges').update({
+      status: 'completed',
+      result_winner_id: challenge.challenger_id,
+      rejection_count: totalRejections,
+      updated_at: new Date().toISOString()
+    }).eq('id', challenge.id);
+    showToast('Rok istekao — timovi zamijenili mjesta! 🔄', 'success');
   } else {
-    await sb.from('challenges').update({ status:'declined', rejection_count:newCount }).eq('id',challenge.id);
+    await sb.from('challenges').update({
+      status: 'declined',
+      rejection_count: totalRejections,
+      updated_at: new Date().toISOString()
+    }).eq('id', challenge.id);
   }
 }
 
@@ -2043,6 +2074,18 @@ async function safeLoadAll(reason = 'auto') {
   }
 }
 
+function showRefreshBanner() {
+  document.getElementById('refresh-banner').classList.add('show');
+}
+
+async function dismissRefreshBanner() {
+  document.getElementById('refresh-banner').classList.remove('show');
+  await loadAll({ checkPenalties: false });
+  renderPyramid();
+  renderChallenges();
+  if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+}
+
 async function pingSupabase() {
   try {
     await sb.from('teams').select('id').limit(1);
@@ -2060,18 +2103,19 @@ function setupKeepalive() {
     }
   }, 10 * 1000);
 
-  // Kad se vrati na tab - odmah pinguaj i refreshaj
+  // Kad se vrati na tab - prikaži refresh banner
+  let hiddenAt = null;
   document.addEventListener('visibilitychange', async () => {
-    if(document.visibilityState === 'visible') {
-      const ok = await pingSupabase();
-      if(ok) {
-        safeLoadAll('visible');
+    if(document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+    } else if(document.visibilityState === 'visible') {
+      const awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
+      // Ako je bio skriven više od 30 sekundi, prikaži refresh banner
+      if(awayMs > 30000) {
+        showRefreshBanner();
       } else {
-        // Veza još nije spremna - pokušaj ponovo
-        setTimeout(async () => {
-          await pingSupabase();
-          safeLoadAll('visible');
-        }, 2000);
+        // Kraća odsutnost - tihi refresh
+        safeLoadAll('visible');
       }
     }
   });
