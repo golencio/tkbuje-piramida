@@ -927,11 +927,8 @@ async function confirmPlayerSelection() {
 // ---- EMAIL NOTIFICATION ----
 async function sendChallengeEmail(challengedTeamId, challengerName) {
   try {
-    // Nađi kapetana izazvanog tima
     const challenged = allTeams.find(t=>t.id===challengedTeamId);
     if(!challenged) return;
-    
-    // Nađi email kapetana
     const captain = allPlayers.find(p=>p.email===challenged.captain_email);
     if(!captain) return;
 
@@ -950,7 +947,32 @@ async function sendChallengeEmail(challengedTeamId, challengerName) {
     });
   } catch(e) {
     console.error('Email greška:', e);
-    // Ne prekidamo tok ako email ne uspije
+  }
+}
+
+async function sendAcceptedEmail(challengerTeamId, challengedName) {
+  try {
+    const challenger = allTeams.find(t=>t.id===challengerTeamId);
+    if(!challenger) return;
+    const captain = allPlayers.find(p=>p.email===challenger.captain_email);
+    if(!captain) return;
+
+    await fetch('https://aglbdjyljbzzpddrshno.supabase.co/functions/v1/send-challenge-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnbGJkanlsamJ6enBkZHJzaG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTQxOTcsImV4cCI6MjA5MzIzMDE5N30.NEOJnMJiUHCEGa27xkPf2HM00KEFZC5DjcDpC6t8U6Q',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnbGJkanlsamJ6enBkZHJzaG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTQxOTcsImV4cCI6MjA5MzIzMDE5N30.NEOJnMJiUHCEGa27xkPf2HM00KEFZC5DjcDpC6t8U6Q'
+      },
+      body: JSON.stringify({
+        to: captain.email,
+        type: 'accepted',
+        challengerName: challenger.name,
+        challengedName: challengedName
+      })
+    });
+  } catch(e) {
+    console.error('Email greška:', e);
   }
 }
 
@@ -1121,6 +1143,7 @@ async function respondChallenge(challengeId, response) {
       challenged_player2: myMembers?.[1]?.player_email || null
     }).eq('id',challengeId);
     showToast('Izazov prihvaćen! Imate 6 dana za meč.', 'success');
+    await sendAcceptedEmail(challenge.challenger_id, myTeam.name);
   }
   await loadAll();
 }
