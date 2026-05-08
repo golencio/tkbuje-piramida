@@ -73,11 +73,12 @@
     .notif-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--red); color:white; font-size:0.65rem; font-weight:700; border-radius:50%; margin-left:4px; vertical-align:middle; }
 
     /* PIRAMIDA */
-    .pyramid-wrap { display:flex; flex-direction:column; gap:6px; margin-bottom:2rem; }
-    .pyramid-step { width:100%; border-radius:12px; padding:1rem 1.25rem; }
-    .step-label { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.75rem; text-align:center; }
-    .step-teams { display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; width:100%; }
-    .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem 0.5rem; cursor:pointer; transition:all 0.2s; width:calc(33% - 0.35rem); min-width:90px; flex:0 1 calc(33% - 0.35rem); text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; }
+    .pyramid-wrap { display:flex; flex-direction:column; gap:8px; margin-bottom:2rem; }
+    .pyramid-step { width:100%; border-radius:12px; padding:0.85rem 1rem; box-sizing:border-box; }
+    .step-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.6rem; text-align:center; }
+    .step-teams { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:100%; }
+    @media(max-width:700px) { .step-teams { display:flex; flex-wrap:wrap; justify-content:center; gap:4px; } .team-card { width:86px; flex:0 0 86px; } }
+    .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:0.55rem 0.3rem; cursor:pointer; transition:all 0.2s; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; min-height:80px; overflow:hidden; }
     .team-card:hover { border-color:var(--border2); background:var(--bg3); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
     .team-card.my-team { border-color:var(--orange); background:var(--orange-glow); }
     .team-card.can-challenge { border-color:var(--blue); }
@@ -671,6 +672,16 @@ function renderPyramid() {
     html += `<div class="pyramid-step" style="background:${style.bg};border-left:3px solid ${style.border};padding:1rem 1.25rem;${s>1?'border-top:1px solid rgba(255,255,255,0.05);':''}">
       <div class="step-label" style="color:${style.color};">${stepLabelText}</div>
       <div class="step-teams">
+        ${(() => {
+          const emptyBefore = Math.floor((5 - teams.length) / 2);
+          const emptyAfter = 5 - teams.length - emptyBefore;
+          const emptyCard = '<div style="background:transparent;border:none;min-height:80px;"></div>';
+          let empBefore = '';
+          let empAfter = '';
+          for(let i=0;i<emptyBefore;i++) empBefore += emptyCard;
+          for(let i=0;i<emptyAfter;i++) empAfter += emptyCard;
+          return empBefore;
+        })()}
         ${teams.map(t => {
           const isMyTeam = myTeam?.id === t.id;
           const inCooldown = cooldownTeams.has(t.id);
@@ -692,7 +703,7 @@ function renderPyramid() {
             const isCap = m.player_email === t.captain_email;
             const nameDisplay = (p?.name || m.player_email).toUpperCase();
             const capStyle = isCap ? 'font-weight:700;color:' + (s===1?'var(--gold)':'var(--text)') + ';' : 'color:var(--text2);';
-            membersHTML += '<div style="font-size:0.68rem;' + capStyle + 'padding:1px 0;word-break:break-word;">' + nameDisplay + '</div>';
+            membersHTML += '<div style="font-size:0.65rem;' + capStyle + 'padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">' + nameDisplay + '</div>';
           });
 
           let cardClass = 'team-card';
@@ -787,7 +798,7 @@ function renderPyramid() {
       }
     }
 
-    html += `<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:2px solid rgba(239,68,68,0.4);">
+    html += `<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:3px solid rgba(239,68,68,0.5);">
       <div class="step-label" style="color:var(--red);">⚠️ Kaznena zona</div>
       <div class="step-teams">${penHTML}</div>
     </div>`;
