@@ -73,17 +73,17 @@
     .notif-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--red); color:white; font-size:0.65rem; font-weight:700; border-radius:50%; margin-left:4px; vertical-align:middle; }
 
     /* PIRAMIDA */
-    .pyramid-wrap { display:flex; flex-direction:column; gap:0; align-items:stretch; margin-bottom:2rem; border-radius:16px; overflow:hidden; border:1px solid var(--border); }
-    .pyramid-step { width:100%; }
-    .step-label { font-size:0.9rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:2px; margin-bottom:0.75rem; }
-    .step-teams { display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap; }
-    .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:0.9rem 1.1rem; cursor:pointer; transition:all 0.2s; min-width:140px; max-width:200px; flex:1; text-align:center; position:relative; }
+    .pyramid-wrap { display:flex; flex-direction:column; gap:6px; margin-bottom:2rem; }
+    .pyramid-step { width:100%; border-radius:12px; padding:1rem 1.25rem; }
+    .step-label { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.75rem; text-align:center; }
+    .step-teams { display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; }
+    .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem 0.9rem; cursor:pointer; transition:all 0.2s; min-width:110px; max-width:180px; flex:0 1 160px; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
     .team-card:hover { border-color:var(--border2); background:var(--bg3); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
     .team-card.my-team { border-color:var(--orange); background:var(--orange-glow); }
     .team-card.can-challenge { border-color:var(--blue); }
     .team-card.can-challenge:hover { background:var(--blue-glow); }
     .team-card.has-challenge { border-color:var(--gold); background:rgba(245,158,11,0.08); }
-    .team-nickname { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; }
+    .team-nickname { font-family:'Space Grotesk',sans-serif; font-size:0.85rem; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.5px; }
     .team-name { font-size:0.72rem; color:var(--text3); margin-bottom:0.5rem; }
     .team-captain { font-size:0.72rem; color:var(--text2); }
     .team-pos { position:absolute; top:0.5rem; right:0.6rem; font-family:'Space Grotesk',sans-serif; font-size:0.72rem; font-weight:700; color:var(--text3); }
@@ -616,11 +616,11 @@ function renderPyramid() {
   let html = '';
   // Boje okvira po stepenicama: zlatna -> narančasta -> zelena -> plava -> siva
   const stepStyles = [
-    { bg: 'rgba(245,158,11,0.06)',  border: 'rgba(245,158,11,0.35)',  color: '#f59e0b' }, // 1 - zlatna
-    { bg: 'rgba(255,107,43,0.05)',  border: 'rgba(255,107,43,0.3)',   color: '#ff6b2b' }, // 2 - narančasta
-    { bg: 'rgba(34,197,94,0.04)',   border: 'rgba(34,197,94,0.25)',   color: '#22c55e' }, // 3 - zelena
-    { bg: 'rgba(59,130,246,0.04)',  border: 'rgba(59,130,246,0.22)',  color: '#3b82f6' }, // 4 - plava
-    { bg: 'rgba(148,163,184,0.03)', border: 'rgba(148,163,184,0.18)', color: '#94a3b8' }, // 5+ - siva
+    { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.5)',  color: '#f59e0b' }, // 1 - zlatna
+    { bg: 'rgba(255,107,43,0.06)',  border: 'rgba(255,107,43,0.4)',  color: '#ff6b2b' }, // 2 - narančasta
+    { bg: 'rgba(34,197,94,0.05)',   border: 'rgba(34,197,94,0.35)',  color: '#22c55e' }, // 3 - zelena
+    { bg: 'rgba(59,130,246,0.04)',  border: 'rgba(59,130,246,0.35)', color: '#3b82f6' }, // 4 - plava
+    { bg: 'rgba(148,163,184,0.03)', border: 'rgba(148,163,184,0.3)', color: '#94a3b8' }, // 5+ - siva
   ];
   for(let s=1; s<=maxStep; s++) {
     const teams = steps[s] || [];
@@ -649,7 +649,9 @@ function renderPyramid() {
           teamMembers.forEach(m => {
             const p = allPlayers.find(x => x.email === m.player_email);
             const isCap = m.player_email === t.captain_email;
-            membersHTML += '<div style="font-size:0.72rem;color:' + (isCap ? 'var(--orange)' : 'var(--text2)') + ';">' + (isCap ? '👑 ' : '') + (p?.name || m.player_email) + '</div>';
+            const nameDisplay = (p?.name || m.player_email).toUpperCase();
+            const capStyle = isCap ? 'font-weight:700;color:' + (s===1?'var(--gold)':'var(--text)') + ';' : 'color:var(--text2);';
+            membersHTML += '<div style="font-size:0.72rem;' + capStyle + 'padding:1px 0;">' + nameDisplay + '</div>';
           });
 
           let cardClass = 'team-card';
@@ -686,9 +688,14 @@ function renderPyramid() {
             }
           }
 
+          // Kruna - velika za step 1, mala badge za step 2, bez za ostale
+          let crownHTML = '';
+          if(s === 1) crownHTML = '<div style="font-size:1.4rem;margin-bottom:4px;">👑</div>';
+          else if(s === 2) crownHTML = '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--bg2);padding:0 4px;font-size:0.75rem;line-height:1;">👑</div>';
+
           return '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')">'
-            + '<div class="team-nickname">' + t.name + '</div>'
-            + '<div style="margin:0.4rem 0;">' + membersHTML + '</div>'
+            + crownHTML
+            + '<div style="margin:0.2rem 0;">' + membersHTML + '</div>'
             + cardExtra
             + '</div>';
         }).join('')}
@@ -739,7 +746,7 @@ function renderPyramid() {
       }
     }
 
-    html += `<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:14px;padding:0.75rem;">
+    html += `<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:2px solid rgba(239,68,68,0.4);">
       <div class="step-label" style="color:var(--red);">⚠️ Kaznena zona</div>
       <div class="step-teams">${penHTML}</div>
     </div>`;
