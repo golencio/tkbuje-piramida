@@ -76,8 +76,9 @@
     .pyramid-wrap { display:flex; flex-direction:column; gap:8px; margin-bottom:2rem; }
     .pyramid-step { width:100%; border-radius:12px; padding:0.85rem 1rem; box-sizing:border-box; }
     .step-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.6rem; text-align:center; }
-    .step-teams { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:100%; }
-    @media(max-width:700px) { .step-teams { display:flex; flex-wrap:wrap; justify-content:center; gap:4px; } .team-card { width:86px; flex:0 0 86px; } }
+    .step-teams { display:flex; flex-wrap:wrap; gap:6px; width:100%; justify-content:center; }
+    .team-card { flex:0 0 calc(20% - 5px); max-width:calc(20% - 5px); }
+    @media(max-width:700px) { .team-card { flex:0 0 86px !important; max-width:86px !important; } }
     .team-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:0.55rem 0.3rem; cursor:pointer; transition:all 0.2s; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; min-height:80px; overflow:hidden; }
     .team-card:hover { border-color:var(--border2); background:var(--bg3); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
     .team-card.my-team { border-color:var(--orange); background:var(--orange-glow); }
@@ -672,16 +673,6 @@ function renderPyramid() {
     html += `<div class="pyramid-step" style="background:${style.bg};border-left:3px solid ${style.border};padding:1rem 1.25rem;${s>1?'border-top:1px solid rgba(255,255,255,0.05);':''}">
       <div class="step-label" style="color:${style.color};">${stepLabelText}</div>
       <div class="step-teams">
-        ${(() => {
-          const emptyBefore = Math.floor((5 - teams.length) / 2);
-          const emptyAfter = 5 - teams.length - emptyBefore;
-          const emptyCard = '<div style="background:transparent;border:none;min-height:80px;"></div>';
-          let empBefore = '';
-          let empAfter = '';
-          for(let i=0;i<emptyBefore;i++) empBefore += emptyCard;
-          for(let i=0;i<emptyAfter;i++) empAfter += emptyCard;
-          return empBefore;
-        })()}
         ${teams.map(t => {
           const isMyTeam = myTeam?.id === t.id;
           const inCooldown = cooldownTeams.has(t.id);
