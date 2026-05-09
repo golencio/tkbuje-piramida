@@ -670,7 +670,11 @@ function renderPyramid() {
     const isAbove = s === aboveStep;
     const style = stepStyles[s-1] || stepStyles[stepStyles.length-1];
     const stepLabelText = s === 1 ? '🏆 Stepenica 1' : 'Stepenica ' + s;
-    html += `<div class="pyramid-step" style="background:${style.bg};border-left:3px solid ${style.border};padding:1rem 1.25rem;${s>1?'border-top:1px solid rgba(255,255,255,0.05);':''}">
+    html += `<div class="pyramid-step" style="
+  background:${style.bg};
+  border:3px solid ${style.border};
+  box-shadow:0 0 18px ${style.border};
+  padding:1rem 1.25rem;${s>1?'border-top:1px solid rgba(255,255,255,0.05);':''}">
       <div class="step-label" style="color:${style.color};">${stepLabelText}</div>
       <div class="step-teams">
         ${teams.map(t => {
