@@ -445,6 +445,7 @@ const APP_URL = 'https://golencio.github.io/tkbuje-piramida';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
+let isLoadingAll = false;
 let currentUser = null, currentPlayer = null, myTeam = null;
 let activeResultChallenge = null;
 
@@ -564,36 +565,40 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 
 // ---- LOAD DATA ----
 async function loadAll(options = {}) {
-  const shouldCheckPenalties = options.checkPenalties === true;
-  const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
-    sb.from('teams').select('*').order('step').order('position'),
-    sb.from('challenges').select('*').order('created_at', {ascending:false}),
-    sb.from('players').select('*').eq('active', true),
-    sb.from('team_members').select('*')
-  ]);
-  allTeams = teams || [];
-  allChallenges = challenges || [];
-  allPlayers = players || [];
-  allMembers = members || [];
+  if(isLoadingAll) return;
+  isLoadingAll = true;
+  try {
+    const shouldCheckPenalties = options.checkPenalties === true;
+    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
+      sb.from('teams').select('*').order('step').order('position'),
+      sb.from('challenges').select('*').order('created_at', {ascending:false}),
+      sb.from('players').select('*').eq('active', true),
+      sb.from('team_members').select('*')
+    ]);
+    allTeams = teams || [];
+    allChallenges = challenges || [];
+    allPlayers = players || [];
+    allMembers = members || [];
 
-  // Nađi moj tim
-  if(currentPlayer) {
-    const { data: myMembership } = await sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single();
-    if(myMembership) myTeam = allTeams.find(t=>t.id===myMembership.team_id) || null;
+    // Nađi moj tim
+    if(currentPlayer) {
+      const { data: myMembership } = await sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single();
+      if(myMembership) myTeam = allTeams.find(t=>t.id===myMembership.team_id) || null;
+    }
+
+    updateNotifBadge();
+
+    if(shouldCheckPenalties) await checkPenalties();
+
+    renderPyramid();
+    renderChallenges();
+
+    if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+  } catch(err) {
+    console.error('loadAll greška:', err);
+  } finally {
+    isLoadingAll = false;
   }
-
-  // Notifikacije i prikaz
-  updateNotifBadge();
-
-  // VAŽNO: provjera kazni više se ne vrti na svakom automatskom refreshu.
-  // To je znalo zagušiti aplikaciju jer može pokrenuti više Supabase update-a i novi loadAll().
-  if(shouldCheckPenalties) await checkPenalties();
-
-  renderPyramid();
-  renderChallenges();
-
-  // Ako je admin panel otvoren, osvježi i njega, ali samo nakon što su podaci već učitani.
-  if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
 }
 
 
@@ -670,11 +675,7 @@ function renderPyramid() {
     const isAbove = s === aboveStep;
     const style = stepStyles[s-1] || stepStyles[stepStyles.length-1];
     const stepLabelText = s === 1 ? '🏆 Stepenica 1' : 'Stepenica ' + s;
-    html += `<div class="pyramid-step" style="
-  background:${style.bg};
-  border:3px solid ${style.border};
-  box-shadow:0 0 18px ${style.border};
-  padding:1rem 1.25rem;">
+    html += `<div class="pyramid-step" style="background:${style.bg};border-left:3px solid ${style.border};padding:1rem 1.25rem;${s>1?'border-top:1px solid rgba(255,255,255,0.05);':''}">
       <div class="step-label" style="color:${style.color};">${stepLabelText}</div>
       <div class="step-teams">
         ${teams.map(t => {
@@ -802,7 +803,6 @@ function renderPyramid() {
   container.innerHTML = `<div class="pyramid-wrap">${html}</div>`;
 }
 
-// ---- OPEN TEAM ----
 async function openTeam(teamId) {
   const team = allTeams.find(t=>t.id===teamId);
   if(!team) return;
@@ -2071,6 +2071,7 @@ async function applyPenalty(team) {
   }
 
   showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
+  // NE zovemo loadAll() ovdje - poziva se izvana
 }
 
 
