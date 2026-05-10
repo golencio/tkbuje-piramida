@@ -564,17 +564,23 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
 });
 
+
+function withAbortSignal(query, signal) {
+  return signal && typeof query.abortSignal === 'function' ? query.abortSignal(signal) : query;
+}
+
 // ---- LOAD DATA ----
 async function loadAll(options = {}) {
-  if(isLoadingAll) return;
+  if(isLoadingAll) return false;
   isLoadingAll = true;
   try {
     const shouldCheckPenalties = options.checkPenalties === true;
+    const signal = options.signal;
     const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
-      sb.from('teams').select('*').order('step').order('position'),
-      sb.from('challenges').select('*').order('created_at', {ascending:false}),
-      sb.from('players').select('*').eq('active', true),
-      sb.from('team_members').select('*')
+      withAbortSignal(sb.from('teams').select('*').order('step').order('position'), signal),
+      withAbortSignal(sb.from('challenges').select('*').order('created_at', {ascending:false}), signal),
+      withAbortSignal(sb.from('players').select('*').eq('active', true), signal),
+      withAbortSignal(sb.from('team_members').select('*'), signal)
     ]);
     allTeams = teams || [];
     allChallenges = challenges || [];
@@ -583,7 +589,7 @@ async function loadAll(options = {}) {
 
     // Nađi moj tim
     if(currentPlayer) {
-      const { data: myMembership } = await sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single();
+      const { data: myMembership } = await withAbortSignal(sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single(), signal);
       if(myMembership) myTeam = allTeams.find(t=>t.id===myMembership.team_id) || null;
     }
 
@@ -592,11 +598,13 @@ async function loadAll(options = {}) {
     if(shouldCheckPenalties) await checkPenalties();
 
     renderPyramid();
-    renderChallenges();
+    await renderChallenges();
 
     if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+    return true;
   } catch(err) {
     console.error('loadAll greška:', err);
+    return false;
   } finally {
     isLoadingAll = false;
   }
@@ -2128,15 +2136,6 @@ let watchdogTimer = null;
 let lastSuccessfulRefresh = Date.now();
 let refreshFailures = 0;
 
-function withTimeout(promise, ms, label = 'Operacija') {
-  let timeoutId;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(label + ' traje predugo')), ms);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
-}
-
 function isUserBusy() {
   const active = document.activeElement;
   const typing = active && ['INPUT','SELECT','TEXTAREA'].includes(active.tagName);
@@ -2146,75 +2145,44 @@ function isUserBusy() {
 }
 
 async function safeLoadAll(reason = 'auto') {
-  if(isRefreshing) return;
-  if(!currentPlayer) return;
+  if(isRefreshing) return false;
+  if(!currentPlayer) return false;
 
-  // Nemoj automatskim refreshom prekidati admin uređivanje, otvoreni modal ili unos u polje.
-  // Korisničke akcije i ručni pozivi i dalje rade normalno.
-  if(['interval','watchdog','visible','focus'].includes(reason) && isUserBusy()) return;
+  // Automatski refresh ne smije prekidati admin uređivanje, otvoreni modal ili unos u polje.
+  if(['interval','watchdog','visible','focus'].includes(reason) && isUserBusy()) return false;
 
   if(!navigator.onLine) {
     showToast('Nema internet veze. Pokušat ću ponovno kad se veza vrati.', 'error');
-    return;
+    return false;
   }
 
   isRefreshing = true;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 25000) : null;
   try {
-    await withTimeout(loadAll({ checkPenalties: reason === 'init' }), 30000, 'Osvježavanje');
-    lastSuccessfulRefresh = Date.now();
-    refreshFailures = 0;
+    const didLoad = await loadAll({
+      checkPenalties: reason === 'init',
+      signal: controller?.signal
+    });
+    if(didLoad) {
+      lastSuccessfulRefresh = Date.now();
+      refreshFailures = 0;
+    }
+    return didLoad;
   } catch (error) {
     refreshFailures++;
     console.error('Greška kod osvježavanja aplikacije (' + reason + '):', error);
-
     if(refreshFailures >= 2) {
       showToast('Veza je spora. Pokušavam ponovo...', 'error');
-      // Pokušaj ponovo nakon 3 sekunde
-      setTimeout(() => {
-        if(!isRefreshing) safeLoadAll('watchdog-retry');
-      }, 3000);
       refreshFailures = 0;
     } else {
       showToast('Veza se prekinula. Pokušavam ponovno...', 'error');
     }
+    return false;
   } finally {
+    if(timeoutId) clearTimeout(timeoutId);
     isRefreshing = false;
   }
-}
-
-async function pingSupabase() {
-  try {
-    await sb.from('teams').select('id').limit(1);
-    return true;
-  } catch(e) {
-    return false;
-  }
-}
-
-function setupKeepalive() {
-  // Ping svakih 10 sekundi dok je tab aktivan
-  setInterval(async () => {
-    if(document.visibilityState === 'visible') {
-      await pingSupabase();
-    }
-  }, 10 * 1000);
-
-  // Kad se vrati na tab - resetiraj lock i napravi svježi loadAll
-  document.addEventListener('visibilitychange', async () => {
-    if(document.hidden) {
-      tabHidden = true;
-    } else {
-      if(tabHidden) {
-        tabHidden = false;
-        isLoadingAll = false; // Reset lock - stari request je vjerojatno visio
-        try {
-          await loadAll();
-        } catch(err) {
-          console.error('Visibility loadAll greška:', err);
-        }
-      }
-    }
-  });
 }
 
 function setupAutoRefresh() {
@@ -2222,8 +2190,8 @@ function setupAutoRefresh() {
   if(watchdogTimer) clearInterval(watchdogTimer);
 
   refreshTimer = setInterval(() => {
-    if(!document.hidden && !isLoadingAll) {
-      loadAll();
+    if(document.visibilityState === 'visible') {
+      safeLoadAll('interval');
     }
   }, 120000);
 
@@ -2243,16 +2211,7 @@ function setupAutoRefresh() {
   window.addEventListener('focus', () => setTimeout(() => safeLoadAll('focus'), 1200));
   window.addEventListener('online', () => {
     showToast('Veza uspostavljena! Osvježavam...', 'success');
-    // Kad se veza vrati - uvijek refreshaj, ignoriraj isUserBusy
-    if(isRefreshing) return;
-    isRefreshing = true;
-    loadAll({ checkPenalties: false }).then(() => {
-      isRefreshing = false;
-      lastSuccessfulRefresh = Date.now();
-      renderPyramid();
-      renderChallenges();
-      if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
-    }).catch(() => { isRefreshing = false; });
+    safeLoadAll('online');
   });
 
   window.addEventListener('error', (event) => {
@@ -2272,7 +2231,6 @@ async function init() {
   });
 
   setupAutoRefresh();
-  setupKeepalive();
 }
 
 init();
