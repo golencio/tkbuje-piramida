@@ -442,7 +442,43 @@
 const SUPABASE_URL = 'https://aglbdjyljbzzpddrshno.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnbGJkanlsamJ6enBkZHJzaG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTQxOTcsImV4cCI6MjA5MzIzMDE5N30.NEOJnMJiUHCEGa27xkPf2HM00KEFZC5DjcDpC6t8U6Q';
 const APP_URL = 'https://golencio.github.io/tkbuje-piramida';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Supabase fetch s pravim timeoutom.
+// Važno: Promise timeout sam po sebi nije dovoljan jer originalni fetch može ostati visjeti
+// nakon buđenja browser taba. AbortController stvarno prekida HTTP request.
+const SUPABASE_REQUEST_TIMEOUT_MS = 12000;
+
+function supabaseFetchWithTimeout(input, init = {}) {
+  const controller = new AbortController();
+  const originalSignal = init.signal;
+  let originalAbortHandler = null;
+
+  if(originalSignal) {
+    if(originalSignal.aborted) controller.abort();
+    else {
+      originalAbortHandler = () => controller.abort();
+      originalSignal.addEventListener('abort', originalAbortHandler, { once: true });
+    }
+  }
+
+  const timeoutId = setTimeout(() => controller.abort(), SUPABASE_REQUEST_TIMEOUT_MS);
+
+  return fetch(input, { ...init, signal: controller.signal })
+    .finally(() => {
+      clearTimeout(timeoutId);
+      if(originalSignal && originalAbortHandler) {
+        originalSignal.removeEventListener('abort', originalAbortHandler);
+      }
+    });
+}
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  global: { fetch: supabaseFetchWithTimeout },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 
 let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
 let isLoadingAll = false;
@@ -564,24 +600,22 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
 });
 
-
-function withAbortSignal(query, signal) {
-  return signal && typeof query.abortSignal === 'function' ? query.abortSignal(signal) : query;
-}
-
 // ---- LOAD DATA ----
 async function loadAll(options = {}) {
   if(isLoadingAll) return false;
   isLoadingAll = true;
+  const runId = ++loadAllRunId;
   try {
     const shouldCheckPenalties = options.checkPenalties === true;
-    const signal = options.signal;
     const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
-      withAbortSignal(sb.from('teams').select('*').order('step').order('position'), signal),
-      withAbortSignal(sb.from('challenges').select('*').order('created_at', {ascending:false}), signal),
-      withAbortSignal(sb.from('players').select('*').eq('active', true), signal),
-      withAbortSignal(sb.from('team_members').select('*'), signal)
+      sb.from('teams').select('*').order('step').order('position'),
+      sb.from('challenges').select('*').order('created_at', {ascending:false}),
+      sb.from('players').select('*').eq('active', true),
+      sb.from('team_members').select('*')
     ]);
+    // Ako se u međuvremenu pokrenuo noviji loadAll, ovaj stari rezultat ignoriramo.
+    if(runId !== loadAllRunId) return false;
+
     allTeams = teams || [];
     allChallenges = challenges || [];
     allPlayers = players || [];
@@ -589,7 +623,7 @@ async function loadAll(options = {}) {
 
     // Nađi moj tim
     if(currentPlayer) {
-      const { data: myMembership } = await withAbortSignal(sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single(), signal);
+      const { data: myMembership } = await sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single();
       if(myMembership) myTeam = allTeams.find(t=>t.id===myMembership.team_id) || null;
     }
 
@@ -812,14 +846,11 @@ function renderPyramid() {
   container.innerHTML = `<div class="pyramid-wrap">${html}</div>`;
 }
 
-async function openTeam(teamId) {
+function openTeam(teamId) {
   const team = allTeams.find(t=>t.id===teamId);
   if(!team) return;
-  const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
   const captain = allPlayers.find(p=>p.email===team.captain_email);
-  const membersSorted = [...(members||[])].sort((a,b) => 
-    a.player_email === team.captain_email ? -1 : b.player_email === team.captain_email ? 1 : 0
-  );
+  const membersSorted = getCachedTeamMembers(teamId);
   let memberList = '';
   membersSorted.forEach(m => {
     const player = allPlayers.find(p=>p.email===m.player_email);
@@ -984,7 +1015,7 @@ async function confirmPlayerSelection() {
   }
 
   closeModal('modal-select-players');
-  await loadAll();
+  await safeLoadAll('manual');
 }
 
 // ---- EMAIL NOTIFICATION ----
@@ -1057,8 +1088,8 @@ async function sendChallenge(challengedId) {
   );
   if(inCooldown) { showToast('Tim je u zaštitnom roku — ne može biti izazvan!', 'error'); return; }
 
-  // Provjeri koliko članova ima moj tim
-  const { data: myMembers } = await sb.from('team_members').select('*').eq('team_id', myTeam.id);
+  // Koristi cache umjesto novog Supabase selecta u click-pathu.
+  const myMembers = getCachedTeamMembers(myTeam.id);
   
   if(myMembers && myMembers.length === 3) {
     // Odaberi 2 igrača koji igraju
@@ -1084,7 +1115,7 @@ async function sendChallenge(challengedId) {
   if(error) { showToast('Greška: '+error.message, 'error'); return; }
   showToast('Izazov poslan! ⚔️', 'success');
   await sendChallengeEmail(challengedId, myTeam.name);
-  await loadAll();
+  await safeLoadAll('manual');
 }
 
 // ---- RENDER CHALLENGES ----
@@ -1188,8 +1219,8 @@ async function respondChallenge(challengeId, response) {
       showToast('Izazov odbijen (1/2). Tim može izazvati ponovo.', '');
     }
   } else {
-    // Prihvaćeno — provjeri koliko članova ima tim
-    const { data: myMembers } = await sb.from('team_members').select('*').eq('team_id', myTeam.id);
+    // Prihvaćeno — koristi cache umjesto novog Supabase selecta u click-pathu.
+    const myMembers = getCachedTeamMembers(myTeam.id);
     
     if(myMembers && myMembers.length === 3) {
       // Odaberi 2 igrača koji igraju
@@ -1208,7 +1239,7 @@ async function respondChallenge(challengeId, response) {
     showToast('Izazov prihvaćen! Imate 6 dana za meč.', 'success');
     await sendAcceptedEmail(challenge.challenger_id, myTeam.name);
   }
-  await loadAll();
+  await safeLoadAll('manual');
 }
 
 // ---- HANDLE EXPIRED ----
@@ -1298,7 +1329,7 @@ async function submitResult() {
   if(error) { showToast('Greška: '+error.message,'error'); return; }
   showToast('Rezultat poslan adminu na potvrdu! ✓','success');
   closeModal('modal-result');
-  await loadAll();
+  await safeLoadAll('manual');
 }
 
 // ---- ADMIN ----
@@ -1554,7 +1585,7 @@ async function saveEditChallenge() {
 
   // Ako se pobjednik promijenio — automatski zamijeni mjesta timova
   if(oldWinnerId && winnerId !== oldWinnerId && ['completed','surrendered'].includes(status)) {
-    await loadAll();
+    await safeLoadAll('manual');
     const c = oldChallenge;
     const challenger = allTeams.find(t=>t.id===c.challenger_id);
     const challenged = allTeams.find(t=>t.id===c.challenged_id);
@@ -1571,7 +1602,7 @@ async function saveEditChallenge() {
   }
 
   closeModal('modal-edit-challenge');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminAcceptChallenge(challengeId) {
@@ -1582,7 +1613,7 @@ async function adminAcceptChallenge(challengeId) {
   }).eq('id', challengeId);
   if(error) { showToast('Greška: '+error.message,'error'); return; }
   showToast('Izazov prihvaćen! Tim ima 6 dana za meč.','success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminDeclineChallenge(challengeId) {
@@ -1619,7 +1650,7 @@ async function adminDeclineChallenge(challengeId) {
     await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
     showToast('Izazov odbijen (1/2). Izazivač može poslati još jedan izazov.','');
   }
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminSurrender(challengeId, surrenderId) {
@@ -1637,7 +1668,7 @@ async function adminSurrender(challengeId, surrenderId) {
     updated_at: new Date().toISOString()
   }).eq('id', challengeId);
   showToast('Predaja evidentirana. Timovi su zamijenili mjesta. 🔄','success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminExtendDeadline(challengeId) {
@@ -1651,7 +1682,7 @@ async function adminExtendDeadline(challengeId) {
   }).eq('id', challengeId);
   if(error) { showToast('Greška: '+error.message,'error'); return; }
   showToast('Rok produžen za '+days+' dana! 📅','success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminConfirmResult(challengeId) {
@@ -1683,13 +1714,13 @@ async function adminConfirmResult(challengeId) {
 
   await sb.from('challenges').update({ status:'completed', updated_at:new Date().toISOString() }).eq('id',challengeId);
   showToast('Rezultat potvrđen! ✓','success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminRejectResult(challengeId) {
   await sb.from('challenges').update({ status:'accepted', result_winner_id:null, result_score:null }).eq('id',challengeId);
   showToast('Rezultat odbijen, meč ostaje aktivan.','');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function revertDecision() {
@@ -1697,7 +1728,7 @@ async function revertDecision() {
   if(!id) { showToast('Odaberi izazov!','error'); return; }
   await sb.from('challenges').update({ status:'pending', rejection_count:0 }).eq('id',id);
   showToast('Izazov vraćen na čekanje. ↩','success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 // ---- ADD TEAM ----
@@ -1847,7 +1878,7 @@ async function addTeam() {
   document.getElementById('new-team-step').value = '';
   psResetAll();
   showToast(name+' dodan! ✓','success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 // ---- EDIT TEAM ----
@@ -1969,7 +2000,7 @@ async function saveEditTeam() {
 
   showToast('Tim ažuriran! ✓','success');
   closeModal('modal-team');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function removeMember(teamId, email) {
@@ -1979,7 +2010,7 @@ async function removeMember(teamId, email) {
   const { error } = await sb.from('team_members').delete().eq('team_id',teamId).eq('player_email',email);
   if(error) { showToast('Greška','error'); return; }
   showToast('Član uklonjen.','');
-  await loadAll();
+  await safeLoadAll('manual');
   openEditTeam(teamId); // Osvježi modal
 }
 
@@ -2029,7 +2060,7 @@ async function addMember(fromEdit=false) {
   const { error } = await sb.from('team_members').insert({ team_id: addMemberTeamId, player_email: email });
   if(error) { showToast('Greška: '+error.message,'error'); return; }
   showToast('Član dodan! ✓','success');
-  await loadAll();
+  await safeLoadAll('manual');
   if(fromEdit) {
     openEditTeam(addMemberTeamId);
   } else {
@@ -2043,7 +2074,7 @@ async function deleteTeam(id, name) {
   await sb.from('team_members').delete().eq('team_id',id);
   await sb.from('teams').delete().eq('id',id);
   showToast(name+' obrisan.','');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 // ---- PENALTY SYSTEM ----
@@ -2091,7 +2122,7 @@ async function adminSimulatePenalty(teamId) {
   if(team.penalty) { showToast('Tim je već u kaznenoj zoni!', 'error'); return; }
   if(!confirm('Simulirati kaznu za tim "' + team.name + '"?')) return;
   await applyPenalty(team);
-  await loadAll();
+  await safeLoadAll('manual');
   showToast(team.name + ' premješten u kaznu! ✓', 'success');
   renderAdmin();
 }
@@ -2103,7 +2134,7 @@ async function adminRemoveCooldown(challengeId) {
     updated_at: '2000-01-01T00:00:00.000Z'
   }).eq('id', challengeId);
   showToast('Zaštitni rok uklonjen! ✓', 'success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminRemovePenalty(teamId) {
@@ -2113,7 +2144,7 @@ async function adminRemovePenalty(teamId) {
   const originalStep = team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
   await sb.from('teams').update({ penalty: false, step: originalStep, original_step: null }).eq('id', teamId);
   showToast(team.name + ' vraćen iz kazne! ✓', 'success');
-  await loadAll(); renderAdmin();
+  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function returnFromPenalty(challengeId, penaltyTeamId) {
@@ -2129,12 +2160,13 @@ async function returnFromPenalty(challengeId, penaltyTeamId) {
   }).eq('id', penaltyTeamId);
 }
 
-// ---- SAFE REFRESH / INIT v3 ----
+// ---- SAFE REFRESH / INIT v4 ----
 let isRefreshing = false;
 let refreshTimer = null;
-let watchdogTimer = null;
 let lastSuccessfulRefresh = Date.now();
 let refreshFailures = 0;
+let appWasHidden = false;
+let loadAllRunId = 0;
 
 function isUserBusy() {
   const active = document.activeElement;
@@ -2144,12 +2176,16 @@ function isUserBusy() {
   return typing || modalOpen || adminOpen;
 }
 
+function getCachedTeamMembers(teamId) {
+  return getSortedTeamMembers(teamId, allTeams.find(t => t.id === teamId)?.captain_email, allMembers);
+}
+
 async function safeLoadAll(reason = 'auto') {
-  if(isRefreshing) return false;
+  if(isRefreshing || isLoadingAll) return false;
   if(!currentPlayer) return false;
 
-  // Automatski refresh ne smije prekidati admin uređivanje, otvoreni modal ili unos u polje.
-  if(['interval','watchdog','visible','focus'].includes(reason) && isUserBusy()) return false;
+  // Automatski refresh ne smije prekidati klik, modal, unos ili admin uređivanje.
+  if(['interval','visible','focus'].includes(reason) && isUserBusy()) return false;
 
   if(!navigator.onLine) {
     showToast('Nema internet veze. Pokušat ću ponovno kad se veza vrati.', 'error');
@@ -2157,13 +2193,8 @@ async function safeLoadAll(reason = 'auto') {
   }
 
   isRefreshing = true;
-  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timeoutId = controller ? setTimeout(() => controller.abort(), 25000) : null;
   try {
-    const didLoad = await loadAll({
-      checkPenalties: reason === 'init',
-      signal: controller?.signal
-    });
+    const didLoad = await loadAll({ checkPenalties: reason === 'init' });
     if(didLoad) {
       lastSuccessfulRefresh = Date.now();
       refreshFailures = 0;
@@ -2172,6 +2203,10 @@ async function safeLoadAll(reason = 'auto') {
   } catch (error) {
     refreshFailures++;
     console.error('Greška kod osvježavanja aplikacije (' + reason + '):', error);
+    if(error?.name === 'AbortError') {
+      showToast('Veza je zaspala. Pokušaj još jednom.', 'error');
+      return false;
+    }
     if(refreshFailures >= 2) {
       showToast('Veza je spora. Pokušavam ponovo...', 'error');
       refreshFailures = 0;
@@ -2180,35 +2215,45 @@ async function safeLoadAll(reason = 'auto') {
     }
     return false;
   } finally {
-    if(timeoutId) clearTimeout(timeoutId);
     isRefreshing = false;
   }
 }
 
-function setupAutoRefresh() {
+function startRefreshTimer() {
   if(refreshTimer) clearInterval(refreshTimer);
-  if(watchdogTimer) clearInterval(watchdogTimer);
+  if(document.visibilityState !== 'visible') return;
 
   refreshTimer = setInterval(() => {
-    if(document.visibilityState === 'visible') {
-      safeLoadAll('interval');
-    }
+    if(document.visibilityState === 'visible') safeLoadAll('interval');
   }, 120000);
+}
 
-  watchdogTimer = setInterval(() => {
-    const tooLongSinceRefresh = Date.now() - lastSuccessfulRefresh > 180000;
-    if(document.visibilityState === 'visible' && tooLongSinceRefresh && !isUserBusy()) {
-      safeLoadAll('watchdog');
-    }
-  }, 45000);
+function stopRefreshTimer() {
+  if(refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+function setupAutoRefresh() {
+  startRefreshTimer();
 
   document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'visible') {
-      setTimeout(() => safeLoadAll('visible'), 1200);
+    if(document.visibilityState === 'hidden') {
+      appWasHidden = true;
+      stopRefreshTimer();
+      return;
+    }
+
+    if(appWasHidden) {
+      appWasHidden = false;
+      // Nakon povratka u tab NE pokrećemo automatski Supabase request.
+      // Samo ponovno pokrećemo timer; prvi auto-refresh dolazi tek za 120 sekundi.
+      console.log('[TKB] tab visible again - refresh timer restarted, no immediate request');
+      startRefreshTimer();
     }
   });
 
-  window.addEventListener('focus', () => setTimeout(() => safeLoadAll('focus'), 1200));
   window.addEventListener('online', () => {
     showToast('Veza uspostavljena! Osvježavam...', 'success');
     safeLoadAll('online');
