@@ -487,6 +487,9 @@ let isLoadingAll = false;
 let tabHidden = false;
 let currentUser = null, currentPlayer = null, myTeam = null;
 let activeResultChallenge = null;
+let tournamentPause = { is_paused: false, paused_at: null, pause_reason: null };
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 // ---- TOAST ----
 function showToast(msg, type='') {
@@ -602,6 +605,129 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
 });
 
+// ---- PAUZA TURNIRA ----
+function normalizePauseState(row) {
+  return {
+    is_paused: row?.is_paused === true,
+    paused_at: row?.paused_at || null,
+    pause_reason: row?.pause_reason || ''
+  };
+}
+
+async function getTournamentPause() {
+  const { data, error } = await sb
+    .from('tournament_settings')
+    .select('is_paused,paused_at,pause_reason')
+    .eq('setting_key', 'main')
+    .maybeSingle();
+
+  if(error) {
+    console.warn('tournament_settings nije dostupna:', error.message);
+    return { is_paused: false, paused_at: null, pause_reason: '' };
+  }
+  return normalizePauseState(data);
+}
+
+function getPauseTimerNow() {
+  return tournamentPause?.is_paused && tournamentPause.paused_at
+    ? new Date(tournamentPause.paused_at)
+    : new Date();
+}
+
+function formatRemainingTime(expiresAt, baseDate = getPauseTimerNow()) {
+  const diff = new Date(expiresAt) - baseDate;
+  const safeDiff = Math.max(0, diff);
+  const hours = Math.floor(safeDiff / HOUR_MS);
+  const days = Math.floor(hours / 24);
+  return { diff, safeDiff, hours, days, text: (days > 0 ? days + 'd ' : '') + (hours % 24) + 'h' };
+}
+
+function renderPauseBanner() {
+  let banner = document.getElementById('pause-banner');
+  const main = document.querySelector('main');
+  if(!banner && main) {
+    banner = document.createElement('div');
+    banner.id = 'pause-banner';
+    main.parentNode.insertBefore(banner, main);
+  }
+  if(!banner) return;
+
+  if(!tournamentPause?.is_paused) {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+    return;
+  }
+
+  const pausedAt = tournamentPause.paused_at
+    ? new Date(tournamentPause.paused_at).toLocaleString('hr-HR')
+    : '';
+  const reason = tournamentPause.pause_reason ? ' · Razlog: ' + tournamentPause.pause_reason : '';
+  banner.style.display = 'block';
+  banner.innerHTML = '<div style="max-width:1100px;margin:0 auto;padding:0.75rem 1.25rem;">'
+    + '<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:var(--gold);border-radius:12px;padding:0.85rem 1rem;font-size:0.88rem;font-weight:600;">'
+    + '⏸ Turnir je zaustavljen od ' + pausedAt + reason + '<br>'
+    + '<span style="font-size:0.78rem;color:var(--text2);font-weight:400;">Rok meča i odbrojavanje do kazne zbog neaktivnosti trenutno ne teku.</span>'
+    + '</div></div>';
+}
+
+async function setTournamentPauseState(isPaused, reason = '') {
+  const payload = {
+    setting_key: 'main',
+    is_paused: isPaused,
+    paused_at: isPaused ? new Date().toISOString() : null,
+    pause_reason: isPaused ? reason : null,
+    updated_at: new Date().toISOString()
+  };
+  const { error } = await sb.from('tournament_settings').upsert(payload, { onConflict: 'setting_key' });
+  if(error) throw error;
+}
+
+async function adminPauseTournament() {
+  if(!currentPlayer?.is_admin) return;
+  const reason = prompt('Razlog za zaustavljanje turnira? (npr. kiša)', tournamentPause.pause_reason || 'kiša');
+  if(reason === null) return;
+  try {
+    await setTournamentPauseState(true, reason.trim());
+    showToast('Vrijeme turnira je zaustavljeno. ⏸', 'success');
+    await safeLoadAll('manual');
+    renderAdmin();
+  } catch(err) {
+    console.error(err);
+    showToast('Ne mogu zaustaviti vrijeme. Provjeri tablicu tournament_settings.', 'error');
+  }
+}
+
+async function adminResumeTournament() {
+  if(!currentPlayer?.is_admin || !tournamentPause?.is_paused || !tournamentPause.paused_at) return;
+  if(!confirm('Nastaviti vrijeme turnira? Aktivni rokovi će se produžiti za trajanje pauze.')) return;
+
+  const pauseStarted = new Date(tournamentPause.paused_at);
+  const pauseMs = Math.max(0, Date.now() - pauseStarted.getTime());
+
+  try {
+    const activeAccepted = allChallenges.filter(c => c.status === 'accepted' && c.match_expires_at);
+    for(const c of activeAccepted) {
+      const newExpiry = new Date(new Date(c.match_expires_at).getTime() + pauseMs).toISOString();
+      await sb.from('challenges').update({ match_expires_at: newExpiry }).eq('id', c.id);
+    }
+
+    const teamsToShift = allTeams.filter(t => !t.penalty && t.step > 1);
+    for(const t of teamsToShift) {
+      const base = t.last_match_at ? new Date(t.last_match_at) : new Date(t.created_at);
+      const newLastMatch = new Date(base.getTime() + pauseMs).toISOString();
+      await sb.from('teams').update({ last_match_at: newLastMatch }).eq('id', t.id);
+    }
+
+    await setTournamentPauseState(false);
+    showToast('Vrijeme turnira je nastavljeno. ▶', 'success');
+    await safeLoadAll('manual');
+    renderAdmin();
+  } catch(err) {
+    console.error(err);
+    showToast('Ne mogu nastaviti vrijeme. Provjeri Supabase tablice.', 'error');
+  }
+}
+
 // ---- LOAD DATA ----
 async function loadAll(options = {}) {
   if(isLoadingAll) return false;
@@ -609,11 +735,12 @@ async function loadAll(options = {}) {
   const runId = ++loadAllRunId;
   try {
     const shouldCheckPenalties = options.checkPenalties === true;
-    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }] = await Promise.all([
+    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }, pauseState] = await Promise.all([
       sb.from('teams').select('*').order('step').order('position'),
       sb.from('challenges').select('*').order('created_at', {ascending:false}),
       sb.from('players').select('*').eq('active', true),
-      sb.from('team_members').select('*')
+      sb.from('team_members').select('*'),
+      getTournamentPause()
     ]);
     // Ako se u međuvremenu pokrenuo noviji loadAll, ovaj stari rezultat ignoriramo.
     if(runId !== loadAllRunId) return false;
@@ -622,6 +749,8 @@ async function loadAll(options = {}) {
     allChallenges = challenges || [];
     allPlayers = players || [];
     allMembers = members || [];
+    tournamentPause = pauseState || { is_paused: false, paused_at: null, pause_reason: '' };
+    renderPauseBanner();
 
     // Nađi moj tim
     if(currentPlayer) {
@@ -770,14 +899,16 @@ function renderPyramid() {
           // Odbrojavanje do kazne (stepenica 2+, nije u kazni)
           if(!t.penalty && t.step > 1) {
             const lastMatch = t.last_match_at ? new Date(t.last_match_at) : new Date(t.created_at);
-            const daysInactive = Math.floor((new Date() - lastMatch) / (1000*60*60*24));
+            const timerNow = getPauseTimerNow();
+            const daysInactive = Math.floor((timerNow - lastMatch) / DAY_MS);
             const daysLeft = 15 - daysInactive;
+            const pausePrefix = tournamentPause?.is_paused ? '⏸ ' : '';
             if(daysLeft <= 0) {
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);font-weight:600;">⚠️ Kazna!</div>';
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);font-weight:600;">' + pausePrefix + '⚠️ Kazna!</div>';
             } else if(daysLeft <= 5) {
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">⚠️ Kazna za ' + daysLeft + ' dan(a)</div>';
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">' + pausePrefix + '⚠️ Kazna za ' + daysLeft + ' dan(a)</div>';
             } else {
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--text3);">📅 ' + daysLeft + ' dana do kazne zbog neaktivnosti</div>';
+              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--text3);">' + pausePrefix + '📅 ' + daysLeft + ' dana do kazne zbog neaktivnosti</div>';
             }
           }
 
@@ -1143,17 +1274,17 @@ async function renderChallenges() {
     const isChallenged = myTeam && c.challenged_id===myTeam.id;
     const iAmCaptain = myTeam?.captain_email === currentPlayer?.email;
 
-    // Timer
+    // Timer: pending odgovor teče normalno, rok meča se zaustavlja kad je turnir pauziran
     const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
     let timerHtml = '';
     if(expires && ['pending','accepted'].includes(c.status)) {
-      const diff = expires - now;
-      const hours = Math.floor(diff/3600000);
-      const days = Math.floor(hours/24);
-      const urgent = diff < 24*60*60*1000;
+      const timerBase = c.status === 'accepted' ? getPauseTimerNow() : now;
+      const remaining = formatRemainingTime(expires, timerBase);
+      const urgent = remaining.diff < DAY_MS;
+      const pausedText = c.status === 'accepted' && tournamentPause?.is_paused ? ' ⏸' : '';
       timerHtml = `<div class="timer-wrap">
-        <span style="color:var(--text3);font-size:0.72rem;">${c.status==='pending'?'Rok odgovora:':'Rok meča:'}</span>
-        <span class="timer ${urgent?'urgent':'ok'}">${days>0?days+'d ':''} ${hours%24}h</span>
+        <span style="color:var(--text3);font-size:0.72rem;">${c.status==='pending'?'Rok odgovora:':'Rok meča:'}${pausedText}</span>
+        <span class="timer ${urgent?'urgent':'ok'}">${remaining.text}</span>
       </div>`;
     }
 
@@ -1344,14 +1475,31 @@ function renderAdmin() {
   const pendingResults = allChallenges.filter(c=>c.status==='pending_result');
   const completedChallenges = allChallenges.filter(c=>['completed','surrendered'].includes(c.status)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   const now = new Date();
+  const matchTimerNow = getPauseTimerNow();
   const expiredMatches = allChallenges.filter(c=>
     c.status==='accepted' &&
     c.match_expires_at &&
-    new Date(c.match_expires_at) < now
+    new Date(c.match_expires_at) < matchTimerNow
   );
   const pendingChallenges = allChallenges.filter(c=>c.status==='pending');
+  const pauseStartedText = tournamentPause?.paused_at ? new Date(tournamentPause.paused_at).toLocaleString('hr-HR') : '—';
+  const pauseReasonText = tournamentPause?.pause_reason ? tournamentPause.pause_reason : 'nije upisan';
 
   document.getElementById('admin-container').innerHTML = `
+    <div class="admin-box" style="border-color:${tournamentPause?.is_paused?'rgba(245,158,11,0.5)':'var(--border)'};">
+      <div class="admin-box-header">⏸ Vrijeme turnira</div>
+      <div class="admin-box-body">
+        ${tournamentPause?.is_paused
+          ? `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">
+              <div style="font-weight:700;color:var(--gold);margin-bottom:0.35rem;">Turnir je zaustavljen</div>
+              <div style="font-size:0.82rem;color:var(--text2);line-height:1.5;">Od: ${pauseStartedText}<br>Razlog: ${pauseReasonText}<br>Zaustavljeni su rok meča od 6 dana i odbrojavanje do kazne zbog neaktivnosti.</div>
+            </div>
+            <button class="btn-accept" onclick="adminResumeTournament()">▶ Nastavi vrijeme turnira</button>`
+          : `<div style="font-size:0.82rem;color:var(--text2);line-height:1.5;margin-bottom:0.75rem;">Vrijeme turnira trenutno teče normalno. Ovim gumbom možeš zaustaviti rok meča i kazne zbog neaktivnosti, npr. zbog kiše.</div>
+            <button class="btn-decline" onclick="adminPauseTournament()">⏸ Zaustavi vrijeme turnira</button>`}
+      </div>
+    </div>
+
     <div class="admin-box">
       <div class="admin-box-header">⏰ Istekli mečevi (${expiredMatches.length})</div>
       <div class="admin-box-body">
@@ -2081,6 +2229,7 @@ async function deleteTeam(id, name) {
 
 // ---- PENALTY SYSTEM ----
 async function checkPenalties() {
+  if(tournamentPause?.is_paused) return;
   const now = new Date();
   for(const team of allTeams) {
     if(team.penalty || team.step === 1) continue; // Stepenica 1 je izuzeta
