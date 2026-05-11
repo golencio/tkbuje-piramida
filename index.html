@@ -917,8 +917,11 @@ function renderPyramid() {
           if(s === 1) crownHTML = '<div style="font-size:1.4rem;margin-bottom:4px;">👑</div>';
           else if(s === 2) crownHTML = '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--bg2);padding:0 4px;font-size:0.75rem;line-height:1;">👑</div>';
 
+          const teamNameHTML = t.name ? '<div style="font-size:0.68rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">' + t.name + '</div>' : '';
+
           return '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')">'
             + crownHTML
+            + teamNameHTML
             + '<div style="margin:0.2rem 0;">' + membersHTML + '</div>'
             + cardExtra
             + '</div>';
