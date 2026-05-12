@@ -2161,13 +2161,9 @@ function maybeShowAppWorkflowPopups() {
     return;
   }
 
-  // 3) Prihvaćen meč bez termina: oba tima vide popup za unos datuma i sata.
-  const needsSchedule = getNeedsScheduleChallenge();
-  if(needsSchedule) {
-    const id = 'schedule-' + needsSchedule.id;
-    if(shownWorkflowPopupId !== id) showSchedulePopup(needsSchedule);
-    return;
-  }
+  // 3) Popup za unos termina nakon prihvaćanja je namjerno isključen.
+  //    U praksi se termin može upisati ili promijeniti kasnije iz liste izazova/admin dijela.
+  //    Ovo sprječava da oba tima dobivaju isti prisilni popup odmah nakon prihvaćanja.
 
   // 4) Kad dođe termin: oba tima vide popup za unos rezultata.
   const dueResult = getDueResultChallenge();
@@ -2429,7 +2425,7 @@ async function renderChallenges() {
     if(c.status === 'accepted' && c.scheduled_at) {
       scheduledHtml = `<div class="timer-wrap" style="margin-top:0.45rem;">
         <span style="color:var(--text3);font-size:0.72rem;">Termin:</span>
-        <span class="timer ok">${new Date(c.scheduled_at).toLocaleDateString('hr-HR')} ${new Date(c.scheduled_at).toLocaleTimeString('hr-HR',{   hour:'2-digit',   minute:'2-digit' })}</span>
+        <span class="timer ok">${new Date(c.scheduled_at).toLocaleString('hr-HR')}</span>
       </div>`;
     }
 
