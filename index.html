@@ -2007,13 +2007,39 @@ function showSchedulePopup(challenge) {
   const content = document.getElementById('workflow-content');
   if(!content) return;
   const names = challengeTeamNames(challenge);
+  shownWorkflowPopupId = 'schedule-' + challenge.id;
+
+  content.innerHTML =
+    '<div class="workflow-icon">📅</div>'
+    + '<div class="workflow-title">Termin meča</div>'
+    + '<div class="workflow-sub">Izazov je prihvaćen. Odaberi znaš li već termin meča.</div>'
+    + '<div class="workflow-card">'
+      + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
+      + '<div class="workflow-row"><span>Status</span><strong>Prihvaćeno</strong></div>'
+    + '</div>'
+    + '<div class="workflow-actions single">'
+      + '<button class="workflow-btn muted" onclick="closeWorkflowPopup()">Termin još nije zakazan</button>'
+      + '<button class="workflow-btn primary" onclick="showScheduleForm(\'' + challenge.id + '\')">Znam termin za meč</button>'
+    + '</div>'
+    + '<div class="workflow-note">Ako termin još nije dogovoren, samo zatvori popup. Izazov ostaje prihvaćen i termin se može upisati kasnije.</div>';
+  openModal('modal-workflow');
+}
+
+function showScheduleForm(challengeId) {
+  const challenge = allChallenges.find(c => c.id === challengeId);
+  if(!challenge) { showToast('Ne mogu pronaći izazov.', 'error'); return; }
+
+  const content = document.getElementById('workflow-content');
+  if(!content) return;
+
+  const names = challengeTeamNames(challenge);
   const defaultDate = formatDateTimeForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
   shownWorkflowPopupId = 'schedule-' + challenge.id;
 
   content.innerHTML =
     '<div class="workflow-icon">📅</div>'
-    + '<div class="workflow-title">Dogovorite termin meča</div>'
-    + '<div class="workflow-sub">Izazov je prihvaćen. Jedan od timova treba upisati datum i sat meča.</div>'
+    + '<div class="workflow-title">Upiši termin meča</div>'
+    + '<div class="workflow-sub">Upiši datum i sat samo ako je termin stvarno dogovoren.</div>'
     + '<div class="workflow-card">'
       + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
       + '<div class="workflow-row"><span>Status</span><strong>Prihvaćeno</strong></div>'
@@ -2024,10 +2050,9 @@ function showSchedulePopup(challenge) {
     + '</div>'
     + '<div class="form-group" style="margin-top:0.75rem"><label>Napomena / teren (opcionalno)</label><input type="text" id="workflow-note" placeholder="npr. teren 1, dogovoreno telefonom"></div>'
     + '<div class="workflow-actions">'
-      + '<button class="workflow-btn muted" onclick="closeWorkflowPopup()">Kasnije</button>'
+      + '<button class="workflow-btn muted" onclick="showSchedulePopup(allChallenges.find(c => c.id === \'' + challenge.id + '\'))">Natrag</button>'
       + '<button class="workflow-btn primary" onclick="saveChallengeSchedule(\'' + challenge.id + '\')">Spremi termin</button>'
     + '</div>';
-  openModal('modal-workflow');
 }
 
 async function saveChallengeSchedule(challengeId) {
@@ -2161,9 +2186,13 @@ function maybeShowAppWorkflowPopups() {
     return;
   }
 
-  // 3) Popup za unos termina nakon prihvaćanja je namjerno isključen.
-  //    U praksi se termin može upisati ili promijeniti kasnije iz liste izazova/admin dijela.
-  //    Ovo sprječava da oba tima dobivaju isti prisilni popup odmah nakon prihvaćanja.
+  // 3) Prihvaćen meč bez termina: oba tima vide popup s izborom: termin nije zakazan ili upis termina.
+  const needsSchedule = getNeedsScheduleChallenge();
+  if(needsSchedule) {
+    const id = 'schedule-' + needsSchedule.id;
+    if(shownWorkflowPopupId !== id) showSchedulePopup(needsSchedule);
+    return;
+  }
 
   // 4) Kad dođe termin: oba tima vide popup za unos rezultata.
   const dueResult = getDueResultChallenge();
