@@ -6,9 +6,9 @@
   <title>TK Buje — Piramida</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- v2.1 -->
+  <!-- production modern stats/admin -->
   <style>
-    :root {
+:root {
       --bg: #0d0d0d; --bg2: #141414; --bg3: #1a1a1a; --bg4: #222222;
       --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
       --text: #f0f0f0; --text2: #c8c8c8; --text3: #888888;
@@ -144,6 +144,83 @@
     .member-row:last-child { border-bottom:none; }
     .captain-tag { font-size:0.65rem; background:var(--orange-glow); color:var(--orange); border:1px solid rgba(255,107,43,0.3); padding:0.15rem 0.5rem; border-radius:20px; font-weight:600; }
 
+
+
+    /* TEST + STATISTIKA */
+    .test-ribbon { background:linear-gradient(90deg, rgba(239,68,68,0.16), rgba(245,158,11,0.12)); border-bottom:1px solid rgba(239,68,68,0.28); color:var(--text); }
+    .test-ribbon-inner { max-width:1100px; margin:0 auto; padding:0.55rem 1.25rem; font-size:0.78rem; color:var(--text2); }
+    .test-ribbon strong { color:var(--red); letter-spacing:0.8px; }
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.75rem; margin-bottom:1rem; }
+    .stat-mini { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; }
+    .stat-mini-label { font-size:0.72rem; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.35rem; }
+    .stat-mini-value { font-family:'Space Grotesk',sans-serif; font-size:1.45rem; font-weight:800; color:var(--orange); }
+    .stats-tabs { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+    .stats-tab { background:var(--bg2); border:1px solid var(--border); color:var(--text2); border-radius:999px; padding:0.45rem 0.8rem; font-family:'Inter',sans-serif; font-size:0.78rem; font-weight:700; cursor:pointer; }
+    .stats-tab.active { color:var(--orange); border-color:rgba(255,107,43,0.4); background:var(--orange-glow); }
+    .stats-table { width:100%; border-collapse:collapse; font-size:0.84rem; }
+    .stats-table th { text-align:left; color:var(--text3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.8px; padding:0.65rem 0.5rem; border-bottom:1px solid var(--border); }
+    .stats-table td { padding:0.7rem 0.5rem; border-bottom:1px solid var(--border); color:var(--text2); vertical-align:middle; }
+    .stats-table tr:last-child td { border-bottom:none; }
+    .stats-team { color:var(--text); font-weight:800; }
+    .stats-points { font-family:'Space Grotesk',sans-serif; color:var(--orange); font-weight:900; font-size:1rem; }
+    .form-pill { font-size:0.68rem; font-weight:800; border-radius:999px; padding:0.18rem 0.38rem; margin-right:0.16rem; display:inline-block; }
+    .form-win { color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); }
+    .form-loss { color:var(--red); background:var(--red-glow); border:1px solid rgba(239,68,68,0.25); }
+    .form-empty { color:var(--text3); }
+    @media(max-width:700px) { .stats-grid { grid-template-columns:repeat(2,1fr); } .stats-table { font-size:0.76rem; } .stats-table th:nth-child(5), .stats-table td:nth-child(5) { display:none; } }
+
+    /* MODERN TEST REDESIGN */
+    body { background:
+      radial-gradient(900px 500px at 10% -10%, rgba(255,107,43,0.13), transparent 60%),
+      radial-gradient(800px 500px at 85% 0%, rgba(59,130,246,0.10), transparent 55%),
+      linear-gradient(180deg, #07101a 0%, #0d0d0d 42%, #070707 100%);
+    }
+    header { background:rgba(7,16,26,0.86); border-bottom:1px solid rgba(255,255,255,0.09); box-shadow:0 12px 35px rgba(0,0,0,0.35); }
+    .header-inner { max-width:1220px; height:68px; }
+    main { max-width:1220px; }
+    .logo { font-size:1.35rem; letter-spacing:-0.3px; }
+    .logo:before { content:'◯'; color:var(--gold); margin-right:0.55rem; filter:drop-shadow(0 0 12px rgba(245,158,11,0.45)); }
+    nav button { padding:0.55rem 0.9rem; border-radius:12px; }
+    nav button.active { box-shadow:inset 3px 0 0 var(--orange); background:linear-gradient(90deg, rgba(255,107,43,0.18), rgba(255,107,43,0.06)); }
+    .test-ribbon { background:rgba(7,16,26,0.92); border-bottom:1px solid rgba(255,255,255,0.08); }
+    .test-ribbon-inner { max-width:1220px; display:flex; align-items:center; gap:0.6rem; }
+    .test-ribbon strong { background:linear-gradient(135deg, var(--red), var(--orange)); color:white; padding:0.28rem 0.55rem; border-radius:9px; box-shadow:0 0 24px rgba(255,107,43,0.32); }
+    .section-title { font-size:1.55rem; letter-spacing:-0.5px; margin-bottom:1.1rem; }
+    .section-title:after { content:''; height:1px; flex:1; background:linear-gradient(90deg, rgba(255,107,43,0.35), transparent); }
+    .pyramid-step { backdrop-filter:blur(12px); }
+    .team-card { border-radius:16px; background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); box-shadow:0 14px 30px rgba(0,0,0,0.18); }
+    .team-card:hover { transform:translateY(-3px) scale(1.015); box-shadow:0 20px 42px rgba(0,0,0,0.32); }
+    .team-card.my-team { box-shadow:0 0 0 1px rgba(255,107,43,0.25), 0 18px 40px rgba(255,107,43,0.08); }
+    .admin-box, .challenge-card, .modal, .stat-mini, .stats-panel, .stats-score-card { background:linear-gradient(180deg, rgba(18,31,46,0.82), rgba(13,13,13,0.78)); border:1px solid rgba(255,255,255,0.10); box-shadow:0 18px 40px rgba(0,0,0,0.22); }
+    .admin-box-header { background:rgba(255,255,255,0.035); }
+    .stats-hero { display:grid; grid-template-columns:1.35fr 0.65fr; gap:1rem; margin-bottom:1rem; }
+    .stats-score-card { border-radius:22px; padding:1.15rem; overflow:hidden; position:relative; }
+    .stats-score-card:before { content:''; position:absolute; inset:-40% -20% auto auto; width:220px; height:220px; background:radial-gradient(circle, rgba(255,107,43,0.18), transparent 65%); }
+    .stats-hero-title { font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:800; margin-bottom:0.25rem; }
+    .stats-hero-sub { color:var(--text3); font-size:0.82rem; margin-bottom:1rem; }
+    .stats-leader-row { display:grid; grid-template-columns:52px 1fr auto; gap:0.85rem; align-items:center; padding:0.78rem 0; border-bottom:1px solid var(--border); }
+    .stats-leader-row:last-child { border-bottom:none; }
+    .stats-rank { width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:14px; background:rgba(255,255,255,0.06); color:var(--gold); font-family:'Space Grotesk',sans-serif; font-weight:900; }
+    .stats-rank.gold { background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.35); }
+    .stats-metric { text-align:right; }
+    .stats-metric strong { display:block; color:var(--orange); font-size:1.35rem; font-family:'Space Grotesk',sans-serif; }
+    .stats-metric span { color:var(--text3); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.8px; }
+    .stats-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }
+    .stat-mini { border-radius:18px; padding:1rem 1.05rem; position:relative; overflow:hidden; }
+    .stat-mini:after { content:''; position:absolute; right:-20px; top:-22px; width:80px; height:80px; background:rgba(255,255,255,0.035); border-radius:50%; }
+    .stat-mini-icon { font-size:1.55rem; margin-bottom:0.55rem; }
+    .stat-mini-value { font-size:1.75rem; }
+    .stats-tabs { background:rgba(255,255,255,0.035); border:1px solid var(--border); padding:0.45rem; border-radius:999px; width:max-content; max-width:100%; }
+    .stats-tab { border-radius:999px; background:transparent; border:none; }
+    .stats-tab.active { background:linear-gradient(135deg, rgba(255,107,43,0.28), rgba(245,158,11,0.14)); box-shadow:0 8px 24px rgba(255,107,43,0.12); }
+    .stats-table { border-collapse:separate; border-spacing:0 0.35rem; }
+    .stats-table th, .stats-table td { border-bottom:none; }
+    .stats-table tbody tr { background:rgba(255,255,255,0.035); }
+    .stats-table tbody td:first-child { border-radius:12px 0 0 12px; }
+    .stats-table tbody td:last-child { border-radius:0 12px 12px 0; }
+    @media(max-width:900px) { .stats-hero { grid-template-columns:1fr; } .stats-grid { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:700px) { .header-inner { height:58px; } .stats-tabs { width:100%; border-radius:18px; } .stats-tab { flex:1 1 calc(50% - 0.5rem); } .stats-grid { grid-template-columns:1fr 1fr; } .section-title { font-size:1.25rem; } }
+
     /* ADMIN SECTION */
     .admin-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:1.25rem; }
     .admin-box-header { padding:0.85rem 1.25rem; background:var(--bg3); border-bottom:1px solid var(--border); font-size:0.85rem; font-weight:600; color:var(--text2); }
@@ -185,7 +262,562 @@
       .team-card { min-width:120px; padding:0.75rem; }
       .form-row { grid-template-columns:1fr; }
     }
-  </style>
+
+/* ADMIN MODERN COMPACT PANEL */
+.admin-modern { display:flex; flex-direction:column; gap:1rem; }
+.admin-topline { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:0.2rem; }
+.admin-title { font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:800; color:var(--text); letter-spacing:-0.3px; }
+.admin-subtitle { color:var(--text3); font-size:0.86rem; margin-top:0.25rem; line-height:1.45; }
+.admin-status-pill { border-radius:999px; padding:0.45rem 0.75rem; font-size:0.74rem; font-weight:800; letter-spacing:0.8px; white-space:nowrap; }
+.admin-status-pill.active { color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.28); }
+.admin-status-pill.paused { color:var(--gold); background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.32); }
+.admin-tabs { display:flex; gap:0.45rem; overflow-x:auto; padding:0.4rem; background:rgba(255,255,255,0.035); border:1px solid var(--border); border-radius:16px; position:sticky; top:72px; z-index:50; backdrop-filter:blur(18px); }
+.admin-tab { flex:0 0 auto; background:transparent; border:none; color:var(--text2); font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:700; padding:0.55rem 0.8rem; border-radius:12px; cursor:pointer; transition:all 0.18s; }
+.admin-tab:hover { color:var(--text); background:rgba(255,255,255,0.045); }
+.admin-tab.active { color:var(--orange); background:var(--orange-glow); box-shadow:inset 0 0 0 1px rgba(255,107,43,0.25); }
+.admin-metrics-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0.75rem; }
+.admin-metric-card { background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)); border:1px solid var(--border); border-radius:18px; padding:1rem; min-height:120px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 12px 28px rgba(0,0,0,0.18); }
+.admin-metric-card.orange { border-color:rgba(255,107,43,0.28); }
+.admin-metric-card.red { border-color:rgba(239,68,68,0.25); }
+.admin-metric-card.green { border-color:rgba(34,197,94,0.25); }
+.admin-metric-card.blue { border-color:rgba(59,130,246,0.25); }
+.admin-metric-card.gold { border-color:rgba(245,158,11,0.28); }
+.admin-metric-label { color:var(--text3); font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; }
+.admin-metric-value { font-family:'Space Grotesk',sans-serif; font-size:2rem; font-weight:900; color:var(--orange); line-height:1; margin:0.55rem 0; }
+.admin-metric-card.red .admin-metric-value { color:var(--red); }
+.admin-metric-card.green .admin-metric-value { color:var(--green); }
+.admin-metric-card.blue .admin-metric-value { color:var(--blue); }
+.admin-metric-card.gold .admin-metric-value { color:var(--gold); }
+.admin-metric-sub { color:var(--text3); font-size:0.78rem; line-height:1.35; }
+.admin-two-col { display:grid; grid-template-columns:1fr 1fr; gap:0.85rem; }
+.admin-two-col.wide-left { grid-template-columns:1.35fr 0.65fr; }
+.admin-panel-card { background:linear-gradient(180deg, rgba(18,31,46,0.66), rgba(13,13,13,0.66)); border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 14px 34px rgba(0,0,0,0.18); }
+.admin-panel-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:0.9rem 1rem; border-bottom:1px solid var(--border); font-weight:800; color:var(--text); }
+.admin-panel-head button, .admin-link-btn { background:none; border:none; color:var(--text2); font-family:'Inter',sans-serif; font-size:0.78rem; font-weight:700; cursor:pointer; transition:color 0.18s; }
+.admin-panel-head button:hover, .admin-link-btn:hover { color:var(--orange); }
+.admin-link-btn { width:100%; padding:0.85rem 1rem; border-top:1px solid var(--border); text-align:center; }
+.admin-action-row, .admin-change-row, .admin-team-row { display:grid; grid-template-columns:44px 1fr auto; gap:0.75rem; align-items:center; padding:0.85rem 1rem; border-bottom:1px solid var(--border); }
+.admin-action-row:last-child, .admin-change-row:last-child, .admin-team-row:last-child { border-bottom:none; }
+.admin-action-row.important { background:rgba(255,107,43,0.045); }
+.admin-row-icon, .admin-change-icon { width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:rgba(255,107,43,0.1); color:var(--orange); font-size:1rem; font-weight:900; }
+.admin-row-icon.red, .admin-change-row.red .admin-change-icon { background:var(--red-glow); color:var(--red); }
+.admin-row-icon.gold, .admin-change-row.gold .admin-change-icon { background:rgba(245,158,11,0.12); color:var(--gold); }
+.admin-change-row.green .admin-change-icon { background:var(--green-glow); color:var(--green); }
+.admin-row-main { min-width:0; }
+.admin-row-title { color:var(--text); font-weight:800; font-size:0.9rem; line-height:1.35; }
+.admin-row-title span { color:var(--text3); font-weight:600; font-size:0.78rem; margin:0 0.15rem; }
+.admin-row-meta { color:var(--text3); font-size:0.78rem; line-height:1.45; margin-top:0.15rem; }
+.admin-row-meta strong { color:var(--text2); }
+.admin-row-actions { display:flex; gap:0.45rem; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+.admin-change-time { color:var(--text3); font-size:0.72rem; text-align:right; line-height:1.4; min-width:70px; }
+.admin-empty-small { color:var(--text3); font-size:0.86rem; padding:1.2rem; text-align:center; }
+.admin-note { color:var(--text3); font-size:0.78rem; line-height:1.45; padding:0.8rem 1rem; border-top:1px solid var(--border); background:rgba(255,255,255,0.025); }
+.admin-soft-box { padding:1rem; color:var(--text2); font-size:0.86rem; line-height:1.6; }
+.admin-soft-box button { margin-top:0.75rem; }
+.admin-quick-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0.75rem; padding:1rem; }
+.admin-quick-card { text-align:left; background:rgba(255,255,255,0.035); border:1px solid var(--border); border-radius:14px; padding:0.9rem; color:var(--text); cursor:pointer; transition:all 0.18s; }
+.admin-quick-card:hover { transform:translateY(-2px); border-color:var(--border2); background:rgba(255,255,255,0.055); }
+.admin-quick-card strong { display:block; font-size:0.9rem; margin-bottom:0.25rem; }
+.admin-quick-card span { color:var(--text3); font-size:0.76rem; line-height:1.35; }
+.admin-small-input { width:74px; padding:0.38rem 0.5rem; background:var(--bg2); border:1px solid var(--border2); border-radius:7px; color:var(--text); font-size:0.78rem; }
+.admin-small-btn, .admin-danger-small, .admin-success-small { background:var(--bg3); border:1px solid var(--border2); color:var(--text2); padding:0.38rem 0.65rem; border-radius:7px; cursor:pointer; font-size:0.76rem; font-weight:700; }
+.admin-small-btn:hover { color:var(--orange); border-color:rgba(255,107,43,0.35); }
+.admin-danger-small { color:var(--red); background:var(--red-glow); border-color:rgba(239,68,68,0.25); }
+.admin-success-small { color:var(--green); background:var(--green-glow); border-color:rgba(34,197,94,0.25); }
+.admin-trash { background:none; border:none; color:var(--text3); cursor:pointer; font-size:1rem; }
+.admin-trash:hover { color:var(--red); }
+.admin-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+.admin-panel-card .form-group { padding:0 1rem; }
+.admin-panel-card .form-group:first-child { padding-top:1rem; }
+.admin-panel-card .btn-primary { width:calc(100% - 2rem); margin:0.2rem 1rem 1rem; }
+.admin-team-list { max-height:560px; overflow-y:auto; }
+.admin-team-row { grid-template-columns:1fr auto; }
+@media(max-width:900px) {
+  .admin-metrics-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .admin-two-col, .admin-two-col.wide-left { grid-template-columns:1fr; }
+  .admin-quick-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .admin-action-row, .admin-change-row { grid-template-columns:36px 1fr; }
+  .admin-row-actions, .admin-change-time { grid-column:2; justify-content:flex-start; text-align:left; }
+}
+@media(max-width:700px) {
+  .admin-tabs { top:58px; border-radius:14px; }
+  .admin-topline { flex-direction:column; align-items:flex-start; }
+  .admin-metrics-grid, .admin-quick-grid, .admin-form-grid { grid-template-columns:1fr; }
+  .admin-metric-card { min-height:96px; }
+  .admin-row-actions { width:100%; }
+  .admin-row-actions button { flex:1 1 auto; }
+  .admin-team-row { grid-template-columns:1fr; }
+}
+
+/* PHASE 1 CLEANUP — mobile spacing + reusable pyramid card parts */
+.team-card-title {
+  font-size:0.68rem;
+  font-weight:800;
+  color:var(--orange);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  margin-bottom:0.25rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  width:100%;
+}
+.team-members {
+  width:100%;
+  margin:0.18rem 0;
+}
+.team-member-name {
+  padding:1px 0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  width:100%;
+  line-height:1.25;
+}
+.team-card-badges {
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:0.28rem;
+  align-items:center;
+  margin-top:0.32rem;
+}
+.team-badge {
+  max-width:100%;
+  border-radius:999px;
+  padding:0.18rem 0.46rem;
+  font-size:0.66rem;
+  font-weight:800;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.team-badge-me {
+  color:var(--orange);
+  background:var(--orange-glow);
+  border:1px solid rgba(255,107,43,0.26);
+}
+.team-badge-pending {
+  color:var(--gold);
+  background:rgba(245,158,11,0.11);
+  border:1px solid rgba(245,158,11,0.24);
+}
+.team-badge-danger {
+  color:var(--red);
+  background:var(--red-glow);
+  border:1px solid rgba(239,68,68,0.22);
+}
+.team-badge-muted {
+  color:var(--text3);
+  background:rgba(255,255,255,0.035);
+  border:1px solid var(--border);
+}
+.team-crown-main {
+  font-size:1.4rem;
+  margin-bottom:4px;
+}
+.team-crown-small {
+  position:absolute;
+  top:-10px;
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--bg2);
+  padding:0 4px;
+  font-size:0.75rem;
+  line-height:1;
+}
+.penalty-card {
+  border-color:var(--red) !important;
+}
+
+@media(max-width:700px) {
+  main { padding:1rem 0.85rem; }
+  .test-ribbon-inner { padding:0.5rem 0.85rem; line-height:1.45; }
+  .pyramid-wrap { gap:0.85rem; }
+  .pyramid-step { padding:0.85rem 0.72rem !important; border-radius:18px !important; }
+  .step-teams { gap:0.48rem; justify-content:center; }
+  .team-card {
+    flex:1 1 128px !important;
+    max-width:160px !important;
+    min-width:118px !important;
+    min-height:108px;
+    padding:0.72rem 0.55rem;
+  }
+  .team-card-title { font-size:0.66rem; }
+  .team-member-name { font-size:0.68rem !important; line-height:1.3; }
+  .team-badge { font-size:0.62rem; max-width:112px; }
+  .challenge-card { padding:1rem; border-radius:16px; }
+  .challenge-header { align-items:flex-start; gap:0.65rem; }
+  .challenge-actions { width:100%; }
+  .challenge-actions button { flex:1 1 auto; min-height:40px; }
+  .modal { padding:1.25rem; border-radius:18px; }
+  .modal-tabs { overflow-x:auto; gap:0.35rem; }
+  .modal-tab { flex:0 0 auto; padding:0.48rem 0.7rem; }
+  .stats-hero { gap:0.75rem; }
+  .stats-score-card { padding:0.95rem; border-radius:18px; }
+  .stats-leader-row { grid-template-columns:42px 1fr auto; gap:0.65rem; padding:0.72rem 0; }
+  .stats-rank { width:34px; height:34px; border-radius:11px; }
+  .stats-metric strong { font-size:1.05rem; }
+  .stats-table th, .stats-table td { padding:0.58rem 0.42rem; }
+  .admin-panel-card { border-radius:16px; }
+  .admin-panel-head { padding:0.8rem 0.85rem; }
+  .admin-action-row, .admin-change-row, .admin-team-row { padding:0.82rem 0.85rem; gap:0.62rem; }
+  .admin-row-title { font-size:0.86rem; }
+  .admin-row-meta { font-size:0.74rem; }
+  .admin-small-btn, .admin-danger-small, .admin-success-small, .btn-accept, .btn-decline { min-height:38px; }
+}
+
+/* PHASE 2 — VISUAL POLISH: premium team/profile cards + subtle motion */
+@keyframes cardFloatIn {
+  from { opacity:0; transform:translateY(10px) scale(0.985); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes softPulseGlow {
+  0%, 100% { opacity:0.55; transform:scale(1); }
+  50% { opacity:0.9; transform:scale(1.04); }
+}
+.pyramid-step {
+  animation:cardFloatIn 0.28s ease both;
+}
+.team-card-v2 {
+  min-height:158px;
+  padding:0.72rem 0.62rem 0.66rem;
+  justify-content:flex-start;
+  gap:0.28rem;
+  isolation:isolate;
+  border-radius:20px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.10), transparent 58%);
+  box-shadow:0 18px 34px rgba(0,0,0,0.23);
+  animation:cardFloatIn 0.24s ease both;
+}
+.team-card-v2:before {
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(135deg, rgba(255,255,255,0.12), transparent 32%, rgba(255,255,255,0.04));
+  opacity:0.52;
+  pointer-events:none;
+  z-index:-1;
+}
+.team-card-v2:after {
+  content:'';
+  position:absolute;
+  left:0;
+  top:18px;
+  bottom:18px;
+  width:3px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.12);
+}
+.team-card-v2 .team-card-glow {
+  position:absolute;
+  inset:-40% -25% auto auto;
+  width:120px;
+  height:120px;
+  border-radius:999px;
+  background:radial-gradient(circle, rgba(255,107,43,0.18), transparent 64%);
+  opacity:0.55;
+  pointer-events:none;
+  z-index:-1;
+}
+.team-card-v2.tone-champion .team-card-glow { background:radial-gradient(circle, rgba(245,158,11,0.28), transparent 66%); }
+.team-card-v2.tone-challenge .team-card-glow { background:radial-gradient(circle, rgba(59,130,246,0.26), transparent 66%); animation:softPulseGlow 2.2s ease-in-out infinite; }
+.team-card-v2.tone-mine .team-card-glow { background:radial-gradient(circle, rgba(255,107,43,0.30), transparent 66%); }
+.team-card-v2.tone-busy .team-card-glow { background:radial-gradient(circle, rgba(245,158,11,0.22), transparent 66%); }
+.team-card-v2.tone-danger .team-card-glow { background:radial-gradient(circle, rgba(239,68,68,0.28), transparent 66%); }
+.team-card-v2.tone-champion:after { background:var(--gold); box-shadow:0 0 18px rgba(245,158,11,0.45); }
+.team-card-v2.tone-challenge:after { background:var(--blue); box-shadow:0 0 18px rgba(59,130,246,0.45); }
+.team-card-v2.tone-mine:after { background:var(--orange); box-shadow:0 0 18px rgba(255,107,43,0.45); }
+.team-card-v2.tone-busy:after { background:var(--gold); }
+.team-card-v2.tone-danger:after { background:var(--red); box-shadow:0 0 18px rgba(239,68,68,0.38); }
+.team-card-v2:hover {
+  transform:translateY(-5px) scale(1.018);
+  border-color:rgba(255,255,255,0.20);
+  box-shadow:0 24px 48px rgba(0,0,0,0.34);
+}
+.team-card-topline {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  width:100%;
+  gap:0.35rem;
+  margin-bottom:0.16rem;
+}
+.team-rank-chip, .team-step-chip {
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.045);
+  color:var(--text3);
+  border-radius:999px;
+  padding:0.16rem 0.42rem;
+  font-size:0.58rem;
+  font-weight:900;
+  letter-spacing:0.4px;
+  white-space:nowrap;
+}
+.team-step-chip {
+  max-width:86px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.team-avatar-mini {
+  width:42px;
+  height:42px;
+  border-radius:15px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0.1rem auto 0.18rem;
+  font-family:'Space Grotesk',sans-serif;
+  font-size:0.92rem;
+  font-weight:900;
+  color:white;
+  background:linear-gradient(135deg, rgba(255,107,43,0.95), rgba(245,158,11,0.72));
+  box-shadow:0 12px 24px rgba(255,107,43,0.16), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.team-avatar-mini.danger { background:linear-gradient(135deg, var(--red), #991b1b); }
+.team-card-v2 .team-card-title {
+  font-size:0.72rem;
+  max-width:100%;
+  min-height:0.9rem;
+  margin-bottom:0.03rem;
+}
+.team-members-v2 {
+  width:100%;
+  min-height:2.05rem;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:1px;
+}
+.team-card-v2 .team-member-name {
+  letter-spacing:0.1px;
+  opacity:0.96;
+}
+.team-mini-stats {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:0.22rem;
+  width:100%;
+  margin:0.24rem 0 0.08rem;
+}
+.team-mini-stats span {
+  min-width:0;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,0.18);
+  color:var(--text2);
+  border-radius:8px;
+  padding:0.18rem 0.16rem;
+  font-size:0.58rem;
+  font-weight:900;
+  line-height:1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.team-card-v2 .team-card-badges {
+  margin-top:auto;
+  gap:0.24rem;
+}
+.team-card-v2 .challenge-btn {
+  order:20;
+  margin-top:0.28rem;
+  min-height:34px;
+  border-radius:10px;
+  box-shadow:0 8px 20px rgba(59,130,246,0.10);
+}
+.team-card-v2 .team-badge {
+  max-width:100%;
+  border-radius:10px;
+  padding:0.24rem 0.4rem;
+}
+.team-crown-main {
+  position:absolute;
+  top:-12px;
+  left:50%;
+  transform:translateX(-50%);
+  filter:drop-shadow(0 0 12px rgba(245,158,11,0.42));
+}
+
+/* PHASE 2 — team profile modal */
+.team-profile-hero {
+  display:flex;
+  gap:1rem;
+  align-items:center;
+  margin-bottom:1rem;
+  padding:1rem;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255,107,43,0.16), transparent 52%),
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.024));
+  box-shadow:0 16px 34px rgba(0,0,0,0.18);
+}
+.team-profile-hero.danger {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(239,68,68,0.18), transparent 52%),
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.024));
+}
+.team-profile-avatar {
+  width:66px;
+  height:66px;
+  border-radius:21px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  font-family:'Space Grotesk',sans-serif;
+  font-size:1.35rem;
+  font-weight:900;
+  color:white;
+  background:linear-gradient(135deg,var(--orange),var(--gold));
+  box-shadow:0 16px 32px rgba(255,107,43,0.16), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.team-profile-kicker {
+  color:var(--orange);
+  font-size:0.72rem;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:0.85px;
+  margin-bottom:0.18rem;
+}
+.team-profile-title {
+  font-family:'Space Grotesk',sans-serif;
+  font-size:1.35rem;
+  font-weight:900;
+  color:var(--text);
+  line-height:1.1;
+}
+.team-profile-sub {
+  color:var(--text3);
+  font-size:0.82rem;
+  margin-top:0.28rem;
+}
+.profile-stats-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:0.65rem;
+  margin-bottom:1rem;
+}
+.profile-stat-card {
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.035);
+  border-radius:16px;
+  padding:0.85rem;
+  text-align:center;
+}
+.profile-stat-card strong {
+  display:block;
+  font-family:'Space Grotesk',sans-serif;
+  font-size:1.35rem;
+  line-height:1;
+  margin-bottom:0.25rem;
+}
+.profile-stat-card span {
+  color:var(--text3);
+  font-size:0.68rem;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:0.65px;
+}
+.profile-stat-card.green strong { color:var(--green); }
+.profile-stat-card.red strong { color:var(--red); }
+.profile-stat-card.orange strong { color:var(--orange); }
+.profile-tabs {
+  background:rgba(255,255,255,0.035);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:0.35rem;
+}
+.profile-tabs .modal-tab {
+  flex:1 1 0;
+}
+.profile-card-list {
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:0.45rem;
+}
+.profile-member-row, .profile-match-row {
+  display:grid;
+  grid-template-columns:38px 1fr auto;
+  gap:0.75rem;
+  align-items:center;
+  padding:0.72rem;
+  border-bottom:1px solid var(--border);
+}
+.profile-member-row:last-child, .profile-match-row:last-child { border-bottom:none; }
+.profile-member-avatar {
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  background:rgba(255,107,43,0.13);
+  color:var(--orange);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.72rem;
+  font-weight:900;
+}
+.profile-member-main, .profile-match-row div:first-child {
+  min-width:0;
+}
+.profile-member-main strong, .profile-match-row strong {
+  display:block;
+  color:var(--text);
+  font-size:0.88rem;
+  line-height:1.25;
+}
+.profile-member-main span, .profile-match-row span, .profile-match-score span {
+  display:block;
+  color:var(--text3);
+  font-size:0.72rem;
+  margin-top:0.12rem;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.profile-match-row {
+  grid-template-columns:1fr auto;
+}
+.profile-match-row.win { background:linear-gradient(90deg, var(--green-glow), transparent 42%); }
+.profile-match-row.loss { background:linear-gradient(90deg, var(--red-glow), transparent 42%); }
+.profile-match-score {
+  text-align:right;
+}
+.profile-match-score strong {
+  color:var(--orange);
+}
+
+/* PHASE 2 — broader mobile polish */
+@media(max-width:700px) {
+  .team-card-v2 {
+    min-height:166px;
+    flex:1 1 144px !important;
+    max-width:175px !important;
+    min-width:136px !important;
+    padding:0.68rem 0.58rem 0.62rem;
+  }
+  .team-avatar-mini { width:40px; height:40px; border-radius:14px; }
+  .team-rank-chip, .team-step-chip { font-size:0.55rem; padding:0.15rem 0.34rem; }
+  .team-mini-stats span { font-size:0.55rem; }
+  .team-card-v2 .team-badge { font-size:0.58rem; }
+  .team-profile-hero { align-items:flex-start; padding:0.9rem; border-radius:18px; }
+  .team-profile-avatar { width:56px; height:56px; border-radius:18px; font-size:1.12rem; }
+  .team-profile-title { font-size:1.08rem; }
+  .profile-stats-grid { gap:0.5rem; }
+  .profile-stat-card { padding:0.72rem 0.45rem; border-radius:14px; }
+  .profile-stat-card strong { font-size:1.12rem; }
+  .profile-member-row { grid-template-columns:34px 1fr; gap:0.6rem; padding:0.68rem; }
+  .profile-member-row .captain-tag { grid-column:2; width:max-content; }
+  .profile-match-row { gap:0.55rem; padding:0.68rem; }
+  .profile-match-score strong { font-size:0.82rem; }
+}
+
+</style>
 </head>
 <body>
 
@@ -213,6 +845,7 @@
     <nav>
       <button class="active" id="nav-piramida" onclick="showSection('piramida',this)">🔺 Piramida</button>
       <button id="nav-izazovi" onclick="showSection('izazovi',this)">⚔️ Izazovi <span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
+      <button id="nav-statistika" onclick="showSection('statistika',this)">📊 Statistika</button>
       <button id="nav-pravilnik" onclick="showSection('pravilnik',this)">📋 Pravilnik</button>
       <button class="admin-btn" id="admin-btn" style="display:none" onclick="showSection('admin',this)">⚙ Admin</button>
       <button onclick="location.href='https://golencio.github.io/tkbuje-portal/'">🏠 Portal</button>
@@ -227,6 +860,7 @@
   </div>
 </header>
 
+
 <div class="mobile-menu" id="mobile-menu">
   <div class="mobile-user" id="mob-user" style="display:none">
     <div class="user-avatar" id="mob-initials">?</div>
@@ -234,6 +868,7 @@
   </div>
   <button onclick="mobileNav('piramida')" id="mob-piramida" class="active">🔺 Piramida</button>
   <button onclick="mobileNav('izazovi')" id="mob-izazovi">⚔️ Izazovi</button>
+  <button onclick="mobileNav('statistika')" id="mob-statistika">📊 Statistika</button>
   <button onclick="mobileNav('pravilnik')" id="mob-pravilnik">📋 Pravilnik</button>
   <button onclick="mobileNav('admin')" id="mob-admin" style="display:none">⚙ Admin</button>
   <button onclick="location.href='https://golencio.github.io/tkbuje-portal/'">🏠 Portal</button>
@@ -253,6 +888,16 @@
   <section id="sec-izazovi" class="section">
     <div class="section-title">⚔️ Izazovi</div>
     <div id="challenges-container">
+      <div class="loading"><div class="spinner"></div>Učitavam...</div>
+    </div>
+  </section>
+
+
+
+  <!-- STATISTIKA -->
+  <section id="sec-statistika" class="section">
+    <div class="section-title">📊 Statistika</div>
+    <div id="stats-container">
       <div class="loading"><div class="spinner"></div>Učitavam...</div>
     </div>
   </section>
@@ -473,6 +1118,15 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
 let isLoadingAll = false;
+let pendingReloadReason = null;
+let derivedCache = {
+  teamById: new Map(),
+  playerByEmail: new Map(),
+  membersByTeam: new Map(),
+  activeChallengeTeamIds: new Set(),
+  cooldownByTeamId: new Map(),
+  steps: {}
+};
 let tabHidden = false;
 let currentUser = null, currentPlayer = null, myTeam = null;
 let activeResultChallenge = null;
@@ -501,7 +1155,7 @@ async function sendMagicLink() {
 
   const { error } = await sb.auth.signInWithOtp({
     email: email,
-    options: { emailRedirectTo: 'https://golencio.github.io/tkbuje-piramida' }
+    options: { emailRedirectTo: APP_URL }
   });
 
   btn.disabled = false;
@@ -529,7 +1183,9 @@ async function handleAuth() {
   const { data:{ session }} = await sb.auth.getSession();
   if(!session) { document.getElementById('login-screen').classList.add('show'); return false; }
   currentUser = session.user;
+
   const { data: player } = await sb.from('players').select('*').eq('email', currentUser.email).single();
+
   if(!player) {
     document.getElementById('login-screen').classList.add('show');
     document.getElementById('login-screen').querySelector('.login-box').innerHTML = `
@@ -542,6 +1198,7 @@ async function handleAuth() {
       </div>`;
     return false;
   }
+
   currentPlayer = player;
   const initials = player.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('user-initials').textContent = initials;
@@ -565,6 +1222,7 @@ function showSection(id, btn) {
   document.getElementById('sec-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   if(id==='admin') renderAdmin();
+  if(id==='statistika') renderStatistics();
 }
 
 function toggleMenu() {
@@ -738,6 +1396,7 @@ async function loadAll(options = {}) {
     allChallenges = challenges || [];
     allPlayers = players || [];
     allMembers = members || [];
+    buildDerivedCaches();
     tournamentPause = pauseState || { is_paused: false, paused_at: null, pause_reason: '' };
     renderPauseBanner();
 
@@ -753,6 +1412,7 @@ async function loadAll(options = {}) {
 
     renderPyramid();
     await renderChallenges();
+    renderStatistics();
 
     if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
     return true;
@@ -762,6 +1422,49 @@ async function loadAll(options = {}) {
   } finally {
     isLoadingAll = false;
   }
+}
+
+
+function buildDerivedCaches() {
+  const teamById = new Map(allTeams.map(t => [t.id, t]));
+  const playerByEmail = new Map(allPlayers.map(p => [p.email, p]));
+  const membersByTeam = new Map();
+  const steps = {};
+  const activeChallengeTeamIds = new Set();
+  const cooldownByTeamId = new Map();
+  const threeDaysAgo = new Date(Date.now() - 3 * DAY_MS);
+
+  allMembers.forEach(member => {
+    if(!membersByTeam.has(member.team_id)) membersByTeam.set(member.team_id, []);
+    membersByTeam.get(member.team_id).push(member);
+  });
+
+  allTeams.forEach(team => {
+    const step = team.penalty ? 0 : team.step;
+    if(!steps[step]) steps[step] = [];
+    steps[step].push(team);
+  });
+
+  Object.values(steps).forEach(list => {
+    list.sort((a, b) => (Number(a.position || 0) - Number(b.position || 0)) || String(a.name || '').localeCompare(String(b.name || ''), 'hr'));
+  });
+
+  allChallenges.forEach(challenge => {
+    if(['pending','accepted'].includes(challenge.status)) {
+      activeChallengeTeamIds.add(challenge.challenger_id);
+      activeChallengeTeamIds.add(challenge.challenged_id);
+    }
+
+    if(challenge.status === 'declined' && new Date(challenge.updated_at) > threeDaysAgo) {
+      const cooldownEnd = new Date(new Date(challenge.updated_at).getTime() + 3 * DAY_MS);
+      const existing = cooldownByTeamId.get(challenge.challenged_id);
+      if(!existing || cooldownEnd > existing.cooldownEnd) {
+        cooldownByTeamId.set(challenge.challenged_id, { challenge, cooldownEnd });
+      }
+    }
+  });
+
+  derivedCache = { teamById, playerByEmail, membersByTeam, activeChallengeTeamIds, cooldownByTeamId, steps };
 }
 
 
@@ -788,212 +1491,240 @@ function updateNotifBadge() {
 }
 
 // ---- RENDER PYRAMID ----
+function getStepStyles() {
+  return [
+    { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.5)',  color: '#f59e0b' },
+    { bg: 'rgba(255,107,43,0.06)',  border: 'rgba(255,107,43,0.4)',  color: '#ff6b2b' },
+    { bg: 'rgba(34,197,94,0.05)',   border: 'rgba(34,197,94,0.35)',  color: '#22c55e' },
+    { bg: 'rgba(59,130,246,0.04)',  border: 'rgba(59,130,246,0.35)', color: '#3b82f6' },
+    { bg: 'rgba(148,163,184,0.03)', border: 'rgba(148,163,184,0.3)', color: '#94a3b8' }
+  ];
+}
+
+function getPyramidContext() {
+  const steps = derivedCache.steps || {};
+  const stepKeys = Object.keys(steps).map(Number);
+  const maxStep = stepKeys.length ? Math.max(...stepKeys) : 1;
+  const myStepEffective = myTeam?.penalty ? 0 : myTeam?.step;
+
+  return {
+    steps,
+    maxStep,
+    stepStyles: getStepStyles(),
+    busyTeams: derivedCache.activeChallengeTeamIds || new Set(),
+    cooldownByTeamId: derivedCache.cooldownByTeamId || new Map(),
+    myStepEffective
+  };
+}
+
+function getTeamMembersHTML(team, options = {}) {
+  const members = getCachedTeamMembers(team.id);
+  const isTopStep = Number(team.step) === 1 && !team.penalty;
+
+  return members.map(m => {
+    const p = derivedCache.playerByEmail.get(m.player_email) || allPlayers.find(x => x.email === m.player_email);
+    const isCap = m.player_email === team.captain_email;
+    const nameDisplay = options.uppercase === false ? (p?.name || m.player_email) : (p?.name || m.player_email).toUpperCase();
+    const capColor = isTopStep ? 'var(--gold)' : 'var(--text)';
+    const color = isCap ? capColor : 'var(--text2)';
+    const weight = isCap ? '700' : '500';
+    const crown = options.showCaptainIcon && isCap ? '👑 ' : '';
+    const size = options.fontSize || '0.65rem';
+    return '<div class="team-member-name" style="font-size:' + size + ';font-weight:' + weight + ';color:' + color + ';">' + crown + nameDisplay + '</div>';
+  }).join('');
+}
+
+function renderChallengeButton(team) {
+  return '<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge(\'' + team.id + '\')">⚔️ Izazovi</button>';
+}
+
+
+// ---- PHASE 2 UI HELPERS ----
+function getTeamDisplayTitle(team) {
+  return team?.name || team?.nickname || 'Tim';
+}
+
+function getTeamInitials(team) {
+  const members = getCachedTeamMembers(team.id)
+    .map(m => derivedCache.playerByEmail.get(m.player_email)?.name || m.player_email)
+    .filter(Boolean);
+  const source = members.length ? members.join(' ') : getTeamDisplayTitle(team);
+  return source
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'TK';
+}
+
+function getTeamRecord(teamId) {
+  const matches = allChallenges.filter(c =>
+    ['completed','surrendered'].includes(c.status) &&
+    (c.challenger_id === teamId || c.challenged_id === teamId)
+  );
+  const wins = matches.filter(c => c.result_winner_id === teamId).length;
+  const losses = matches.length - wins;
+  const winRate = matches.length ? Math.round((wins / matches.length) * 100) : 0;
+  return { matches: matches.length, wins, losses, winRate };
+}
+
+function getTeamCardTone(team, flags = {}) {
+  if(team?.penalty) return 'danger';
+  if(flags.isMyTeam) return 'mine';
+  if(flags.canChallenge) return 'challenge';
+  if(flags.hasPendingChallenge) return 'busy';
+  if(Number(team?.step) === 1) return 'champion';
+  return 'default';
+}
+
+function renderTeamMiniStats(team, flags = {}) {
+  const record = getTeamRecord(team.id);
+  const stepLabel = team.penalty ? 'Kazna' : 'S' + team.step;
+  const matchLabel = record.matches ? record.wins + '-' + record.losses : '0-0';
+  return '<div class="team-mini-stats">'
+    + '<span>' + stepLabel + '</span>'
+    + '<span>' + matchLabel + '</span>'
+    + (flags.hasPendingChallenge ? '<span>Live</span>' : '<span>' + record.winRate + '%</span>')
+    + '</div>';
+}
+
+function renderTeamStatusBadges(team, context, flags) {
+  let html = '';
+
+  if(flags.canChallenge) html += renderChallengeButton(team);
+  if(flags.isMyTeam) html += '<div class="team-badge team-badge-me">MOJ TIM</div>';
+  if(flags.hasPendingChallenge) html += '<div class="team-badge team-badge-pending">⏳ Aktivan izazov</div>';
+
+  const cooldown = context.cooldownByTeamId.get(team.id);
+  if(cooldown && !flags.isMyTeam) {
+    const hoursLeft = Math.max(0, Math.ceil((cooldown.cooldownEnd - new Date()) / HOUR_MS));
+    html += '<div class="team-badge team-badge-danger">🛡 Zaštita još ' + hoursLeft + 'h</div>';
+  }
+
+  if(!team.penalty && team.step > 1) {
+    const lastMatch = team.last_match_at ? new Date(team.last_match_at) : new Date(team.created_at);
+    const timerNow = getPauseTimerNow();
+    const daysInactive = Math.floor((timerNow - lastMatch) / DAY_MS);
+    const daysLeft = 15 - daysInactive;
+    const pausePrefix = tournamentPause?.is_paused ? '⏸ ' : '';
+
+    if(daysLeft <= 0) html += '<div class="team-badge team-badge-danger">' + pausePrefix + '⚠️ Kazna!</div>';
+    else if(daysLeft <= 5) html += '<div class="team-badge team-badge-danger">' + pausePrefix + '⚠️ Kazna za ' + daysLeft + ' dan(a)</div>';
+    else html += '<div class="team-badge team-badge-muted">' + pausePrefix + '📅 ' + daysLeft + ' dana do kazne</div>';
+  }
+
+  return html;
+}
+
+function renderTeamCard(team, context) {
+  const isMyTeam = myTeam?.id === team.id;
+  const inCooldown = context.cooldownByTeamId.has(team.id);
+  const tStepEffective = team.penalty ? 0 : team.step;
+  const isAboveEffective = myTeam && (
+    (!myTeam.penalty && tStepEffective === context.myStepEffective - 1) ||
+    (myTeam.penalty && tStepEffective === context.maxStep)
+  );
+  const hasPendingChallenge = context.busyTeams.has(team.id);
+  const canChallenge = !isMyTeam && isAboveEffective && myTeam &&
+    !context.busyTeams.has(myTeam.id) && !hasPendingChallenge && !inCooldown &&
+    myTeam.captain_email === currentPlayer?.email;
+
+  const flags = { isMyTeam, hasPendingChallenge, canChallenge };
+  const tone = getTeamCardTone(team, flags);
+  let cardClass = 'team-card team-card-v2 tone-' + tone;
+  if(isMyTeam) cardClass += ' my-team';
+  if(canChallenge) cardClass += ' can-challenge';
+  if(hasPendingChallenge && !isMyTeam) cardClass += ' has-challenge';
+
+  const crownHTML = team.step === 1
+    ? '<div class="team-crown team-crown-main">👑</div>'
+    : team.step === 2
+      ? '<div class="team-crown team-crown-small">👑</div>'
+      : '';
+  const badgesHTML = renderTeamStatusBadges(team, context, flags);
+
+  return '<div class="' + cardClass + '" onclick="openTeam(\'' + team.id + '\')">'
+    + '<div class="team-card-glow"></div>'
+    + crownHTML
+    + '<div class="team-card-topline">'
+      + '<div class="team-rank-chip">#' + (team.position || '-') + '</div>'
+      + '<div class="team-step-chip">' + (team.penalty ? 'Kazna' : 'Stepenica ' + team.step) + '</div>'
+    + '</div>'
+    + '<div class="team-avatar-mini">' + getTeamInitials(team) + '</div>'
+    + '<div class="team-card-title">' + getTeamDisplayTitle(team) + '</div>'
+    + '<div class="team-members team-members-v2">' + getTeamMembersHTML(team) + '</div>'
+    + renderTeamMiniStats(team, flags)
+    + '<div class="team-card-badges">' + badgesHTML + '</div>'
+    + '</div>';
+}
+
+function renderPenaltyCard(team) {
+  const isMyTeam = myTeam?.id === team.id;
+  let cardClass = 'team-card team-card-v2 tone-danger has-challenge penalty-card';
+  if(isMyTeam) cardClass += ' my-team';
+  return '<div class="' + cardClass + '" onclick="openTeam(\'' + team.id + '\')">'
+    + '<div class="team-card-glow"></div>'
+    + '<div class="team-card-topline"><div class="team-rank-chip">⚠</div><div class="team-step-chip">Kaznena zona</div></div>'
+    + '<div class="team-avatar-mini danger">' + getTeamInitials(team) + '</div>'
+    + '<div class="team-card-title">' + getTeamDisplayTitle(team) + '</div>'
+    + '<div class="team-members team-members-v2">' + getTeamMembersHTML(team, { uppercase:false, showCaptainIcon:true, fontSize:'0.72rem' }) + '</div>'
+    + renderTeamMiniStats(team, { hasPendingChallenge:false })
+    + '<div class="team-card-badges"><div class="team-badge team-badge-danger">⚠️ Kaznena zona</div>'
+    + (isMyTeam ? '<div class="team-badge team-badge-me">MOJ TIM</div>' : '')
+    + '</div></div>';
+}
+
+function renderPyramidStep(stepNumber, teams, context) {
+  const style = context.stepStyles[stepNumber - 1] || context.stepStyles[context.stepStyles.length - 1];
+  const stepLabelText = stepNumber === 1 ? '🏆 Stepenica 1' : 'Stepenica ' + stepNumber;
+  return '<div class="pyramid-step" style="background:' + style.bg + ';border:3px solid ' + style.border + ';box-shadow:0 0 18px ' + style.border + ';border-radius:24px;padding:1rem 1.25rem;">'
+    + '<div class="step-label" style="color:' + style.color + ';">' + stepLabelText + '</div>'
+    + '<div class="step-teams">' + teams.map(t => renderTeamCard(t, context)).join('') + '</div>'
+    + '</div>';
+}
+
+function renderPenaltyStep(teams) {
+  if(!teams?.length) return '';
+  return '<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:3px solid rgba(239,68,68,0.5);">'
+    + '<div class="step-label" style="color:var(--red);">⚠️ Kaznena zona</div>'
+    + '<div class="step-teams">' + teams.map(renderPenaltyCard).join('') + '</div>'
+    + '</div>';
+}
+
 function renderPyramid() {
   const container = document.getElementById('pyramid-container');
+  if(!container) return;
   if(!allTeams.length) { container.innerHTML='<div class="empty">Nema timova u piramidi.</div>'; return; }
 
-  // Grupiranje po stepenicama
-  const steps = {};
-  allTeams.forEach(t => {
-    const s = t.penalty ? 0 : t.step;
-    if(!steps[s]) steps[s] = [];
-    steps[s].push(t);
-  });
-
-  // Timovi koji imaju aktivan izazov
-  const busyTeams = new Set();
-  allChallenges.filter(c=>['pending','accepted'].includes(c.status)).forEach(c => {
-    busyTeams.add(c.challenger_id);
-    busyTeams.add(c.challenged_id);
-  });
-
-  // Timovi koji su odbili izazov u zadnja 3 dana (cooldown)
-  const cooldownTeams = new Set();
-  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
-  allChallenges.filter(c =>
-    c.status === 'declined' &&
-    new Date(c.updated_at) > threeDaysAgo
-  ).forEach(c => {
-    cooldownTeams.add(c.challenged_id); // Tim koji je odbio ne može biti izazvan
-  });
-
-  // Moja stepenica
-  const myStep = myTeam?.step;
-  const aboveStep = myStep ? myStep - 1 : null;
-
-  const maxStep = Math.max(...Object.keys(steps).map(Number));
-  const haspenalty = steps[0] && steps[0].length > 0;
-
+  const context = getPyramidContext();
   let html = '';
-  // Boje okvira po stepenicama: zlatna -> narančasta -> zelena -> plava -> siva
-  const stepStyles = [
-    { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.5)',  color: '#f59e0b' }, // 1 - zlatna
-    { bg: 'rgba(255,107,43,0.06)',  border: 'rgba(255,107,43,0.4)',  color: '#ff6b2b' }, // 2 - narančasta
-    { bg: 'rgba(34,197,94,0.05)',   border: 'rgba(34,197,94,0.35)',  color: '#22c55e' }, // 3 - zelena
-    { bg: 'rgba(59,130,246,0.04)',  border: 'rgba(59,130,246,0.35)', color: '#3b82f6' }, // 4 - plava
-    { bg: 'rgba(148,163,184,0.03)', border: 'rgba(148,163,184,0.3)', color: '#94a3b8' }, // 5+ - siva
-  ];
-  for(let s=1; s<=maxStep; s++) {
-    const teams = steps[s] || [];
-    const isAbove = s === aboveStep;
-    const style = stepStyles[s-1] || stepStyles[stepStyles.length-1];
-    const stepLabelText = s === 1 ? '🏆 Stepenica 1' : 'Stepenica ' + s;
-    html += `<div class="pyramid-step" style="background:${style.bg};border:3px solid ${style.border};box-shadow:0 0 18px ${style.border};border-radius:24px;padding:1rem 1.25rem;">
-      <div class="step-label" style="color:${style.color};">${stepLabelText}</div>
-      <div class="step-teams">
-        ${teams.map(t => {
-          const isMyTeam = myTeam?.id === t.id;
-          const inCooldown = cooldownTeams.has(t.id);
-          // Iz kaznene zone mogu izazvati samo timove na zadnjoj stepenici
-          const myStepEffective = myTeam?.penalty ? 0 : myTeam?.step;
-          const tStepEffective = t.penalty ? 0 : t.step;
-          const isAboveEffective = myTeam && (
-            (!myTeam.penalty && tStepEffective === myStepEffective - 1) ||
-            (myTeam.penalty && tStepEffective === maxStep)
-          );
-          const canChallenge = !isMyTeam && isAboveEffective && myTeam && !busyTeams.has(myTeam.id) && !busyTeams.has(t.id) && !inCooldown && myTeam.captain_email === currentPlayer?.email;
-          const hasPendingChallenge = allChallenges.some(c=>
-            (c.challenger_id===t.id || c.challenged_id===t.id) && ['pending','accepted'].includes(c.status)
-          );
-          const teamMembers = getSortedTeamMembers(t.id, t.captain_email);
-          let membersHTML = '';
-          teamMembers.forEach(m => {
-            const p = allPlayers.find(x => x.email === m.player_email);
-            const isCap = m.player_email === t.captain_email;
-            const nameDisplay = (p?.name || m.player_email).toUpperCase();
-            const capStyle = isCap ? 'font-weight:700;color:' + (s===1?'var(--gold)':'var(--text)') + ';' : 'color:var(--text2);';
-            membersHTML += '<div style="font-size:0.65rem;' + capStyle + 'padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">' + nameDisplay + '</div>';
-          });
-
-          let cardClass = 'team-card';
-          if(isMyTeam) cardClass += ' my-team';
-          if(canChallenge) cardClass += ' can-challenge';
-          if(hasPendingChallenge && !isMyTeam) cardClass += ' has-challenge';
-
-          let cardExtra = '';
-          if(canChallenge) cardExtra += '<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge(\'' + t.id + '\')">⚔️ Izazovi</button>';
-          if(isMyTeam) cardExtra += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>';
-          if(hasPendingChallenge) cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--gold);">⏳ Aktivan izazov</div>';
-          if(inCooldown && !isMyTeam) {
-            const lastDecline = allChallenges
-              .filter(c=>c.challenged_id===t.id && c.status==='declined')
-              .sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at))[0];
-            if(lastDecline) {
-              const cooldownEnd = new Date(new Date(lastDecline.updated_at).getTime() + 3*24*60*60*1000);
-              const hoursLeft = Math.ceil((cooldownEnd - new Date()) / 3600000);
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">🛡 Zaštita još ' + hoursLeft + 'h</div>';
-            }
-          }
-
-          // Odbrojavanje do kazne (stepenica 2+, nije u kazni)
-          if(!t.penalty && t.step > 1) {
-            const lastMatch = t.last_match_at ? new Date(t.last_match_at) : new Date(t.created_at);
-            const timerNow = getPauseTimerNow();
-            const daysInactive = Math.floor((timerNow - lastMatch) / DAY_MS);
-            const daysLeft = 15 - daysInactive;
-            const pausePrefix = tournamentPause?.is_paused ? '⏸ ' : '';
-            if(daysLeft <= 0) {
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);font-weight:600;">' + pausePrefix + '⚠️ Kazna!</div>';
-            } else if(daysLeft <= 5) {
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--red);">' + pausePrefix + '⚠️ Kazna za ' + daysLeft + ' dan(a)</div>';
-            } else {
-              cardExtra += '<div style="margin-top:0.4rem;font-size:0.68rem;color:var(--text3);">' + pausePrefix + '📅 ' + daysLeft + ' dana do kazne zbog neaktivnosti</div>';
-            }
-          }
-
-          // Kruna - velika za step 1, mala badge za step 2, bez za ostale
-          let crownHTML = '';
-          if(s === 1) crownHTML = '<div style="font-size:1.4rem;margin-bottom:4px;">👑</div>';
-          else if(s === 2) crownHTML = '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--bg2);padding:0 4px;font-size:0.75rem;line-height:1;">👑</div>';
-
-          const teamNameHTML = t.name ? '<div style="font-size:0.68rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">' + t.name + '</div>' : '';
-
-          return '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')">'
-            + crownHTML
-            + teamNameHTML
-            + '<div style="margin:0.2rem 0;">' + membersHTML + '</div>'
-            + cardExtra
-            + '</div>';
-        }).join('')}
-      </div>
-    </div>`;
+  for(let s = 1; s <= context.maxStep; s++) {
+    html += renderPyramidStep(s, context.steps[s] || [], context);
   }
-  // Kaznena zona na dnu
-  if(haspenalty) {
-    const penTeams = steps[0];
-    let penHTML = '';
-    penTeams.forEach(t => {
-      const teamMembers = getSortedTeamMembers(t.id, t.captain_email);
-      let membersHTML = '';
-      teamMembers.forEach(m => {
-        const p = allPlayers.find(x => x.email === m.player_email);
-        const isCap = m.player_email === t.captain_email;
-        membersHTML += '<div style="font-size:0.72rem;color:' + (isCap ? 'var(--orange)' : 'var(--text2)') + ';">' + (isCap ? '👑 ' : '') + (p?.name || m.player_email) + '</div>';
-      });
+  html += renderPenaltyStep(context.steps[0]);
 
-      const busyT = allChallenges.filter(c => ['pending','accepted'].includes(c.status) && (c.challenger_id===t.id||c.challenged_id===t.id)).length > 0;
-      const lowestStep = maxStep;
-      const canChallengeFromPenalty = myTeam?.id === t.id && !busyT && myTeam?.captain_email === currentPlayer?.email;
-      
-      // Timovi na zadnjoj stepenici koji mogu biti izazvani iz kaznene zone
-      const isMyTeam = myTeam?.id === t.id;
-
-      let cardClass = 'team-card';
-      if(isMyTeam) cardClass += ' my-team';
-      cardClass += ' has-challenge'; // narančasta bordura za kaznu
-
-      penHTML += '<div class="' + cardClass + '" onclick="openTeam(\'' + t.id + '\')" style="border-color:var(--red);">'
-        + '<div class="team-nickname" style="color:var(--text);">' + t.name + '</div>'
-        + '<div style="margin:0.4rem 0;">' + membersHTML + '</div>'
-        + '<div style="font-size:0.68rem;color:var(--red);margin-top:0.3rem;">⚠️ Kaznena zona</div>'
-        + (isMyTeam ? '<div style="font-size:0.7rem;color:var(--orange);font-weight:600;">MOJ TIM</div>' : '')
-        + '</div>';
-    });
-
-    // Gumbi za izazov iz kaznene zone
-    if(myTeam?.penalty && myTeam?.captain_email === currentPlayer?.email) {
-      const busyMyTeam = allChallenges.filter(c => ['pending','accepted'].includes(c.status) && (c.challenger_id===myTeam.id||c.challenged_id===myTeam.id)).length > 0;
-      if(!busyMyTeam) {
-        const targetsOnLowest = (steps[maxStep]||[]).filter(t => {
-          const busy = allChallenges.filter(c => ['pending','accepted'].includes(c.status) && (c.challenger_id===t.id||c.challenged_id===t.id)).length > 0;
-          return !busy;
-        });
-        // Dodaj challenge btn na timove na zadnjoj stepenici u głównoj petlji - handled below
-      }
-    }
-
-    html += `<div class="pyramid-step" style="background:rgba(239,68,68,0.05);border:3px solid rgba(239,68,68,0.5);">
-      <div class="step-label" style="color:var(--red);">⚠️ Kaznena zona</div>
-      <div class="step-teams">${penHTML}</div>
-    </div>`;
-  }
-
-  container.innerHTML = `<div class="pyramid-wrap">${html}</div>`;
+  container.innerHTML = '<div class="pyramid-wrap">' + html + '</div>';
 }
 
 function openTeam(teamId) {
-  const team = allTeams.find(t=>t.id===teamId);
+  const team = derivedCache.teamById.get(teamId) || allTeams.find(t=>t.id===teamId);
   if(!team) return;
-  const captain = allPlayers.find(p=>p.email===team.captain_email);
   const membersSorted = getCachedTeamMembers(teamId);
+  const record = getTeamRecord(teamId);
+  const statusText = team.penalty ? '⚠️ Kaznena zona' : 'Stepenica ' + team.step + ' · Pozicija ' + (team.position || '-');
+
   let memberList = '';
   membersSorted.forEach(m => {
-    const player = allPlayers.find(p=>p.email===m.player_email);
+    const player = derivedCache.playerByEmail.get(m.player_email) || allPlayers.find(p=>p.email===m.player_email);
     const isCaptain = m.player_email === team.captain_email;
-    memberList += '<div class="member-row">'
-      + '<span style="font-weight:'+(isCaptain?'600':'400')+';color:'+(isCaptain?'var(--text)':'var(--text2)')+';">'+(player?.name||m.player_email)+'</span>'
+    memberList += '<div class="profile-member-row">'
+      + '<div class="profile-member-avatar">' + ((player?.name || m.player_email).substring(0,2).toUpperCase()) + '</div>'
+      + '<div class="profile-member-main"><strong>' + (player?.name||m.player_email) + '</strong><span>' + m.player_email + '</span></div>'
       + (isCaptain ? '<span class="captain-tag">Kapetan</span>' : '')
       + '</div>';
   });
 
-  // Tim statistika iz izazova
-  const teamChallenges = allChallenges.filter(c=>
-    c.status==='completed' && (c.challenger_id===teamId||c.challenged_id===teamId)
-  );
-  const wins = teamChallenges.filter(c=>c.result_winner_id===teamId).length;
-  const losses = teamChallenges.length - wins;
-
-  // Mečevi tima
   const allTeamMatches = allChallenges.filter(c=>
     ['completed','surrendered'].includes(c.status) &&
     (c.challenger_id===teamId||c.challenged_id===teamId)
@@ -1004,49 +1735,40 @@ function openTeam(teamId) {
     allTeamMatches.forEach(c => {
       const isWin = c.result_winner_id === teamId;
       const opponentId = c.challenger_id===teamId ? c.challenged_id : c.challenger_id;
-      const opponent = allTeams.find(t=>t.id===opponentId);
+      const opponent = derivedCache.teamById.get(opponentId) || allTeams.find(t=>t.id===opponentId);
       const isSurrender = c.status === 'surrendered';
-      matchesHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--border);">'
-        + '<div>'
-        + '<span style="font-weight:600;font-size:0.85rem;color:'+(isWin?'var(--green)':'var(--red)')+';">'+(isWin?'↑ Pobjeda':'↓ Poraz')+'</span>'
-        + '<span style="font-size:0.78rem;color:var(--text2);margin-left:0.5rem;">vs '+(opponent?.name||'?')+'</span>'
-        + (isSurrender?'<span style="font-size:0.68rem;color:var(--text3);margin-left:0.4rem;">(predaja)</span>':'')
-        + '</div>'
-        + '<div style="text-align:right;">'
-        + '<div style="font-size:0.82rem;font-weight:600;">'+(c.result_score||'—')+'</div>'
-        + '<div style="font-size:0.72rem;color:var(--text3);">'+new Date(c.created_at).toLocaleDateString('hr-HR')+'</div>'
-        + '</div></div>';
+      matchesHTML += '<div class="profile-match-row ' + (isWin ? 'win' : 'loss') + '">'
+        + '<div><strong>' + (isWin ? '↑ Pobjeda' : '↓ Poraz') + '</strong><span>vs ' + adminTeamName(opponent) + (isSurrender ? ' · predaja' : '') + '</span></div>'
+        + '<div class="profile-match-score"><strong>' + (c.result_score || '—') + '</strong><span>' + new Date(c.created_at).toLocaleDateString('hr-HR') + '</span></div>'
+        + '</div>';
     });
   } else {
     matchesHTML = '<div class="empty" style="padding:1rem;">Nema odigranih mečeva.</div>';
   }
 
-  const statsHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">'
-    + '<div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">'
-    + '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:1.8rem;font-weight:700;color:var(--green);">'+wins+'</div>'
-    + '<div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Pobjede</div></div>'
-    + '<div style="background:var(--bg3);border-radius:10px;padding:0.85rem;text-align:center;">'
-    + '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:1.8rem;font-weight:700;color:var(--red);">'+losses+'</div>'
-    + '<div style="font-size:0.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:0.2rem;">Porazi</div></div>'
-    + '</div>';
+  const winRateLabel = record.matches ? record.winRate + '%' : '—';
+  const title = getTeamDisplayTitle(team);
 
   document.getElementById('team-modal-content').innerHTML =
-    '<div class="team-detail-header">'
-    + '<div class="team-avatar">'+team.name.substring(0,2).toUpperCase()+'</div>'
-    + '<div><div style="font-family:\'Space Grotesk\',sans-serif;font-size:1.2rem;font-weight:700;">'+team.name+'</div>'
-    + '<div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;">'+(team.penalty?'⚠️ Kaznena zona':'Stepenica '+team.step)+'</div>'
-    + '</div></div>'
-    + statsHTML
-    + '<div class="modal-tabs">'
-    + '<button class="modal-tab active" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'
-    + '<button class="modal-tab" onclick="switchTab(\'team-tab-mecevi\',this)">🎾 Mečevi ('+allTeamMatches.length+')</button>'
+    '<div class="team-profile-hero ' + (team.penalty ? 'danger' : '') + '">'
+      + '<div class="team-profile-avatar">' + getTeamInitials(team) + '</div>'
+      + '<div class="team-profile-main">'
+        + '<div class="team-profile-kicker">' + statusText + '</div>'
+        + '<div class="team-profile-title">' + title + '</div>'
+        + '<div class="team-profile-sub">' + membersSorted.length + ' igrača · ' + record.matches + ' mečeva</div>'
+      + '</div>'
     + '</div>'
-    + '<div class="tab-content active" id="team-tab-clanovi">'
-    + '<div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">'+(memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>')+'</div>'
+    + '<div class="profile-stats-grid">'
+      + '<div class="profile-stat-card green"><strong>' + record.wins + '</strong><span>Pobjede</span></div>'
+      + '<div class="profile-stat-card red"><strong>' + record.losses + '</strong><span>Porazi</span></div>'
+      + '<div class="profile-stat-card orange"><strong>' + winRateLabel + '</strong><span>Uspješnost</span></div>'
     + '</div>'
-    + '<div class="tab-content" id="team-tab-mecevi">'
-    + '<div style="background:var(--bg3);border-radius:10px;padding:0.5rem 1rem;">'+matchesHTML+'</div>'
-    + '</div>';
+    + '<div class="modal-tabs profile-tabs">'
+      + '<button class="modal-tab active" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'
+      + '<button class="modal-tab" onclick="switchTab(\'team-tab-mecevi\',this)">🎾 Mečevi ('+allTeamMatches.length+')</button>'
+    + '</div>'
+    + '<div class="tab-content active" id="team-tab-clanovi"><div class="profile-card-list">'+(memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>')+'</div></div>'
+    + '<div class="tab-content" id="team-tab-mecevi"><div class="profile-card-list">'+matchesHTML+'</div></div>';
   openModal('modal-team');
 }
 
@@ -1458,231 +2180,332 @@ async function submitResult() {
 }
 
 // ---- ADMIN ----
+let activeAdminTab = 'overview';
+
+function adminTeamName(team) {
+  if(!team) return '?';
+  return team.name || team.nickname || teamDisplayName(team);
+}
+
+function adminChallengeTeams(c) {
+  return {
+    challenger: allTeams.find(t=>t.id===c.challenger_id),
+    challenged: allTeams.find(t=>t.id===c.challenged_id),
+    winner: allTeams.find(t=>t.id===c.result_winner_id)
+  };
+}
+
+function getPendingResults() {
+  return allChallenges.filter(c=>c.status==='pending_result');
+}
+
+function getExpiredMatches() {
+  const matchTimerNow = getPauseTimerNow();
+  return allChallenges.filter(c=>
+    c.status==='accepted' &&
+    c.match_expires_at &&
+    new Date(c.match_expires_at) < matchTimerNow
+  );
+}
+
+function getCooldownList() {
+  const now = new Date();
+  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
+  return allChallenges.filter(c =>
+    c.status === 'declined' && new Date(c.updated_at) > threeDaysAgo
+  ).map(c => {
+    const team = allTeams.find(t=>t.id===c.challenged_id);
+    const cooldownEnd = new Date(new Date(c.updated_at).getTime() + 3*24*60*60*1000);
+    const hoursLeft = Math.ceil((cooldownEnd - now) / 3600000);
+    return { team, challengeId: c.id, hoursLeft };
+  }).filter(x=>x.team);
+}
+
+function getRankingChangeLog(limit = 8) {
+  const items = [];
+
+  allChallenges
+    .filter(c => ['completed','surrendered'].includes(c.status) && c.result_winner_id)
+    .forEach(c => {
+      const { challenger, challenged, winner } = adminChallengeTeams(c);
+      const winnerIsChallenger = c.result_winner_id === c.challenger_id;
+      const changed = winnerIsChallenger || c.status === 'surrendered' || Number(c.rejection_count || 0) >= 2;
+      if(!changed) return;
+
+      let reason = 'Meč';
+      let detail = 'Promjena nakon potvrđenog rezultata';
+      let icon = '↕';
+      let tone = 'green';
+
+      if(Number(c.rejection_count || 0) >= 2 && !c.result_score) {
+        reason = 'Drugo odbijanje';
+        detail = 'Izazvani tim odbio je drugi put, pa je izazivač preuzeo mjesto';
+        icon = '⚠';
+        tone = 'gold';
+      } else if(c.status === 'surrendered') {
+        reason = 'Predaja';
+        detail = 'Promjena zbog predaje / isteka roka';
+        icon = '🏳';
+        tone = 'red';
+      } else if(winnerIsChallenger) {
+        reason = 'Meč';
+        detail = 'Izazivač je pobijedio i zamijenio mjesto s izazvanim timom';
+        icon = '↑';
+        tone = 'green';
+      }
+
+      items.push({
+        id: c.id,
+        created: new Date(c.updated_at || c.created_at),
+        icon,
+        tone,
+        reason,
+        team: adminTeamName(winner),
+        fromTo: `${adminTeamName(challenger)} vs ${adminTeamName(challenged)}`,
+        detail: c.result_score ? `${detail} · ${c.result_score}` : detail
+      });
+    });
+
+  allTeams.filter(t=>t.penalty).forEach(t => {
+    items.push({
+      id: 'penalty-'+t.id,
+      created: new Date(t.updated_at || t.last_match_at || t.created_at || Date.now()),
+      icon: '⚠',
+      tone: 'red',
+      reason: 'Kazna zbog neaktivnosti',
+      team: adminTeamName(t),
+      fromTo: `Stepenica ${t.original_step || t.step} → Kazna`,
+      detail: 'Tim je trenutno u kaznenoj zoni zbog neaktivnosti'
+    });
+  });
+
+  return items
+    .sort((a,b)=>b.created-a.created)
+    .slice(0, limit);
+}
+
+function adminMetricCard(label, value, sub, tone='orange') {
+  return `<div class="admin-metric-card ${tone}">
+    <div class="admin-metric-label">${label}</div>
+    <div class="admin-metric-value">${value}</div>
+    <div class="admin-metric-sub">${sub}</div>
+  </div>`;
+}
+
+function renderAdminPendingResults(pendingResults = getPendingResults(), compact = false) {
+  if(!pendingResults.length) return '<div class="admin-empty-small">Nema mečeva za potvrdu ✓</div>';
+  const list = compact ? pendingResults.slice(0,2) : pendingResults;
+  return list.map(c => {
+    const { challenger, challenged, winner } = adminChallengeTeams(c);
+    const playedAt = c.updated_at ? new Date(c.updated_at).toLocaleString('hr-HR') : '';
+    return `<div class="admin-action-row important">
+      <div class="admin-row-icon">⏳</div>
+      <div class="admin-row-main">
+        <div class="admin-row-title">${adminTeamName(challenger)} <span>vs</span> ${adminTeamName(challenged)}</div>
+        <div class="admin-row-meta">Pobjednik: <strong>${adminTeamName(winner)}</strong> · Rezultat: ${c.result_score || '—'}${playedAt ? ' · '+playedAt : ''}</div>
+      </div>
+      <div class="admin-row-actions">
+        <button class="btn-accept" onclick="adminConfirmResult('${c.id}')">✓ Potvrdi</button>
+        <button class="btn-decline" onclick="adminRejectResult('${c.id}')">✕ Odbij</button>
+      </div>
+    </div>`;
+  }).join('') + (compact && pendingResults.length > 2 ? `<button class="admin-link-btn" onclick="showAdminTab('confirmations')">Prikaži sve (${pendingResults.length}) →</button>` : '');
+}
+
+function renderAdminChangeLog(items = getRankingChangeLog(), compact = false) {
+  if(!items.length) return '<div class="admin-empty-small">Nema evidentiranih promjena poretka.</div>';
+  const list = compact ? items.slice(0,4) : items;
+  return list.map(item => `<div class="admin-change-row ${item.tone}">
+    <div class="admin-change-icon">${item.icon}</div>
+    <div class="admin-row-main">
+      <div class="admin-row-title">${item.team}</div>
+      <div class="admin-row-meta"><strong>${item.reason}</strong> · ${item.fromTo}</div>
+      <div class="admin-row-meta">${item.detail}</div>
+    </div>
+    <div class="admin-change-time">${item.created.toLocaleDateString('hr-HR')}<br>${item.created.toLocaleTimeString('hr-HR',{hour:'2-digit',minute:'2-digit'})}</div>
+  </div>`).join('') + (compact && items.length > 4 ? `<button class="admin-link-btn" onclick="showAdminTab('history')">Pogledaj sve promjene →</button>` : '');
+}
+
+function showAdminTab(tab) {
+  activeAdminTab = tab;
+  renderAdmin();
+}
+
 function renderAdmin() {
   if(!currentPlayer?.is_admin) {
     document.getElementById('admin-container').innerHTML='<div class="empty">⛔ Nemaš admin ovlasti.</div>';
     return;
   }
 
-  const pendingResults = allChallenges.filter(c=>c.status==='pending_result');
+  const pendingResults = getPendingResults();
   const completedChallenges = allChallenges.filter(c=>['completed','surrendered'].includes(c.status)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  const now = new Date();
-  const matchTimerNow = getPauseTimerNow();
-  const expiredMatches = allChallenges.filter(c=>
-    c.status==='accepted' &&
-    c.match_expires_at &&
-    new Date(c.match_expires_at) < matchTimerNow
-  );
+  const expiredMatches = getExpiredMatches();
   const pendingChallenges = allChallenges.filter(c=>c.status==='pending');
+  const cooldownList = getCooldownList();
+  const rankingChanges = getRankingChangeLog(20);
   const pauseStartedText = tournamentPause?.paused_at ? new Date(tournamentPause.paused_at).toLocaleString('hr-HR') : '—';
   const pauseReasonText = tournamentPause?.pause_reason ? tournamentPause.pause_reason : 'nije upisan';
+  const teamsInPenalty = allTeams.filter(t=>t.penalty).length;
+  const activeChallengesCount = allChallenges.filter(c=>['pending','accepted','pending_result'].includes(c.status)).length;
 
-  document.getElementById('admin-container').innerHTML = `
-    <div class="admin-box" style="border-color:${tournamentPause?.is_paused?'rgba(245,158,11,0.5)':'var(--border)'};">
-      <div class="admin-box-header">⏸ Vrijeme turnira</div>
-      <div class="admin-box-body">
-        ${tournamentPause?.is_paused
-          ? `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">
-              <div style="font-weight:700;color:var(--gold);margin-bottom:0.35rem;">Turnir je zaustavljen</div>
-              <div style="font-size:0.82rem;color:var(--text2);line-height:1.5;">Od: ${pauseStartedText}<br>Razlog: ${pauseReasonText}<br>Zaustavljeni su rok meča od 6 dana i odbrojavanje do kazne zbog neaktivnosti.</div>
-            </div>
-            <button class="btn-accept" onclick="adminResumeTournament()">▶ Nastavi vrijeme turnira</button>`
-          : `<div style="font-size:0.82rem;color:var(--text2);line-height:1.5;margin-bottom:0.75rem;">Vrijeme turnira trenutno teče normalno. Ovim gumbom možeš zaustaviti rok meča i kazne zbog neaktivnosti, npr. zbog kiše.</div>
-            <button class="btn-decline" onclick="adminPauseTournament()">⏸ Zaustavi vrijeme turnira</button>`}
+  const tabs = [
+    ['overview','Pregled'],
+    ['confirmations','Potvrde'],
+    ['changes','Promjene poretka'],
+    ['challenges','Izazovi i rokovi'],
+    ['teams','Timovi'],
+    ['history','Svi mečevi']
+  ];
+
+  const tabButtons = tabs.map(([id,label]) =>
+    `<button class="admin-tab ${activeAdminTab===id?'active':''}" onclick="showAdminTab('${id}')">${label}</button>`
+  ).join('');
+
+  let body = '';
+
+  if(activeAdminTab === 'overview') {
+    body = `
+      <div class="admin-metrics-grid">
+        ${adminMetricCard('Mečevi za potvrdu', pendingResults.length, pendingResults.length ? 'Traži admin odluku' : 'Sve riješeno', pendingResults.length ? 'orange' : 'green')}
+        ${adminMetricCard('Promjene poretka', rankingChanges.length, 'Meč / odbijanje / kazna', rankingChanges.length ? 'red' : 'blue')}
+        ${adminMetricCard('Aktivni izazovi', activeChallengesCount, `${pendingChallenges.length} na čekanju · ${expiredMatches.length} isteklo`, expiredMatches.length ? 'red' : 'blue')}
+        ${adminMetricCard('Status turnira', tournamentPause?.is_paused ? 'PAUZA' : 'AKTIVAN', tournamentPause?.is_paused ? pauseReasonText : 'Vrijeme teče normalno', tournamentPause?.is_paused ? 'gold' : 'green')}
       </div>
-    </div>
 
-    <div class="admin-box">
-      <div class="admin-box-header">⏰ Istekli mečevi (${expiredMatches.length})</div>
-      <div class="admin-box-body">
+      <div class="admin-two-col">
+        <div class="admin-panel-card">
+          <div class="admin-panel-head"><span>Mečevi za potvrdu</span><button onclick="showAdminTab('confirmations')">Pogledaj sve →</button></div>
+          ${renderAdminPendingResults(pendingResults, true)}
+        </div>
+        <div class="admin-panel-card">
+          <div class="admin-panel-head"><span>Zadnje promjene u poretku</span><button onclick="showAdminTab('changes')">Pogledaj sve →</button></div>
+          ${renderAdminChangeLog(rankingChanges, true)}
+        </div>
+      </div>
+
+      <div class="admin-panel-card">
+        <div class="admin-panel-head"><span>Brze akcije</span></div>
+        <div class="admin-quick-grid">
+          ${tournamentPause?.is_paused
+            ? `<button class="admin-quick-card" onclick="adminResumeTournament()"><strong>▶ Nastavi turnir</strong><span>Pokreni odbrojavanja</span></button>`
+            : `<button class="admin-quick-card" onclick="adminPauseTournament()"><strong>⏸ Pauziraj turnir</strong><span>Zaustavi rokove i kazne</span></button>`}
+          <button class="admin-quick-card" onclick="showAdminTab('teams')"><strong>➕ Dodaj novi tim</strong><span>Dodaj tim na piramidu</span></button>
+          <button class="admin-quick-card" onclick="showAdminTab('challenges')"><strong>⚔️ Rokovi i izazovi</strong><span>Istekli rokovi, zaštita, prihvaćanja</span></button>
+          <button class="admin-quick-card" onclick="showAdminTab('history')"><strong>🎾 Povijest mečeva</strong><span>Uredi odigrane mečeve</span></button>
+        </div>
+      </div>`;
+  }
+
+  if(activeAdminTab === 'confirmations') {
+    body = `<div class="admin-panel-card"><div class="admin-panel-head"><span>📝 Mečevi za potvrdu (${pendingResults.length})</span></div>${renderAdminPendingResults(pendingResults, false)}</div>`;
+  }
+
+  if(activeAdminTab === 'changes') {
+    body = `<div class="admin-panel-card"><div class="admin-panel-head"><span>🔁 Promjene u poretku</span></div>${renderAdminChangeLog(rankingChanges, false)}<div class="admin-note">Napomena: promjene su izvedene iz postojećih izazova i trenutnog stanja kaznene zone. Za apsolutnu povijest svakog pomaka kasnije možemo dodati posebnu Supabase tablicu <strong>pyramid_events</strong>.</div></div>`;
+  }
+
+  if(activeAdminTab === 'challenges') {
+    body = `
+      <div class="admin-panel-card" style="border-color:${tournamentPause?.is_paused?'rgba(245,158,11,0.5)':'var(--border)'};">
+        <div class="admin-panel-head"><span>⏸ Vrijeme turnira</span></div>
+        <div class="admin-soft-box">
+          ${tournamentPause?.is_paused
+            ? `<strong style="color:var(--gold);">Turnir je zaustavljen</strong><br><span>Od: ${pauseStartedText} · Razlog: ${pauseReasonText}</span><br><button class="btn-accept" onclick="adminResumeTournament()">▶ Nastavi vrijeme turnira</button>`
+            : `<span>Vrijeme turnira trenutno teče normalno.</span><br><button class="btn-decline" onclick="adminPauseTournament()">⏸ Zaustavi vrijeme turnira</button>`}
+        </div>
+      </div>
+
+      <div class="admin-panel-card">
+        <div class="admin-panel-head"><span>⏰ Istekli mečevi (${expiredMatches.length})</span></div>
         ${expiredMatches.length ? expiredMatches.map(c => {
-          const t1=allTeams.find(t=>t.id===c.challenger_id);
-          const t2=allTeams.find(t=>t.id===c.challenged_id);
+          const { challenger, challenged } = adminChallengeTeams(c);
           const expiredDate = new Date(c.match_expires_at).toLocaleDateString('hr-HR');
-          return '<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
-            + '<div style="font-weight:600;margin-bottom:0.3rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
-            + '<div style="font-size:0.78rem;color:var(--red);margin-bottom:0.75rem;">⏰ Rok istekao: ' + expiredDate + '</div>'
-            + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.5rem;">Odaberi tim koji je predao:</div>'
-            + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">'
-            + '<button class="btn-decline" onclick="adminSurrender(\'' + c.id + '\',\'' + c.challenger_id + '\')">🏳 Predaja: ' + (t1?.name||'?') + '</button>'
-            + '<button class="btn-decline" onclick="adminSurrender(\'' + c.id + '\',\'' + c.challenged_id + '\')">🏳 Predaja: ' + (t2?.name||'?') + '</button>'
-            + '</div>'
-            + '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
-            + '<input type="number" id="extend-days-' + c.id + '" placeholder="dana" min="1" max="14" style="width:80px;padding:0.35rem 0.5rem;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:0.82rem;"/>'
-            + '<button onclick="adminExtendDeadline(\'' + c.id + '\')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.35rem 0.75rem;border-radius:6px;cursor:pointer;font-size:0.78rem;">📅 Produži rok</button>'
-            + '</div>'
+          return '<div class="admin-action-row">'
+            + '<div class="admin-row-icon red">⏰</div>'
+            + '<div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">Rok istekao: ' + expiredDate + '</div></div>'
+            + '<div class="admin-row-actions"><button class="btn-decline" onclick="adminSurrender(\'' + c.id + '\',\'' + c.challenger_id + '\')">Predaja: ' + adminTeamName(challenger) + '</button><button class="btn-decline" onclick="adminSurrender(\'' + c.id + '\',\'' + c.challenged_id + '\')">Predaja: ' + adminTeamName(challenged) + '</button><input type="number" id="extend-days-' + c.id + '" placeholder="dana" min="1" max="14" class="admin-small-input"/><button class="admin-small-btn" onclick="adminExtendDeadline(\'' + c.id + '\')">Produži</button></div>'
             + '</div>';
-        }).join('') : '<div class="empty" style="padding:1rem;">Nema isteklih mečeva ✓</div>'}
+        }).join('') : '<div class="admin-empty-small">Nema isteklih mečeva ✓</div>'}
       </div>
-    </div>
 
-    <div class="admin-box">
-      <div class="admin-box-header">🛡 Timovi u zaštitnom roku</div>
-      <div class="admin-box-body">
-        ${(() => {
-          const now = new Date();
-          const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
-          const cooldownList = allChallenges.filter(c =>
-            c.status === 'declined' && new Date(c.updated_at) > threeDaysAgo
-          ).map(c => {
-            const team = allTeams.find(t=>t.id===c.challenged_id);
-            const cooldownEnd = new Date(new Date(c.updated_at).getTime() + 3*24*60*60*1000);
-            const hoursLeft = Math.ceil((cooldownEnd - now) / 3600000);
-            return { team, challengeId: c.id, hoursLeft };
-          }).filter(x=>x.team);
-
-          if(!cooldownList.length) return '<div class="empty" style="padding:1rem;">Nema timova u zaštitnom roku ✓</div>';
-
-          return cooldownList.map(({team, challengeId, hoursLeft}) =>
-            '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:10px;padding:0.75rem 1rem;margin-bottom:0.5rem;">'
-            + '<div>'
-            + '<div style="font-weight:600;font-size:0.88rem;">' + team.name + '</div>'
-            + '<div style="font-size:0.75rem;color:var(--text3);">🛡 Zaštita još ' + hoursLeft + 'h</div>'
-            + '</div>'
-            + '<button onclick="adminRemoveCooldown(\'' + challengeId + '\')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);padding:0.35rem 0.75rem;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:600;">✕ Ukloni zaštitu</button>'
-            + '</div>'
-          ).join('');
-        })()}
-      </div>
-    </div>
-
-    <div class="admin-box">
-      <div class="admin-box-header">⚔️ Izazovi na čekanju — Admin prihvat (${pendingChallenges.length})</div>
-      <div class="admin-box-body">
+      <div class="admin-panel-card">
+        <div class="admin-panel-head"><span>⚔️ Izazovi na čekanju (${pendingChallenges.length})</span></div>
         ${pendingChallenges.length ? pendingChallenges.map(c => {
-          const t1=allTeams.find(t=>t.id===c.challenger_id);
-          const t2=allTeams.find(t=>t.id===c.challenged_id);
+          const { challenger, challenged } = adminChallengeTeams(c);
           const expires = new Date(c.response_expires_at);
           const diff = expires - new Date();
           const hours = Math.max(0, Math.floor(diff/3600000));
-          return '<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
-            + '<div style="font-weight:600;margin-bottom:0.3rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
-            + '<div style="font-size:0.78rem;color:var(--text3);margin-bottom:0.75rem;">Rok: ' + hours + 'h · Odbijanja: ' + c.rejection_count + '/1</div>'
-            + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">'
-            + '<button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati umjesto kapetana</button>'
-            + '<button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij umjesto kapetana</button>'
-            + '</div></div>';
-        }).join('') : '<div class="empty" style="padding:1rem;">Nema izazova na čekanju</div>'}
-      </div>
-    </div>
-
-    <div class="admin-box">
-      <div class="admin-box-header">📝 Rezultati na potvrdi (${pendingResults.length})</div>
-      <div class="admin-box-body">
-        ${pendingResults.length ? pendingResults.map(c => {
-          const t1=allTeams.find(t=>t.id===c.challenger_id);
-          const t2=allTeams.find(t=>t.id===c.challenged_id);
-          const winner=allTeams.find(t=>t.id===c.result_winner_id);
-          return `<div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">
-            <div style="font-weight:600;margin-bottom:0.5rem;">⚔️ ${t1?.name} vs ${t2?.name}</div>
-            <div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.75rem;">Pobjednik: <strong>${winner?.name}</strong> · ${c.result_score||'—'}</div>
-            <div style="display:flex;gap:0.5rem;">
-              <button class="btn-accept" onclick="adminConfirmResult('${c.id}')">✓ Potvrdi</button>
-              <button class="btn-decline" onclick="adminRejectResult('${c.id}')">✕ Odbij</button>
-            </div>
-          </div>`;
-        }).join('') : '<div class="empty" style="padding:1rem;">Nema rezultata na čekanju</div>'}
-      </div>
-    </div>
-
-    <div class="admin-box">
-      <div class="admin-box-header">➕ Dodaj Tim</div>
-      <div class="admin-box-body">
-        <div class="form-group">
-          <label>Naziv tima *</label>
-          <input type="text" id="new-team-name" placeholder="npr. Tim Goleš"/>
-        </div>
-        <div class="form-group">
-          <label>Stepenica <span style="color:var(--text3);font-weight:400">(prazno = automatski)</span></label>
-          <input type="number" id="new-team-step" placeholder="auto" min="1"/>
-        </div>
-        <div class="form-group">
-          <label>Kapetan *</label>
-          <div class="ps-wrap">
-            <input type="text" class="ps-input" id="search-captain" placeholder="Pretraži igrača..." oninput="psFilter('captain')" onfocus="psOpen('captain')" autocomplete="off"/>
-            <div class="ps-dropdown" id="drop-captain"></div>
-          </div>
-          <div class="ps-badge" id="badge-captain"><span id="badge-captain-name"></span><button class="ps-clear" onclick="psClear('captain')">×</button></div>
-          <input type="hidden" id="new-team-captain"/>
-        </div>
-        <div class="form-group">
-          <label>Član 2 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
-          <div class="ps-wrap">
-            <input type="text" class="ps-input" id="search-member2" placeholder="Pretraži igrača..." oninput="psFilter('member2')" onfocus="psOpen('member2')" autocomplete="off"/>
-            <div class="ps-dropdown" id="drop-member2"></div>
-          </div>
-          <div class="ps-badge" id="badge-member2"><span id="badge-member2-name"></span><button class="ps-clear" onclick="psClear('member2')">×</button></div>
-          <input type="hidden" id="new-team-member2"/>
-        </div>
-        <div class="form-group">
-          <label>Član 3 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label>
-          <div class="ps-wrap">
-            <input type="text" class="ps-input" id="search-member3" placeholder="Pretraži igrača..." oninput="psFilter('member3')" onfocus="psOpen('member3')" autocomplete="off"/>
-            <div class="ps-dropdown" id="drop-member3"></div>
-          </div>
-          <div class="ps-badge" id="badge-member3"><span id="badge-member3-name"></span><button class="ps-clear" onclick="psClear('member3')">×</button></div>
-          <input type="hidden" id="new-team-member3"/>
-        </div>
-        <button class="btn-primary" id="add-team-btn" onclick="addTeam()">+ Dodaj Tim</button>
-      </div>
-    </div>
-
-    <div class="admin-box">
-      <div class="admin-box-header">👥 Upravljanje Timovima (${allTeams.length})</div>
-      <div>
-        ${allTeams.map(t => {
-          const captain = allPlayers.find(p=>p.email===t.captain_email);
-          return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.5rem;">
-            <div>
-              <div style="font-weight:600;font-size:0.88rem;">${t.name}</div>
-              <div style="font-size:0.75rem;color:var(--text3);">Stepenica ${t.step} · 👑 ${captain?.name||t.captain_email}</div>
-            </div>
-            <button onclick="openEditTeam('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️ Edit</button>
-            <button onclick="openAddMember('${t.id}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">+ Član</button>
-            ${t.step > 1 && !t.penalty ? `<button onclick="adminSimulatePenalty('${t.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">⚠️ Kazna</button>` : ''}
-            ${t.penalty ? `<button onclick="adminRemovePenalty('${t.id}')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">↩ Izvadi iz kazne</button>` : ''}
-            <button onclick="deleteTeam('${t.id}','${t.name}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;transition:color 0.15s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🗑</button>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <div class="admin-box">
-      <div class="admin-box-header">🔄 Vraćanje odluke</div>
-      <div class="admin-box-body">
-        <p style="font-size:0.82rem;color:var(--text3);margin-bottom:1rem;">Ako je kapetan pogrešno stisnuo, odaberi izazov i vrati status:</p>
-        <div class="form-group">
-          <label>Izazov</label>
-          <select id="revert-challenge-select">
-            <option value="">— odaberi —</option>
-            ${allChallenges.filter(c=>['declined','accepted'].includes(c.status)).map(c=>{
-              const t1=allTeams.find(t=>t.id===c.challenger_id);
-              const t2=allTeams.find(t=>t.id===c.challenged_id);
-              return `<option value="${c.id}">${t1?.name} vs ${t2?.name} (${c.status})</option>`;
-            }).join('')}
-          </select>
-        </div>
-        <button class="btn-primary" onclick="revertDecision()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">↩ Vrati na čekanje</button>
-      </div>
-    </div>
-
-    <div class="admin-box">
-      <div class="admin-box-header">🎾 Svi odigrani mečevi (${completedChallenges.length})</div>
-      <div>
-        ${completedChallenges.length ? completedChallenges.map(c => {
-          const t1 = allTeams.find(t=>t.id===c.challenger_id);
-          const t2 = allTeams.find(t=>t.id===c.challenged_id);
-          const winner = allTeams.find(t=>t.id===c.result_winner_id);
-          const isSurrender = c.status === 'surrendered';
-          return '<div style="display:grid;grid-template-columns:1fr auto auto;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);align-items:center;gap:0.75rem;">'
-            + '<div>'
-            + '<div style="font-weight:600;font-size:0.85rem;">⚔️ ' + (t1?.name||'?') + ' vs ' + (t2?.name||'?') + '</div>'
-            + '<div style="font-size:0.75rem;color:var(--text3);">🏆 ' + (winner?.name||'?') + ' · ' + (c.result_score||'—') + (isSurrender?' · predaja':'') + ' · ' + new Date(c.created_at).toLocaleDateString('hr-HR') + '</div>'
-            + '</div>'
-            + '<button onclick="openEditChallenge(\'' + c.id + '\')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.75rem;">✏️</button>'
+          return '<div class="admin-action-row">'
+            + '<div class="admin-row-icon">⚔️</div>'
+            + '<div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">Rok: ' + hours + 'h · Odbijanja: ' + (c.rejection_count || 0) + '/1</div></div>'
+            + '<div class="admin-row-actions"><button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati</button><button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij</button></div>'
             + '</div>';
-        }).join('') : '<div class="empty" style="padding:1rem;">Nema odigranih mečeva.</div>'}
+        }).join('') : '<div class="admin-empty-small">Nema izazova na čekanju</div>'}
       </div>
+
+      <div class="admin-panel-card">
+        <div class="admin-panel-head"><span>🛡 Timovi u zaštitnom roku (${cooldownList.length})</span></div>
+        ${cooldownList.length ? cooldownList.map(({team, challengeId, hoursLeft}) =>
+          '<div class="admin-action-row"><div class="admin-row-icon gold">🛡</div><div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(team) + '</div><div class="admin-row-meta">Zaštita još ' + hoursLeft + 'h</div></div><div class="admin-row-actions"><button class="admin-small-btn" onclick="adminRemoveCooldown(\'' + challengeId + '\')">Ukloni zaštitu</button></div></div>'
+        ).join('') : '<div class="admin-empty-small">Nema timova u zaštitnom roku ✓</div>'}
+      </div>`;
+  }
+
+  if(activeAdminTab === 'teams') {
+    body = `
+      <div class="admin-two-col wide-left">
+        <div class="admin-panel-card">
+          <div class="admin-panel-head"><span>➕ Dodaj Tim</span></div>
+          <div class="admin-form-grid">
+            <div class="form-group"><label>Naziv tima *</label><input type="text" id="new-team-name" placeholder="npr. Tim Goleš"/></div>
+            <div class="form-group"><label>Stepenica <span style="color:var(--text3);font-weight:400">(prazno = automatski)</span></label><input type="number" id="new-team-step" placeholder="auto" min="1"/></div>
+          </div>
+          <div class="form-group"><label>Kapetan *</label><div class="ps-wrap"><input type="text" class="ps-input" id="search-captain" placeholder="Pretraži igrača..." oninput="psFilter('captain')" onfocus="psOpen('captain')" autocomplete="off"/><div class="ps-dropdown" id="drop-captain"></div></div><div class="ps-badge" id="badge-captain"><span id="badge-captain-name"></span><button class="ps-clear" onclick="psClear('captain')">×</button></div><input type="hidden" id="new-team-captain"/></div>
+          <div class="admin-form-grid">
+            <div class="form-group"><label>Član 2 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label><div class="ps-wrap"><input type="text" class="ps-input" id="search-member2" placeholder="Pretraži igrača..." oninput="psFilter('member2')" onfocus="psOpen('member2')" autocomplete="off"/><div class="ps-dropdown" id="drop-member2"></div></div><div class="ps-badge" id="badge-member2"><span id="badge-member2-name"></span><button class="ps-clear" onclick="psClear('member2')">×</button></div><input type="hidden" id="new-team-member2"/></div>
+            <div class="form-group"><label>Član 3 <span style="color:var(--text3);font-weight:400">(opcionalno)</span></label><div class="ps-wrap"><input type="text" class="ps-input" id="search-member3" placeholder="Pretraži igrača..." oninput="psFilter('member3')" onfocus="psOpen('member3')" autocomplete="off"/><div class="ps-dropdown" id="drop-member3"></div></div><div class="ps-badge" id="badge-member3"><span id="badge-member3-name"></span><button class="ps-clear" onclick="psClear('member3')">×</button></div><input type="hidden" id="new-team-member3"/></div>
+          </div>
+          <button class="btn-primary" id="add-team-btn" onclick="addTeam()">+ Dodaj Tim</button>
+        </div>
+        <div class="admin-panel-card">
+          <div class="admin-panel-head"><span>Sažetak</span></div>
+          ${adminMetricCard('Ukupno timova', allTeams.length, `${allTeams.length - teamsInPenalty} u piramidi · ${teamsInPenalty} u kazni`, 'blue')}
+        </div>
+      </div>
+      <div class="admin-panel-card">
+        <div class="admin-panel-head"><span>👥 Upravljanje Timovima (${allTeams.length})</span></div>
+        <div class="admin-team-list">
+          ${allTeams.map(t => {
+            const captain = allPlayers.find(p=>p.email===t.captain_email);
+            return `<div class="admin-team-row">
+              <div><div class="admin-row-title">${adminTeamName(t)}</div><div class="admin-row-meta">Stepenica ${t.step}${t.penalty ? ' · Kazna' : ''} · 👑 ${captain?.name||t.captain_email}</div></div>
+              <div class="admin-row-actions"><button class="admin-small-btn" onclick="openEditTeam('${t.id}')">✏️ Edit</button><button class="admin-small-btn" onclick="openAddMember('${t.id}')">+ Član</button>${t.step > 1 && !t.penalty ? `<button class="admin-danger-small" onclick="adminSimulatePenalty('${t.id}')">⚠️ Kazna</button>` : ''}${t.penalty ? `<button class="admin-success-small" onclick="adminRemovePenalty('${t.id}')">↩ Izvadi</button>` : ''}<button class="admin-trash" onclick="deleteTeam('${t.id}','${adminTeamName(t).replace(/'/g, "\\'")}')">🗑</button></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="admin-panel-card">
+        <div class="admin-panel-head"><span>🔄 Vraćanje odluke</span></div>
+        <div class="form-group"><label>Izazov</label><select id="revert-challenge-select"><option value="">— odaberi —</option>${allChallenges.filter(c=>['declined','accepted'].includes(c.status)).map(c=>{ const { challenger, challenged } = adminChallengeTeams(c); return `<option value="${c.id}">${adminTeamName(challenger)} vs ${adminTeamName(challenged)} (${c.status})</option>`; }).join('')}</select></div>
+        <button class="btn-primary" onclick="revertDecision()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);">↩ Vrati na čekanje</button>
+      </div>`;
+  }
+
+  if(activeAdminTab === 'history') {
+    body = `<div class="admin-panel-card"><div class="admin-panel-head"><span>🎾 Svi odigrani mečevi (${completedChallenges.length})</span></div>${completedChallenges.length ? completedChallenges.map(c => { const { challenger, challenged, winner } = adminChallengeTeams(c); const isSurrender = c.status === 'surrendered'; return '<div class="admin-action-row"><div class="admin-row-icon">🎾</div><div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">🏆 ' + adminTeamName(winner) + ' · ' + (c.result_score||'—') + (isSurrender?' · predaja':'') + ' · ' + new Date(c.created_at).toLocaleDateString('hr-HR') + '</div></div><div class="admin-row-actions"><button class="admin-small-btn" onclick="openEditChallenge(\'' + c.id + '\')">✏️ Uredi</button></div></div>'; }).join('') : '<div class="admin-empty-small">Nema odigranih mečeva.</div>'}</div>`;
+  }
+
+  document.getElementById('admin-container').innerHTML = `
+    <div class="admin-modern">
+      <div class="admin-topline">
+        <div>
+          <div class="admin-title">Admin pregled</div>
+          <div class="admin-subtitle">Brze odluke, promjene poretka i najvažnije akcije bez beskonačnog skrolanja.</div>
+        </div>
+        <div class="admin-status-pill ${tournamentPause?.is_paused?'paused':'active'}">${tournamentPause?.is_paused?'⏸ PAUZA':'● AKTIVAN'}</div>
+      </div>
+      <div class="admin-tabs">${tabButtons}</div>
+      ${body}
     </div>`;
 }
 
@@ -2309,6 +3132,247 @@ let refreshTimer = null;
 let lastSuccessfulRefresh = Date.now();
 let refreshFailures = 0;
 let appWasHidden = false;
+
+// ---- STATISTIKA ----
+let activeStatsMode = 'points';
+
+function teamDisplayName(team) {
+  // Statistika namjerno NE koristi ime/nadimak tima.
+  // Imena timova ostaju samo na karticama u piramidi, a statistika uvijek prikazuje igrače.
+  if(!team) return 'Nepoznati igrači';
+  const members = getSortedTeamMembers(team.id, team.captain_email);
+  const names = members.map(m => {
+    const p = allPlayers.find(x => x.email === m.player_email);
+    return p?.name || m.player_email;
+  });
+  return names.length ? names.join(' / ') : 'Igrači bez imena';
+}
+
+function buildTeamStats() {
+  const stats = {};
+
+  allTeams.forEach(team => {
+    stats[team.id] = {
+      team,
+      name: teamDisplayName(team),
+      points: 0,
+      matches: 0,
+      wins: 0,
+      losses: 0,
+      challengesSent: 0,
+      successfulChallenges: 0,
+      defenses: 0,
+      successfulDefenses: 0,
+      surrenders: 0,
+      declined: 0,
+      form: []
+    };
+  });
+
+  const relevant = allChallenges
+    .filter(c => ['completed','surrendered'].includes(c.status) && c.result_winner_id)
+    .sort((a,b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at));
+
+  relevant.forEach(c => {
+    const challengerId = c.challenger_id;
+    const challengedId = c.challenged_id;
+    const winnerId = c.result_winner_id;
+    const loserId = winnerId === challengerId ? challengedId : challengerId;
+    const isSurrender = c.status === 'surrendered';
+
+    if(stats[challengerId]) {
+      stats[challengerId].challengesSent += 1;
+      stats[challengerId].matches += 1;
+      stats[challengerId].form.push(winnerId === challengerId ? 'W' : 'L');
+    }
+    if(stats[challengedId]) {
+      stats[challengedId].defenses += 1;
+      stats[challengedId].matches += 1;
+      stats[challengedId].form.push(winnerId === challengedId ? 'W' : 'L');
+    }
+
+    if(stats[winnerId]) stats[winnerId].wins += 1;
+    if(stats[loserId]) stats[loserId].losses += 1;
+
+    if(isSurrender) {
+      if(stats[loserId]) stats[loserId].surrenders += 1;
+      return;
+    }
+
+    if(stats[winnerId]) stats[winnerId].points += 3;
+    if(stats[loserId]) stats[loserId].points += 1;
+
+    if(winnerId === challengerId && stats[challengerId]) {
+      stats[challengerId].successfulChallenges += 1;
+      stats[challengerId].points += 2;
+    }
+    if(winnerId === challengedId && stats[challengedId]) {
+      stats[challengedId].successfulDefenses += 1;
+      stats[challengedId].points += 1;
+    }
+  });
+
+  allChallenges.filter(c => c.status === 'declined').forEach(c => {
+    if(stats[c.challenged_id]) stats[c.challenged_id].declined += 1;
+  });
+
+  // Lagana kazna u statistici za predaje i odbijanja, ali samo kao testni bodovni model.
+  Object.values(stats).forEach(s => {
+    s.points -= (s.surrenders * 2);
+    s.points -= (s.declined * 1);
+    s.winRate = s.matches ? Math.round((s.wins / s.matches) * 100) : 0;
+    s.form = s.form.slice(-5);
+  });
+
+  return Object.values(stats);
+}
+
+function setStatsMode(mode) {
+  activeStatsMode = mode;
+  renderStatistics();
+}
+
+function renderForm(form) {
+  if(!form || !form.length) return '<span class="form-empty">—</span>';
+  return form.map(x => '<span class="form-pill ' + (x === 'W' ? 'form-win' : 'form-loss') + '">' + x + '</span>').join('');
+}
+
+function renderStatsRows(rows, mainMetric) {
+  if(!rows.length) return '<div class="empty">Još nema statistike.</div>';
+  return `
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Par</th>
+          <th>Bodovi</th>
+          <th>Mečevi</th>
+          <th>P / I</th>
+          <th>Izazovi</th>
+          <th>Obrane</th>
+          <th>Forma</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((s, i) => `
+          <tr>
+            <td style="color:var(--text3);font-weight:800;">${i + 1}</td>
+            <td><div class="stats-team">${s.name}</div><div style="font-size:0.7rem;color:var(--text3);">Stepenica ${s.team.penalty ? 'kazna' : s.team.step}</div></td>
+            <td><span class="stats-points">${s.points}</span></td>
+            <td>${s.matches}</td>
+            <td>${s.wins} / ${s.losses}<br><span style="font-size:0.7rem;color:var(--text3);">${s.winRate}%</span></td>
+            <td>${s.successfulChallenges}/${s.challengesSent}</td>
+            <td>${s.successfulDefenses}/${s.defenses}</td>
+            <td>${renderForm(s.form)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderStatistics() {
+  const container = document.getElementById('stats-container');
+  if(!container) return;
+
+  const stats = buildTeamStats();
+  const totalCompleted = allChallenges.filter(c => c.status === 'completed').length;
+  const totalPending = allChallenges.filter(c => ['pending','accepted','pending_result'].includes(c.status)).length;
+  const totalSurrendered = allChallenges.filter(c => c.status === 'surrendered').length;
+  const activeTeams = stats.filter(s => s.matches > 0).length;
+  const totalChallenges = allChallenges.length;
+  const topPoints = [...stats].sort((a,b) => b.points - a.points || b.wins - a.wins || b.matches - a.matches).slice(0, 5);
+  const topActive = [...stats].sort((a,b) => b.matches - a.matches || b.points - a.points).slice(0, 5);
+
+  const sorters = {
+    points: (a,b) => b.points - a.points || b.wins - a.wins || b.matches - a.matches,
+    active: (a,b) => b.matches - a.matches || b.points - a.points,
+    challengers: (a,b) => b.successfulChallenges - a.successfulChallenges || b.challengesSent - a.challengesSent,
+    defenders: (a,b) => b.successfulDefenses - a.successfulDefenses || b.defenses - a.defenses,
+    form: (a,b) => b.winRate - a.winRate || b.wins - a.wins,
+    fairplay: (a,b) => (a.surrenders + a.declined) - (b.surrenders + b.declined) || b.matches - a.matches
+  };
+
+  const titles = {
+    points: '🏆 Bodovna ljestvica',
+    active: '🎾 Najaktivniji parovi',
+    challengers: '⚔️ Najuspješniji izazivači',
+    defenders: '🛡️ Najbolji branitelji',
+    form: '🔥 Najbolja forma',
+    fairplay: '🤝 Fair play pregled'
+  };
+
+  const rows = [...stats].sort(sorters[activeStatsMode] || sorters.points);
+
+  const leaderHtml = topPoints.length ? topPoints.map((s, i) => `
+    <div class="stats-leader-row">
+      <div class="stats-rank ${i === 0 ? 'gold' : ''}">${i === 0 ? '👑' : i + 1}</div>
+      <div>
+        <div class="stats-team">${s.name}</div>
+        <div style="font-size:0.74rem;color:var(--text3);">${s.wins} pobjeda · ${s.losses} poraza · ${s.matches} mečeva · ${s.winRate}%</div>
+      </div>
+      <div class="stats-metric"><strong>${s.points}</strong><span>bodova</span></div>
+    </div>
+  `).join('') : '<div class="empty">Još nema završenih mečeva.</div>';
+
+  const activeHtml = topActive.length ? topActive.map((s, i) => `
+  <div style="display:flex;justify-content:space-between;gap:1rem;padding:0.58rem 0;border-bottom:1px solid var(--border);">
+    <div>
+      <strong style="color:var(--text);">${i + 1}. ${s.name}</strong>
+      <div style="font-size:0.72rem;color:var(--text3);">Forma ${renderForm(s.form)}</div>
+    </div>
+    <div style="text-align:right;color:var(--orange);font-weight:900;">
+      ${s.matches}
+      <div style="font-size:0.68rem;color:var(--text3);font-weight:500;">mečeva</div>
+    </div>
+  </div>
+`).join('') : '<div class="empty">Još nema aktivnosti.</div>';
+
+  container.innerHTML = `
+    <div class="stats-hero">
+      <div class="stats-score-card">
+        <div class="stats-hero-title">🏆 Top parovi po bodovima</div>
+        <div class="stats-hero-sub">Testni dashboard: bodovi prikazuju aktivnost, formu i uspješnost izazova. Piramida ostaje službeni poredak.</div>
+        ${leaderHtml}
+      </div>
+      <div class="stats-score-card">
+        <div class="stats-hero-title">🎾 Najaktivniji</div>
+        <div class="stats-hero-sub">Parovi koji najviše guraju turnir naprijed.</div>
+        ${activeHtml}
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-mini"><div class="stat-mini-icon">🏆</div><div class="stat-mini-label">Završeni mečevi</div><div class="stat-mini-value">${totalCompleted}</div></div>
+      <div class="stat-mini"><div class="stat-mini-icon">⚔️</div><div class="stat-mini-label">Ukupno izazova</div><div class="stat-mini-value">${totalChallenges}</div></div>
+      <div class="stat-mini"><div class="stat-mini-icon">⏳</div><div class="stat-mini-label">Aktivni izazovi</div><div class="stat-mini-value">${totalPending}</div></div>
+      <div class="stat-mini"><div class="stat-mini-icon">🔥</div><div class="stat-mini-label">Aktivni timovi</div><div class="stat-mini-value">${activeTeams}</div></div>
+    </div>
+
+    <div class="admin-box">
+      <div class="admin-box-header">📌 Testni model bodovanja</div>
+      <div class="admin-box-body" style="font-size:0.84rem;color:var(--text2);line-height:1.7;">
+        Pobjeda = <strong style="color:var(--green);">3</strong>, poraz = <strong>1</strong>, pobjeda kao izazivač = <strong style="color:var(--orange);">+2</strong>, uspješna obrana = <strong style="color:var(--blue);">+1</strong>, predaja = <strong style="color:var(--red);">-2</strong>, odbijanje = <strong style="color:var(--red);">-1</strong>.
+      </div>
+    </div>
+
+    <div class="stats-tabs">
+      <button class="stats-tab ${activeStatsMode==='points'?'active':''}" onclick="setStatsMode('points')">🏆 Bodovi</button>
+      <button class="stats-tab ${activeStatsMode==='active'?'active':''}" onclick="setStatsMode('active')">🎾 Aktivnost</button>
+      <button class="stats-tab ${activeStatsMode==='challengers'?'active':''}" onclick="setStatsMode('challengers')">⚔️ Izazivači</button>
+      <button class="stats-tab ${activeStatsMode==='defenders'?'active':''}" onclick="setStatsMode('defenders')">🛡️ Branitelji</button>
+      <button class="stats-tab ${activeStatsMode==='form'?'active':''}" onclick="setStatsMode('form')">🔥 Forma</button>
+      <button class="stats-tab ${activeStatsMode==='fairplay'?'active':''}" onclick="setStatsMode('fairplay')">🤝 Fair play</button>
+    </div>
+
+    <div class="admin-box stats-panel">
+      <div class="admin-box-header">${titles[activeStatsMode] || titles.points}</div>
+      <div class="admin-box-body" style="overflow-x:auto;padding-top:0.5rem;">
+        ${renderStatsRows(rows, activeStatsMode)}
+      </div>
+    </div>
+  `;
+}
+
 let loadAllRunId = 0;
 
 function isUserBusy() {
@@ -2320,11 +3384,16 @@ function isUserBusy() {
 }
 
 function getCachedTeamMembers(teamId) {
-  return getSortedTeamMembers(teamId, allTeams.find(t => t.id === teamId)?.captain_email, allMembers);
+  const team = derivedCache.teamById.get(teamId) || allTeams.find(t => t.id === teamId);
+  const cachedMembers = derivedCache.membersByTeam.get(teamId);
+  return getSortedTeamMembers(teamId, team?.captain_email, cachedMembers || allMembers);
 }
 
 async function safeLoadAll(reason = 'auto') {
-  if(isRefreshing || isLoadingAll) return false;
+  if(isRefreshing || isLoadingAll) {
+    pendingReloadReason = reason;
+    return false;
+  }
   if(!currentPlayer) return false;
 
   // Automatski refresh ne smije prekidati klik, modal, unos ili admin uređivanje.
@@ -2359,6 +3428,11 @@ async function safeLoadAll(reason = 'auto') {
     return false;
   } finally {
     isRefreshing = false;
+    if(pendingReloadReason && currentPlayer) {
+      const queuedReason = pendingReloadReason;
+      pendingReloadReason = null;
+      setTimeout(() => safeLoadAll(queuedReason), 80);
+    }
   }
 }
 
@@ -2422,6 +3496,7 @@ async function init() {
 }
 
 init();
+
 </script>
 </body>
 </html>
