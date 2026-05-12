@@ -2431,7 +2431,7 @@ async function renderChallenges() {
     return `<div class="challenge-card" style="animation-delay:${i*0.05}s;${!isMyChallenge?'opacity:0.6;':''}">
       <div class="challenge-header">
         <div>
-          <div class="challenge-title">⚔️ ${challenger.nickname} vs ${challenged.nickname}</div>
+          <div class="challenge-title"> ⚔️ ${(challenger.nickname || challenger.name || 'Tim 1')} vs ${(challenged.nickname || challenged.name || 'Tim 2')} </div>
           <div class="challenge-meta">${new Date(c.created_at).toLocaleDateString('hr-HR')} · Odbijanja: ${c.rejection_count}/1</div>
         </div>
         <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||c.status}</span>
