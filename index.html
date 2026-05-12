@@ -109,6 +109,28 @@
     .incoming-action.decline { color:white; background:linear-gradient(135deg,#b91c1c,var(--red)); border-color:rgba(239,68,68,0.45); }
     .incoming-action:hover { transform:translateY(-1px); filter:brightness(1.06); }
 
+
+    /* WORKFLOW POPUPI */
+    .workflow-modal { max-width:460px; padding:1.7rem; }
+    .workflow-icon { width:64px; height:64px; border-radius:22px; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2rem; background:radial-gradient(circle, rgba(255,107,43,0.28), rgba(255,107,43,0.08)); border:1px solid rgba(255,107,43,0.35); box-shadow:0 0 34px rgba(255,107,43,0.2); }
+    .workflow-title { font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:900; color:var(--text); text-align:center; margin-bottom:0.35rem; letter-spacing:-0.3px; }
+    .workflow-sub { color:var(--text2); font-size:0.9rem; line-height:1.45; text-align:center; margin-bottom:1rem; }
+    .workflow-card { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:0.9rem; margin:1rem 0; }
+    .workflow-row { display:flex; justify-content:space-between; gap:1rem; padding:0.42rem 0; border-bottom:1px solid var(--border); color:var(--text2); font-size:0.84rem; }
+    .workflow-row:last-child { border-bottom:none; }
+    .workflow-row strong { color:var(--text); text-align:right; }
+    .workflow-actions { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-top:1rem; }
+    .workflow-actions.single { grid-template-columns:1fr; }
+    .workflow-btn { border:none; border-radius:12px; padding:0.8rem 0.9rem; font-family:'Inter',sans-serif; font-size:0.88rem; font-weight:800; cursor:pointer; transition:all 0.18s; }
+    .workflow-btn:hover { transform:translateY(-1px); }
+    .workflow-btn.primary { background:var(--orange); color:white; }
+    .workflow-btn.green { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,0.28); }
+    .workflow-btn.red { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.25); }
+    .workflow-btn.muted { background:var(--bg3); color:var(--text2); border:1px solid var(--border2); }
+    .workflow-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-top:0.8rem; }
+    .workflow-note { color:var(--text3); font-size:0.76rem; line-height:1.45; margin-top:0.75rem; text-align:center; }
+    @media(max-width:520px) { .workflow-form-grid, .workflow-actions { grid-template-columns:1fr; } }
+
     /* IZAZOVI */
     .challenge-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem 1.25rem; margin-bottom:0.75rem; animation:fadeUp 0.3s ease both; }
     .challenge-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem; }
@@ -1118,6 +1140,14 @@
   </div>
 </div>
 
+<!-- MODAL: Workflow popupi -->
+<div class="modal-overlay" id="modal-workflow">
+  <div class="modal workflow-modal">
+    <button class="modal-close" onclick="closeWorkflowPopup()">×</button>
+    <div id="workflow-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <footer>© 2026 TK Buje Piramida · Powered by Supabase</footer>
 
@@ -1271,9 +1301,10 @@ function showSection(id, btn) {
   if(id==='admin') renderAdmin();
   if(id==='statistika') renderStatistics();
   if(id==='piramida') {
-    // Kad se korisnik vrati na Piramidu, ponovno pokaži pending izazov ako još nije odlučio.
+    // Kad se korisnik vrati na Piramidu, ponovno pokaži aktualni workflow popup.
     shownIncomingChallengeId = null;
-    maybeShowIncomingChallengePopup();
+    shownWorkflowPopupId = null;
+    maybeShowAppWorkflowPopups();
   }
 }
 
@@ -1467,7 +1498,7 @@ async function loadAll(options = {}) {
     renderPyramid();
     await renderChallenges();
     renderStatistics();
-    maybeShowIncomingChallengePopup();
+    maybeShowAppWorkflowPopups();
 
     if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
     return true;
@@ -1914,6 +1945,238 @@ async function incomingChallengeRespond(challengeId, response) {
   await respondChallenge(challengeId, response);
 }
 
+
+
+// ---- WORKFLOW POPUPI: termin, rezultat, admin potvrda ----
+let shownWorkflowPopupId = null;
+
+function isMyTeamInChallenge(challenge) {
+  return !!myTeam && (challenge.challenger_id === myTeam.id || challenge.challenged_id === myTeam.id);
+}
+
+function challengeTeamNames(challenge) {
+  const challenger = derivedCache.teamById.get(challenge.challenger_id) || allTeams.find(t => t.id === challenge.challenger_id);
+  const challenged = derivedCache.teamById.get(challenge.challenged_id) || allTeams.find(t => t.id === challenge.challenged_id);
+  const winner = challenge.result_winner_id ? (derivedCache.teamById.get(challenge.result_winner_id) || allTeams.find(t => t.id === challenge.result_winner_id)) : null;
+  return {
+    challenger,
+    challenged,
+    winner,
+    challengerName: adminTeamName(challenger),
+    challengedName: adminTeamName(challenged),
+    winnerName: winner ? adminTeamName(winner) : '—'
+  };
+}
+
+function formatDateTimeForInput(dateObj) {
+  const d = new Date(dateObj);
+  const pad = n => String(n).padStart(2, '0');
+  return {
+    date: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+    time: pad(d.getHours()) + ':' + pad(d.getMinutes())
+  };
+}
+
+function getNeedsScheduleChallenge() {
+  if(!myTeam) return null;
+  return allChallenges
+    .filter(c => c.status === 'accepted' && !c.scheduled_at && isMyTeamInChallenge(c))
+    .sort((a,b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at))[0] || null;
+}
+
+function getDueResultChallenge() {
+  if(!myTeam) return null;
+  const now = new Date();
+  return allChallenges
+    .filter(c => c.status === 'accepted' && c.scheduled_at && new Date(c.scheduled_at) <= now && isMyTeamInChallenge(c))
+    .sort((a,b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0] || null;
+}
+
+function getAdminPendingResultChallenge() {
+  if(!currentPlayer?.is_admin) return null;
+  return allChallenges
+    .filter(c => c.status === 'pending_result')
+    .sort((a,b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at))[0] || null;
+}
+
+function closeWorkflowPopup() {
+  closeModal('modal-workflow');
+}
+
+function showSchedulePopup(challenge) {
+  const content = document.getElementById('workflow-content');
+  if(!content) return;
+  const names = challengeTeamNames(challenge);
+  const defaultDate = formatDateTimeForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  shownWorkflowPopupId = 'schedule-' + challenge.id;
+
+  content.innerHTML =
+    '<div class="workflow-icon">📅</div>'
+    + '<div class="workflow-title">Dogovorite termin meča</div>'
+    + '<div class="workflow-sub">Izazov je prihvaćen. Jedan od timova treba upisati datum i sat meča.</div>'
+    + '<div class="workflow-card">'
+      + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
+      + '<div class="workflow-row"><span>Status</span><strong>Prihvaćeno</strong></div>'
+    + '</div>'
+    + '<div class="workflow-form-grid">'
+      + '<div class="form-group" style="margin:0"><label>Datum</label><input type="date" id="workflow-date" value="' + defaultDate.date + '"></div>'
+      + '<div class="form-group" style="margin:0"><label>Vrijeme</label><input type="time" id="workflow-time" value="' + defaultDate.time + '"></div>'
+    + '</div>'
+    + '<div class="form-group" style="margin-top:0.75rem"><label>Napomena / teren (opcionalno)</label><input type="text" id="workflow-note" placeholder="npr. teren 1, dogovoreno telefonom"></div>'
+    + '<div class="workflow-actions">'
+      + '<button class="workflow-btn muted" onclick="closeWorkflowPopup()">Kasnije</button>'
+      + '<button class="workflow-btn primary" onclick="saveChallengeSchedule(\'' + challenge.id + '\')">Spremi termin</button>'
+    + '</div>';
+  openModal('modal-workflow');
+}
+
+async function saveChallengeSchedule(challengeId) {
+  const date = document.getElementById('workflow-date')?.value;
+  const time = document.getElementById('workflow-time')?.value;
+  const note = document.getElementById('workflow-note')?.value.trim() || null;
+  if(!date || !time) { showToast('Upiši datum i vrijeme meča.', 'error'); return; }
+  const scheduledAt = new Date(date + 'T' + time + ':00');
+  if(isNaN(scheduledAt.getTime())) { showToast('Datum ili vrijeme nisu ispravni.', 'error'); return; }
+
+  const { error } = await sb.from('challenges').update({
+    scheduled_at: scheduledAt.toISOString(),
+    scheduled_by: currentPlayer?.email || null,
+    scheduled_created_at: new Date().toISOString(),
+    scheduled_note: note,
+    updated_at: new Date().toISOString()
+  }).eq('id', challengeId);
+
+  if(error) { showToast('Greška: ' + error.message, 'error'); return; }
+  showToast('Termin meča je spremljen. 📅', 'success');
+  closeWorkflowPopup();
+  await safeLoadAll('manual');
+}
+
+function showResultDuePopup(challenge) {
+  const content = document.getElementById('workflow-content');
+  if(!content) return;
+  const names = challengeTeamNames(challenge);
+  const scheduled = challenge.scheduled_at ? new Date(challenge.scheduled_at).toLocaleString('hr-HR') : '—';
+  shownWorkflowPopupId = 'result-' + challenge.id;
+
+  content.innerHTML =
+    '<div class="workflow-icon">🎾</div>'
+    + '<div class="workflow-title">Unesite rezultat meča</div>'
+    + '<div class="workflow-sub">Termin meča je stigao. Jedan od timova može poslati rezultat adminu na potvrdu.</div>'
+    + '<div class="workflow-card">'
+      + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
+      + '<div class="workflow-row"><span>Termin</span><strong>' + scheduled + '</strong></div>'
+    + '</div>'
+    + '<div class="form-group"><label>Pobjednički tim *</label><select id="workflow-result-winner">'
+      + '<option value="">— odaberi pobjednika —</option>'
+      + '<option value="' + challenge.challenger_id + '">' + names.challengerName + '</option>'
+      + '<option value="' + challenge.challenged_id + '">' + names.challengedName + '</option>'
+    + '</select></div>'
+    + '<div class="form-group"><label>Rezultat *</label><input type="text" id="workflow-result-score" placeholder="6:4, 6:3"></div>'
+    + '<div class="workflow-actions">'
+      + '<button class="workflow-btn muted" onclick="closeWorkflowPopup()">Kasnije</button>'
+      + '<button class="workflow-btn primary" onclick="submitWorkflowResult(\'' + challenge.id + '\')">Pošalji rezultat</button>'
+    + '</div>';
+  openModal('modal-workflow');
+}
+
+async function submitWorkflowResult(challengeId) {
+  const winnerId = document.getElementById('workflow-result-winner')?.value;
+  const score = document.getElementById('workflow-result-score')?.value.trim();
+  if(!winnerId || !score) { showToast('Odaberi pobjednika i upiši rezultat.', 'error'); return; }
+
+  const { error } = await sb.from('challenges').update({
+    status: 'pending_result',
+    result_winner_id: winnerId,
+    result_score: score,
+    updated_at: new Date().toISOString()
+  }).eq('id', challengeId);
+
+  if(error) { showToast('Greška: ' + error.message, 'error'); return; }
+  showToast('Rezultat je poslan adminu na potvrdu. ✓', 'success');
+  closeWorkflowPopup();
+  await safeLoadAll('manual');
+}
+
+function showAdminConfirmationPopup(challenge) {
+  const content = document.getElementById('workflow-content');
+  if(!content) return;
+  const names = challengeTeamNames(challenge);
+  shownWorkflowPopupId = 'admin-' + challenge.id;
+
+  content.innerHTML =
+    '<div class="workflow-icon">✅</div>'
+    + '<div class="workflow-title">Čeka potvrda rezultata</div>'
+    + '<div class="workflow-sub">Možeš odmah potvrditi ili odbiti rezultat bez ulaska u admin panel.</div>'
+    + '<div class="workflow-card">'
+      + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
+      + '<div class="workflow-row"><span>Pobjednik</span><strong>' + names.winnerName + '</strong></div>'
+      + '<div class="workflow-row"><span>Rezultat</span><strong>' + (challenge.result_score || '—') + '</strong></div>'
+    + '</div>'
+    + '<div class="workflow-actions">'
+      + '<button class="workflow-btn red" onclick="adminRejectResultFromPopup(\'' + challenge.id + '\')">Odbij</button>'
+      + '<button class="workflow-btn green" onclick="adminConfirmResultFromPopup(\'' + challenge.id + '\')">Potvrdi</button>'
+    + '</div>'
+    + '<button class="workflow-btn muted" style="width:100%;margin-top:0.6rem;" onclick="closeWorkflowPopup()">Kasnije</button>';
+  openModal('modal-workflow');
+}
+
+async function adminConfirmResultFromPopup(challengeId) {
+  if(!confirm('Potvrditi ovaj rezultat?')) return;
+  closeWorkflowPopup();
+  await adminConfirmResult(challengeId);
+  shownWorkflowPopupId = null;
+  setTimeout(maybeShowAppWorkflowPopups, 250);
+}
+
+async function adminRejectResultFromPopup(challengeId) {
+  if(!confirm('Odbiti ovaj rezultat i vratiti meč kao prihvaćen?')) return;
+  closeWorkflowPopup();
+  await adminRejectResult(challengeId);
+  shownWorkflowPopupId = null;
+  setTimeout(maybeShowAppWorkflowPopups, 250);
+}
+
+function maybeShowAppWorkflowPopups() {
+  if(!currentPlayer) return;
+  const activeSection = document.querySelector('.section.active')?.id || '';
+  if(activeSection !== 'sec-piramida') return;
+
+  const workflowModal = document.getElementById('modal-workflow');
+  const incomingModal = document.getElementById('modal-incoming-challenge');
+  if(workflowModal?.classList.contains('open') || incomingModal?.classList.contains('open')) return;
+
+  // 1) Admin ima prioritet: potvrda rezultata odmah na ulazu u Piramidu.
+  const adminPending = getAdminPendingResultChallenge();
+  if(adminPending) {
+    const id = 'admin-' + adminPending.id;
+    if(shownWorkflowPopupId !== id) showAdminConfirmationPopup(adminPending);
+    return;
+  }
+
+  // 2) Dolazni izazov: prihvati / odbij.
+  const incoming = getIncomingPendingChallenge();
+  if(incoming) {
+    maybeShowIncomingChallengePopup();
+    return;
+  }
+
+  // 3) Prihvaćen meč bez termina: oba tima vide popup za unos datuma i sata.
+  const needsSchedule = getNeedsScheduleChallenge();
+  if(needsSchedule) {
+    const id = 'schedule-' + needsSchedule.id;
+    if(shownWorkflowPopupId !== id) showSchedulePopup(needsSchedule);
+    return;
+  }
+
+  // 4) Kad dođe termin: oba tima vide popup za unos rezultata.
+  const dueResult = getDueResultChallenge();
+  if(dueResult) {
+    const id = 'result-' + dueResult.id;
+    if(shownWorkflowPopupId !== id) showResultDuePopup(dueResult);
+  }
+}
+
 // ---- PLAYER SELECTION ----
 let pendingChallengeData = null;
 let selectedPlayers = new Set();
@@ -2144,6 +2407,14 @@ async function renderChallenges() {
       </div>`;
     }
 
+    let scheduledHtml = '';
+    if(c.status === 'accepted' && c.scheduled_at) {
+      scheduledHtml = `<div class="timer-wrap" style="margin-top:0.45rem;">
+        <span style="color:var(--text3);font-size:0.72rem;">Termin:</span>
+        <span class="timer ok">${new Date(c.scheduled_at).toLocaleString('hr-HR')}</span>
+      </div>`;
+    }
+
     const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined', surrendered:'s-declined', pending_result:'s-pending' };
     const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano', surrendered:'Predaja', pending_result:'Čeka potvrdu' };
 
@@ -2166,6 +2437,7 @@ async function renderChallenges() {
         <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||c.status}</span>
       </div>
       ${timerHtml}
+      ${scheduledHtml}
       ${actions ? `<div class="challenge-actions" style="margin-top:0.75rem;">${actions}</div>` : ''}
     </div>`;
   }).join('');
@@ -3611,7 +3883,8 @@ function setupAutoRefresh() {
       console.log('[TKB] tab visible again - refresh timer restarted, no immediate request');
       startRefreshTimer();
       shownIncomingChallengeId = null;
-      maybeShowIncomingChallengePopup();
+      shownWorkflowPopupId = null;
+      maybeShowAppWorkflowPopups();
     }
   });
 
