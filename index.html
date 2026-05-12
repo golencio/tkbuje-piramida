@@ -91,6 +91,23 @@
     .team-pos { position:absolute; top:0.5rem; right:0.6rem; font-family:'Space Grotesk',sans-serif; font-size:0.72rem; font-weight:700; color:var(--text3); }
     .challenge-btn { margin-top:0.6rem; width:100%; background:var(--blue-glow); border:1px solid rgba(59,130,246,0.3); color:var(--blue); font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:600; padding:0.35rem; border-radius:6px; cursor:pointer; transition:all 0.2s; }
     .challenge-btn:hover { background:var(--blue); color:white; }
+    .modal-challenge-btn { width:100%; margin-top:1rem; background:linear-gradient(135deg,var(--blue),#2563eb); border:none; color:white; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:800; padding:0.85rem 1rem; border-radius:12px; cursor:pointer; transition:all 0.2s; box-shadow:0 12px 30px rgba(59,130,246,0.18); }
+    .modal-challenge-btn:hover { transform:translateY(-1px); box-shadow:0 16px 34px rgba(59,130,246,0.26); }
+
+    /* DOLAZNI IZAZOV POPUP */
+    .incoming-challenge-modal { max-width:440px; text-align:center; padding:1.7rem; }
+    .incoming-icon { width:72px; height:72px; border-radius:24px; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2.2rem; background:radial-gradient(circle, rgba(255,107,43,0.28), rgba(255,107,43,0.08)); border:1px solid rgba(255,107,43,0.35); box-shadow:0 0 36px rgba(255,107,43,0.22); }
+    .incoming-title { font-family:'Space Grotesk',sans-serif; font-size:1.55rem; font-weight:900; color:var(--text); margin-bottom:0.35rem; letter-spacing:-0.4px; }
+    .incoming-sub { color:var(--text2); font-size:0.9rem; line-height:1.45; margin-bottom:1rem; }
+    .incoming-info { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:0.85rem; margin:1rem 0; text-align:left; }
+    .incoming-info-row { display:flex; justify-content:space-between; gap:1rem; padding:0.42rem 0; color:var(--text2); font-size:0.82rem; border-bottom:1px solid var(--border); }
+    .incoming-info-row:last-child { border-bottom:none; }
+    .incoming-info-row strong { color:var(--text); text-align:right; }
+    .incoming-actions { display:grid; grid-template-columns:1fr; gap:0.65rem; margin-top:1rem; }
+    .incoming-action { width:100%; border-radius:13px; padding:0.85rem 1rem; font-family:'Inter',sans-serif; font-size:0.92rem; font-weight:900; cursor:pointer; transition:all 0.18s; border:1px solid var(--border2); }
+    .incoming-action.accept { color:white; background:linear-gradient(135deg,var(--green2),var(--green)); border-color:rgba(34,197,94,0.45); }
+    .incoming-action.decline { color:white; background:linear-gradient(135deg,#b91c1c,var(--red)); border-color:rgba(239,68,68,0.45); }
+    .incoming-action:hover { transform:translateY(-1px); filter:brightness(1.06); }
 
     /* IZAZOVI */
     .challenge-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem 1.25rem; margin-bottom:0.75rem; animation:fadeUp 0.3s ease both; }
@@ -1093,6 +1110,14 @@
   </div>
 </div>
 
+
+<!-- MODAL: Dolazni izazov -->
+<div class="modal-overlay" id="modal-incoming-challenge">
+  <div class="modal incoming-challenge-modal">
+    <div id="incoming-challenge-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <footer>© 2026 TK Buje Piramida · Powered by Supabase</footer>
 
@@ -1245,6 +1270,11 @@ function showSection(id, btn) {
   if(btn) btn.classList.add('active');
   if(id==='admin') renderAdmin();
   if(id==='statistika') renderStatistics();
+  if(id==='piramida') {
+    // Kad se korisnik vrati na Piramidu, ponovno pokaži pending izazov ako još nije odlučio.
+    shownIncomingChallengeId = null;
+    maybeShowIncomingChallengePopup();
+  }
 }
 
 function toggleMenu() {
@@ -1271,7 +1301,9 @@ function switchTab(id, btn) {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(o => {
-  o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); });
+  o.addEventListener('click', e => {
+    if(e.target === o && !o.classList.contains('locked')) o.classList.remove('open');
+  });
 });
 
 // ---- PAUZA TURNIRA ----
@@ -1435,6 +1467,7 @@ async function loadAll(options = {}) {
     renderPyramid();
     await renderChallenges();
     renderStatistics();
+    maybeShowIncomingChallengePopup();
 
     if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
     return true;
@@ -1658,11 +1691,8 @@ function renderTeamCard(team, context) {
   if(canChallenge) cardClass += ' can-challenge';
   if(hasPendingChallenge && !isMyTeam) cardClass += ' has-challenge';
 
-  const crownHTML = team.step === 1
-    ? '<div class="team-crown-main">👑</div>'
-    : team.step === 2
-      ? '<div class="team-crown-small">👑</div>'
-      : '';
+  // Krune na karticama su maknute da kartice ostanu čišće i kompaktnije.
+  const crownHTML = '';
   const titleHTML = getTeamDisplayTitle(team)
     ? '<div class="team-card-title">' + getTeamDisplayTitle(team) + '</div>'
     : '';
@@ -1723,6 +1753,29 @@ function renderPyramid() {
   container.innerHTML = '<div class="pyramid-wrap">' + html + '</div>';
 }
 
+
+function canCurrentUserChallengeTeam(team) {
+  if(!team || !myTeam || !currentPlayer) return false;
+  if(myTeam.id === team.id) return false;
+  if(myTeam.captain_email !== currentPlayer.email) return false;
+
+  const context = getPyramidContext();
+  const inCooldown = context.cooldownByTeamId.has(team.id);
+  const targetStep = team.penalty ? 0 : team.step;
+  const canReachStep = (!myTeam.penalty && targetStep === context.myStepEffective - 1) ||
+    (myTeam.penalty && targetStep === context.maxStep);
+
+  return canReachStep &&
+    !context.busyTeams.has(myTeam.id) &&
+    !context.busyTeams.has(team.id) &&
+    !inCooldown;
+}
+
+function challengeFromTeamModal(teamId) {
+  closeModal('modal-team');
+  setTimeout(() => sendChallenge(teamId), 80);
+}
+
 function openTeam(teamId) {
   const team = derivedCache.teamById.get(teamId) || allTeams.find(t=>t.id===teamId);
   if(!team) return;
@@ -1779,13 +1832,86 @@ function openTeam(teamId) {
       + '<div class="profile-stat-card red"><strong>' + record.losses + '</strong><span>Porazi</span></div>'
       + '<div class="profile-stat-card orange"><strong>' + winRateLabel + '</strong><span>Uspješnost</span></div>'
     + '</div>'
-    + '<div class="modal-tabs profile-tabs">'
+    + (canCurrentUserChallengeTeam(team) ? '<button class="modal-challenge-btn" onclick="challengeFromTeamModal(\'' + team.id + '\')">⚔️ Izazovi ovaj tim</button>' : '')
+    + '<div class="modal-tabs profile-tabs" style="margin-top:1rem;">'
       + '<button class="modal-tab active" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'
       + '<button class="modal-tab" onclick="switchTab(\'team-tab-mecevi\',this)">🎾 Mečevi ('+allTeamMatches.length+')</button>'
     + '</div>'
     + '<div class="tab-content active" id="team-tab-clanovi"><div class="profile-card-list">'+(memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>')+'</div></div>'
     + '<div class="tab-content" id="team-tab-mecevi"><div class="profile-card-list">'+matchesHTML+'</div></div>';
   openModal('modal-team');
+}
+
+
+// ---- DOLAZNI IZAZOV POPUP ----
+let shownIncomingChallengeId = null;
+
+function getIncomingPendingChallenge() {
+  if(!myTeam) return null;
+  return allChallenges
+    .filter(c => c.status === 'pending' && c.challenged_id === myTeam.id)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0] || null;
+}
+
+function formatIncomingDeadline(challenge) {
+  if(!challenge?.response_expires_at) return '—';
+  const remaining = formatRemainingTime(challenge.response_expires_at, new Date());
+  return remaining.text;
+}
+
+function maybeShowIncomingChallengePopup() {
+  const modal = document.getElementById('modal-incoming-challenge');
+  const content = document.getElementById('incoming-challenge-content');
+  if(!modal || !content || !myTeam) return;
+
+  const challenge = getIncomingPendingChallenge();
+  if(!challenge) {
+    shownIncomingChallengeId = null;
+    modal.classList.remove('open');
+    return;
+  }
+
+  // Prikaži jednom po ulasku u app za isti pending izazov.
+  if(shownIncomingChallengeId === challenge.id || modal.classList.contains('open')) return;
+  shownIncomingChallengeId = challenge.id;
+
+  const challenger = derivedCache.teamById.get(challenge.challenger_id) || allTeams.find(t => t.id === challenge.challenger_id);
+  const challengerName = adminTeamName(challenger);
+  const sentAt = challenge.created_at ? new Date(challenge.created_at).toLocaleString('hr-HR') : '—';
+  const deadline = formatIncomingDeadline(challenge);
+
+  content.innerHTML =
+    '<button class="modal-close" onclick="closeIncomingChallengePopup()">×</button>'
+    + '<div class="incoming-icon">⚔️</div>'
+    + '<div class="incoming-title">Izazvani ste!</div>'
+    + '<div class="incoming-sub">Tim <strong>' + challengerName + '</strong> izazvao je vaš tim na meč.</div>'
+    + '<div class="incoming-info">'
+      + '<div class="incoming-info-row"><span>Izazivač</span><strong>' + challengerName + '</strong></div>'
+      + '<div class="incoming-info-row"><span>Rok za odgovor</span><strong>' + deadline + '</strong></div>'
+      + '<div class="incoming-info-row"><span>Poslano</span><strong>' + sentAt + '</strong></div>'
+    + '</div>'
+    + '<div class="incoming-actions">'
+      + '<button class="incoming-action accept" onclick="incomingChallengeRespond(\'' + challenge.id + '\',\'accepted\')">✓ Prihvati izazov</button>'
+      + '<button class="incoming-action decline" onclick="incomingChallengeRespond(\'' + challenge.id + '\',\'declined\')">✕ Odbij</button>'
+    + '</div>';
+
+  openModal('modal-incoming-challenge');
+}
+
+function closeIncomingChallengePopup() {
+  closeModal('modal-incoming-challenge');
+  // Ne mijenjamo status izazova. Popup se opet može prikazati kad se korisnik vrati na Piramidu.
+}
+
+async function incomingChallengeRespond(challengeId, response) {
+  const isAccept = response === 'accepted';
+  const ok = confirm(isAccept
+    ? 'Prihvatiti ovaj izazov?'
+    : 'Odbiti ovaj izazov?');
+  if(!ok) return;
+
+  closeModal('modal-incoming-challenge');
+  await respondChallenge(challengeId, response);
 }
 
 // ---- PLAYER SELECTION ----
@@ -3484,6 +3610,8 @@ function setupAutoRefresh() {
       // Samo ponovno pokrećemo timer; prvi auto-refresh dolazi tek za 120 sekundi.
       console.log('[TKB] tab visible again - refresh timer restarted, no immediate request');
       startRefreshTimer();
+      shownIncomingChallengeId = null;
+      maybeShowIncomingChallengePopup();
     }
   });
 
