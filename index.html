@@ -817,6 +817,28 @@
   .profile-match-score strong { font-size:0.82rem; }
 }
 
+
+/* RESTORE ORIGINAL PYRAMID CARD SIZE — production mobile fix */
+.team-card-v2,
+.team-card-v2:hover {
+  transform:none;
+}
+@media(max-width:700px) {
+  .step-teams { gap:0.5rem; justify-content:center; }
+  .team-card {
+    flex:0 0 86px !important;
+    max-width:86px !important;
+    min-width:86px !important;
+    min-height:80px !important;
+    padding:0.55rem 0.3rem !important;
+  }
+  .team-card-title { font-size:0.62rem !important; margin-bottom:0.18rem !important; }
+  .team-member-name { font-size:0.62rem !important; line-height:1.22 !important; }
+  .team-card-badges { gap:0.2rem !important; margin-top:0.22rem !important; }
+  .team-badge { font-size:0.56rem !important; padding:0.13rem 0.32rem !important; max-width:78px !important; }
+  .challenge-btn { font-size:0.62rem !important; padding:0.28rem !important; margin-top:0.35rem !important; }
+}
+
 </style>
 </head>
 <body>
@@ -1631,45 +1653,39 @@ function renderTeamCard(team, context) {
     myTeam.captain_email === currentPlayer?.email;
 
   const flags = { isMyTeam, hasPendingChallenge, canChallenge };
-  const tone = getTeamCardTone(team, flags);
-  let cardClass = 'team-card team-card-v2 tone-' + tone;
+  let cardClass = 'team-card';
   if(isMyTeam) cardClass += ' my-team';
   if(canChallenge) cardClass += ' can-challenge';
   if(hasPendingChallenge && !isMyTeam) cardClass += ' has-challenge';
 
   const crownHTML = team.step === 1
-    ? '<div class="team-crown team-crown-main">👑</div>'
+    ? '<div class="team-crown-main">👑</div>'
     : team.step === 2
-      ? '<div class="team-crown team-crown-small">👑</div>'
+      ? '<div class="team-crown-small">👑</div>'
       : '';
+  const titleHTML = getTeamDisplayTitle(team)
+    ? '<div class="team-card-title">' + getTeamDisplayTitle(team) + '</div>'
+    : '';
   const badgesHTML = renderTeamStatusBadges(team, context, flags);
 
   return '<div class="' + cardClass + '" onclick="openTeam(\'' + team.id + '\')">'
-    + '<div class="team-card-glow"></div>'
     + crownHTML
-    + '<div class="team-card-topline">'
-      + '<div class="team-rank-chip">#' + (team.position || '-') + '</div>'
-      + '<div class="team-step-chip">' + (team.penalty ? 'Kazna' : 'Stepenica ' + team.step) + '</div>'
-    + '</div>'
-    + '<div class="team-avatar-mini">' + getTeamInitials(team) + '</div>'
-    + '<div class="team-card-title">' + getTeamDisplayTitle(team) + '</div>'
-    + '<div class="team-members team-members-v2">' + getTeamMembersHTML(team) + '</div>'
-    + renderTeamMiniStats(team, flags)
-    + '<div class="team-card-badges">' + badgesHTML + '</div>'
+    + titleHTML
+    + '<div class="team-members">' + getTeamMembersHTML(team) + '</div>'
+    + (badgesHTML ? '<div class="team-card-badges">' + badgesHTML + '</div>' : '')
     + '</div>';
 }
 
 function renderPenaltyCard(team) {
   const isMyTeam = myTeam?.id === team.id;
-  let cardClass = 'team-card team-card-v2 tone-danger has-challenge penalty-card';
+  let cardClass = 'team-card has-challenge penalty-card';
   if(isMyTeam) cardClass += ' my-team';
-  return '<div class="' + cardClass + '" onclick="openTeam(\'' + team.id + '\')">'
-    + '<div class="team-card-glow"></div>'
-    + '<div class="team-card-topline"><div class="team-rank-chip">⚠</div><div class="team-step-chip">Kaznena zona</div></div>'
-    + '<div class="team-avatar-mini danger">' + getTeamInitials(team) + '</div>'
-    + '<div class="team-card-title">' + getTeamDisplayTitle(team) + '</div>'
-    + '<div class="team-members team-members-v2">' + getTeamMembersHTML(team, { uppercase:false, showCaptainIcon:true, fontSize:'0.72rem' }) + '</div>'
-    + renderTeamMiniStats(team, { hasPendingChallenge:false })
+  const titleHTML = getTeamDisplayTitle(team)
+    ? '<div class="team-card-title" style="color:var(--text);">' + getTeamDisplayTitle(team) + '</div>'
+    : '';
+  return '<div class="' + cardClass + '" onclick="openTeam(\'' + team.id + '\')" style="border-color:var(--red);">'
+    + titleHTML
+    + '<div class="team-members">' + getTeamMembersHTML(team, { uppercase:false, showCaptainIcon:true, fontSize:'0.72rem' }) + '</div>'
     + '<div class="team-card-badges"><div class="team-badge team-badge-danger">⚠️ Kaznena zona</div>'
     + (isMyTeam ? '<div class="team-badge team-badge-me">MOJ TIM</div>' : '')
     + '</div></div>';
