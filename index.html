@@ -151,6 +151,210 @@
     .s-completed { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,0.2); }
     .s-declined { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.2); }
 
+
+
+    /* IZAZOVI — VS KARTICE */
+    .challenge-vs-box {
+      padding:1.05rem;
+      border-radius:20px;
+      overflow:hidden;
+    }
+    .challenge-vs-top {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:0.75rem;
+      margin-bottom:0.85rem;
+    }
+    .challenge-vs-id {
+      color:var(--text3);
+      font-size:0.72rem;
+      font-weight:700;
+      letter-spacing:0.4px;
+    }
+    .challenge-vs-layout {
+      display:grid;
+      grid-template-columns:minmax(0,1.35fr) minmax(280px,0.8fr);
+      gap:1rem;
+      align-items:stretch;
+    }
+    .challenge-vs-pair {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);
+      gap:0.75rem;
+      align-items:center;
+      min-width:0;
+    }
+    .challenge-vs-label {
+      color:var(--text);
+      font-family:'Space Grotesk',sans-serif;
+      font-weight:900;
+      font-size:1.1rem;
+      text-align:center;
+      opacity:0.9;
+    }
+    .challenge-vs-team {
+      min-height:152px;
+      position:relative;
+      border:1px solid var(--border2);
+      border-radius:18px;
+      padding:0.85rem 0.75rem;
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 58%),
+        linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+      box-shadow:0 14px 28px rgba(0,0,0,0.18);
+      overflow:hidden;
+    }
+    .challenge-vs-team.challenger {
+      border-color:rgba(255,107,43,0.48);
+      box-shadow:0 0 0 1px rgba(255,107,43,0.10), 0 14px 30px rgba(255,107,43,0.06);
+    }
+    .challenge-vs-team.mine {
+      background:linear-gradient(180deg, rgba(255,107,43,0.12), rgba(255,255,255,0.025));
+    }
+    .challenge-vs-team.winner { border-color:rgba(245,158,11,0.55); }
+    .challenge-vs-crown {
+      position:absolute;
+      top:0.45rem;
+      right:0.55rem;
+      font-size:1rem;
+      filter:drop-shadow(0 0 8px rgba(245,158,11,0.45));
+    }
+    .challenge-vs-role {
+      color:var(--orange);
+      font-size:0.64rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:0.8px;
+      margin-bottom:0.28rem;
+    }
+    .challenge-vs-name {
+      font-family:'Space Grotesk',sans-serif;
+      color:var(--text);
+      font-size:1rem;
+      font-weight:900;
+      line-height:1.1;
+      text-transform:uppercase;
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .challenge-vs-meta {
+      color:var(--text3);
+      font-size:0.72rem;
+      line-height:1.35;
+      margin-top:0.22rem;
+      margin-bottom:0.55rem;
+    }
+    .challenge-vs-members {
+      width:100%;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:0.28rem 0.55rem;
+      margin-top:0.15rem;
+    }
+    .challenge-vs-member {
+      min-width:0;
+      color:var(--text2);
+      font-size:0.76rem;
+      line-height:1.25;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      text-align:center;
+    }
+    .challenge-vs-member.muted {
+      grid-column:1 / -1;
+      color:var(--text3);
+    }
+    .challenge-vs-info {
+      border:1px solid var(--border);
+      border-radius:16px;
+      overflow:hidden;
+      background:rgba(0,0,0,0.13);
+      align-self:stretch;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+    .challenge-vs-info-row {
+      display:grid;
+      grid-template-columns:minmax(0,0.95fr) minmax(0,1.15fr);
+      gap:0.75rem;
+      align-items:center;
+      padding:0.76rem 0.9rem;
+      border-bottom:1px solid var(--border);
+      min-height:44px;
+    }
+    .challenge-vs-info-row:last-child { border-bottom:none; }
+    .challenge-vs-info-label {
+      color:var(--text2);
+      font-size:0.8rem;
+      line-height:1.25;
+    }
+    .challenge-vs-info-value {
+      color:var(--text);
+      font-size:0.82rem;
+      font-weight:700;
+      text-align:right;
+      line-height:1.35;
+    }
+    .challenge-vs-info-value.accent { color:var(--orange); }
+    .challenge-vs-info-value.danger { color:var(--red); }
+    .challenge-vs-info-value.muted { color:var(--text3); }
+    .challenge-vs-confirm {
+      display:flex;
+      flex-direction:column;
+      gap:0.18rem;
+    }
+    .challenge-vs-ok { color:var(--green); }
+    .challenge-vs-warn { color:var(--gold); }
+    .challenge-vs-muted { color:var(--text3); }
+    .challenge-vs-actions {
+      margin-top:0.9rem;
+      justify-content:flex-end;
+    }
+    @media(max-width:900px) {
+      .challenge-vs-layout { grid-template-columns:1fr; }
+    }
+    @media(max-width:700px) {
+      .challenge-vs-box { padding:0.78rem; border-radius:18px; }
+      .challenge-vs-top { margin-bottom:0.62rem; }
+      .challenge-vs-pair {
+        grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);
+        gap:0.42rem;
+      }
+      .challenge-vs-label { font-size:0.9rem; }
+      .challenge-vs-team {
+        min-height:142px;
+        border-radius:14px;
+        padding:0.68rem 0.45rem;
+      }
+      .challenge-vs-role { font-size:0.55rem; margin-bottom:0.22rem; }
+      .challenge-vs-name { font-size:0.78rem; }
+      .challenge-vs-meta { font-size:0.61rem; margin-bottom:0.42rem; }
+      .challenge-vs-members { grid-template-columns:1fr; gap:0.12rem; }
+      .challenge-vs-member { font-size:0.62rem; }
+      .challenge-vs-info { margin-top:0.75rem; border-radius:14px; }
+      .challenge-vs-info-row {
+        grid-template-columns:1fr auto;
+        gap:0.55rem;
+        padding:0.62rem 0.7rem;
+        min-height:40px;
+      }
+      .challenge-vs-info-label { font-size:0.68rem; }
+      .challenge-vs-info-value { font-size:0.68rem; }
+      .challenge-vs-confirm { align-items:flex-end; }
+      .challenge-vs-actions { justify-content:stretch; }
+      .challenge-vs-actions button { flex:1 1 auto; }
+    }
+
     /* MODALI */
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:500; align-items:center; justify-content:center; padding:1rem; }
     .modal-overlay.open { display:flex; }
@@ -1078,28 +1282,49 @@
   </div>
 </div>
 
-<!-- MODAL: Edit meča (admin) -->
+<!-- MODAL: Edit meča / izazova (admin) -->
 <div class="modal-overlay" id="modal-edit-challenge">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-edit-challenge')">×</button>
-    <div class="modal-title">Uredi Meč</div>
+    <div class="modal-title">Admin uređivanje izazova</div>
+    <div id="edit-ch-summary" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:0.75rem;margin-bottom:1rem;color:var(--text2);font-size:0.86rem;line-height:1.45;"></div>
     <div class="form-group">
-      <label>Pobjednički tim *</label>
+      <label>Status / potvrda</label>
+      <select id="edit-ch-status">
+        <option value="pending">Na čekanju</option>
+        <option value="accepted">Prihvaćeno</option>
+        <option value="declined">Odbijeno</option>
+        <option value="pending_result">Čeka potvrdu rezultata</option>
+        <option value="completed">Završeno / potvrđeno</option>
+        <option value="surrendered">Predaja</option>
+        <option value="cancelled">Otkazano</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Termin meča</label>
+      <input type="datetime-local" id="edit-ch-scheduled-at"/>
+    </div>
+    <div class="form-group">
+      <label>Rok za odgovor</label>
+      <input type="datetime-local" id="edit-ch-response-expires"/>
+    </div>
+    <div class="form-group">
+      <label>Rok za odigravanje meča</label>
+      <input type="datetime-local" id="edit-ch-match-expires"/>
+    </div>
+    <div class="form-group">
+      <label>Pobjednički tim</label>
       <select id="edit-ch-winner"></select>
     </div>
     <div class="form-group">
       <label>Rezultat</label>
       <input type="text" id="edit-ch-score" placeholder="6:4, 6:3"/>
     </div>
-    <div class="form-group">
-      <label>Status</label>
-      <select id="edit-ch-status">
-        <option value="completed">Završeno</option>
-        <option value="surrendered">Predaja</option>
-        <option value="accepted">Prihvaćeno (vrati u igru)</option>
-      </select>
+    <div class="form-row">
+      <button class="btn-primary" id="save-edit-challenge-btn" onclick="saveEditChallenge()">💾 Spremi promjene</button>
+      <button class="btn-primary" style="background:var(--red);" onclick="deleteChallengeAdmin()">🗑 Obriši izazov</button>
     </div>
-    <button class="btn-primary" id="save-edit-challenge-btn" onclick="saveEditChallenge()">💾 Spremi promjene</button>
+    <div style="color:var(--text3);font-size:0.76rem;line-height:1.45;margin-top:0.75rem;">Napomena: ručna promjena pobjednika i statusa ne vraća automatski staru zamjenu poretka ako je ona već ranije napravljena.</div>
   </div>
 </div>
 
@@ -2007,39 +2232,13 @@ function showSchedulePopup(challenge) {
   const content = document.getElementById('workflow-content');
   if(!content) return;
   const names = challengeTeamNames(challenge);
-  shownWorkflowPopupId = 'schedule-' + challenge.id;
-
-  content.innerHTML =
-    '<div class="workflow-icon">📅</div>'
-    + '<div class="workflow-title">Termin meča</div>'
-    + '<div class="workflow-sub">Izazov je prihvaćen. Odaberi znaš li već termin meča.</div>'
-    + '<div class="workflow-card">'
-      + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
-      + '<div class="workflow-row"><span>Status</span><strong>Prihvaćeno</strong></div>'
-    + '</div>'
-    + '<div class="workflow-actions single">'
-      + '<button class="workflow-btn muted" onclick="closeWorkflowPopup()">Termin još nije zakazan</button>'
-      + '<button class="workflow-btn primary" onclick="showScheduleForm(\'' + challenge.id + '\')">Znam termin za meč</button>'
-    + '</div>'
-    + '<div class="workflow-note">Ako termin još nije dogovoren, samo zatvori popup. Izazov ostaje prihvaćen i termin se može upisati kasnije.</div>';
-  openModal('modal-workflow');
-}
-
-function showScheduleForm(challengeId) {
-  const challenge = allChallenges.find(c => c.id === challengeId);
-  if(!challenge) { showToast('Ne mogu pronaći izazov.', 'error'); return; }
-
-  const content = document.getElementById('workflow-content');
-  if(!content) return;
-
-  const names = challengeTeamNames(challenge);
   const defaultDate = formatDateTimeForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
   shownWorkflowPopupId = 'schedule-' + challenge.id;
 
   content.innerHTML =
     '<div class="workflow-icon">📅</div>'
-    + '<div class="workflow-title">Upiši termin meča</div>'
-    + '<div class="workflow-sub">Upiši datum i sat samo ako je termin stvarno dogovoren.</div>'
+    + '<div class="workflow-title">Dogovorite termin meča</div>'
+    + '<div class="workflow-sub">Izazov je prihvaćen. Jedan od timova treba upisati datum i sat meča.</div>'
     + '<div class="workflow-card">'
       + '<div class="workflow-row"><span>Meč</span><strong>' + names.challengerName + ' vs ' + names.challengedName + '</strong></div>'
       + '<div class="workflow-row"><span>Status</span><strong>Prihvaćeno</strong></div>'
@@ -2050,9 +2249,10 @@ function showScheduleForm(challengeId) {
     + '</div>'
     + '<div class="form-group" style="margin-top:0.75rem"><label>Napomena / teren (opcionalno)</label><input type="text" id="workflow-note" placeholder="npr. teren 1, dogovoreno telefonom"></div>'
     + '<div class="workflow-actions">'
-      + '<button class="workflow-btn muted" onclick="showSchedulePopup(allChallenges.find(c => c.id === \'' + challenge.id + '\'))">Natrag</button>'
+      + '<button class="workflow-btn muted" onclick="closeWorkflowPopup()">Kasnije</button>'
       + '<button class="workflow-btn primary" onclick="saveChallengeSchedule(\'' + challenge.id + '\')">Spremi termin</button>'
     + '</div>';
+  openModal('modal-workflow');
 }
 
 async function saveChallengeSchedule(challengeId) {
@@ -2186,7 +2386,7 @@ function maybeShowAppWorkflowPopups() {
     return;
   }
 
-  // 3) Prihvaćen meč bez termina: oba tima vide popup s izborom: termin nije zakazan ili upis termina.
+  // 3) Prihvaćen meč bez termina: oba tima vide popup za unos datuma i sata.
   const needsSchedule = getNeedsScheduleChallenge();
   if(needsSchedule) {
     const id = 'schedule-' + needsSchedule.id;
@@ -2395,7 +2595,17 @@ async function sendChallenge(challengedId) {
   await safeLoadAll('manual');
 }
 
+
 // ---- RENDER CHALLENGES ----
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 function getChallengeTeamPlayersDisplay(team) {
   if(!team) return 'Nepoznat tim';
@@ -2412,6 +2622,79 @@ function getChallengeTeamPlayersDisplay(team) {
     })
     .filter(Boolean);
   return names.length ? names.join(' / ') : (team.name || team.nickname || 'Nepoznat tim');
+}
+
+function getChallengeTeamPlayersList(team) {
+  if(!team) return [];
+  let members = [];
+  try {
+    members = getCachedTeamMembers(team.id) || [];
+  } catch(e) {
+    members = (allMembers || []).filter(m => m.team_id === team.id);
+  }
+  return members
+    .map(m => {
+      const player = (allPlayers || []).find(p => p.email === m.player_email);
+      return player?.name || m.player_email || '';
+    })
+    .filter(Boolean);
+}
+
+function formatChallengeDateTime(value, mode = 'datetime') {
+  if(!value) return '—';
+  const d = new Date(value);
+  if(isNaN(d.getTime())) return '—';
+  if(mode === 'date') return d.toLocaleDateString('hr-HR');
+  if(mode === 'time') return d.toLocaleTimeString('hr-HR', { hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleDateString('hr-HR') + ' u ' + d.toLocaleTimeString('hr-HR', { hour:'2-digit', minute:'2-digit' });
+}
+
+function toDatetimeLocalInput(value) {
+  if(!value) return '';
+  const d = new Date(value);
+  if(isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function datetimeLocalToIso(value) {
+  if(!value) return null;
+  const d = new Date(value);
+  if(isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function statusLabelHr(status) {
+  return ({
+    pending:'Na čekanju',
+    accepted:'Prihvaćeno',
+    pending_result:'Čeka potvrdu rezultata',
+    completed:'Završeno / potvrđeno',
+    declined:'Odbijeno',
+    cancelled:'Otkazano',
+    surrendered:'Predaja'
+  })[status] || status || '—';
+}
+
+function buildChallengeTeamCard(team, role, c) {
+  const members = getChallengeTeamPlayersList(team);
+  const safeNickname = escapeHtml(team?.nickname || team?.name || 'Tim');
+  const safeMeta = escapeHtml('Stepenica ' + (team?.step ?? '—') + ' · Pozicija ' + (team?.position ?? '—'));
+  const isMine = myTeam && team?.id === myTeam.id;
+  const isWinner = c?.result_winner_id && c.result_winner_id === team?.id;
+  const isChallenger = role === 'challenger';
+  const memberHtml = members.length
+    ? members.map(n => `<div class="challenge-vs-member">${escapeHtml(n)}</div>`).join('')
+    : '<div class="challenge-vs-member muted">Nema članova</div>';
+
+  return `
+    <div class="challenge-vs-team ${isMine ? 'mine' : ''} ${isWinner ? 'winner' : ''} ${isChallenger ? 'challenger' : 'challenged'}">
+      ${isWinner ? '<div class="challenge-vs-crown">🏆</div>' : ''}
+      <div class="challenge-vs-role">${isChallenger ? 'Izazivač' : 'Izazvani'}</div>
+      <div class="challenge-vs-name">${safeNickname}</div>
+      <div class="challenge-vs-meta">${safeMeta}</div>
+      <div class="challenge-vs-members">${memberHtml}</div>
+    </div>`;
 }
 
 async function renderChallenges() {
@@ -2436,33 +2719,54 @@ async function renderChallenges() {
     const isChallenged = myTeam && c.challenged_id===myTeam.id;
     const iAmCaptain = myTeam?.captain_email === currentPlayer?.email;
 
-    // Timer: pending odgovor teče normalno, rok meča se zaustavlja kad je turnir pauziran
     const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
-    let timerHtml = '';
+    let timerInfo = { label:'Rok', value:'—', urgent:false };
     if(expires && ['pending','accepted'].includes(c.status)) {
       const timerBase = c.status === 'accepted' ? getPauseTimerNow() : now;
       const remaining = formatRemainingTime(expires, timerBase);
-      const urgent = remaining.diff < DAY_MS;
       const pausedText = c.status === 'accepted' && tournamentPause?.is_paused ? ' ⏸' : '';
-      timerHtml = `<div class="timer-wrap">
-        <span style="color:var(--text3);font-size:0.72rem;">${c.status==='pending'?'Rok odgovora:':'Rok meča:'}${pausedText}</span>
-        <span class="timer ${urgent?'urgent':'ok'}">${remaining.text}</span>
-      </div>`;
+      timerInfo = {
+        label: c.status==='pending' ? 'Rok za odgovor' : 'Rok za meč' + pausedText,
+        value: remaining.text,
+        urgent: remaining.diff < DAY_MS
+      };
     }
 
-    let scheduledHtml = '';
-    if(c.status === 'accepted' && c.scheduled_at) {
-      scheduledHtml = `<div class="timer-wrap" style="margin-top:0.45rem;">
-        <span style="color:var(--text3);font-size:0.72rem;">Termin:</span>
-        <span class="timer ok">${new Date(c.scheduled_at).toLocaleDateString('hr-HR')} ${new Date(c.scheduled_at).toLocaleTimeString('hr-HR',{   hour:'2-digit',   minute:'2-digit' })}</span>
-      </div>`;
-    }
+    const hasSchedule = c.status === 'accepted' && c.scheduled_at;
+    const scheduleText = hasSchedule ? formatChallengeDateTime(c.scheduled_at) : (c.status === 'accepted' ? 'Termin još nije zakazan' : '—');
 
     const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined', surrendered:'s-declined', pending_result:'s-pending' };
     const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano', surrendered:'Predaja', pending_result:'Čeka potvrdu' };
 
-    const challengerDisplay = getChallengeTeamPlayersDisplay(challenger);
-    const challengedDisplay = getChallengeTeamPlayersDisplay(challenged);
+    const challengerName = escapeHtml(challenger.nickname || challenger.name || 'Izazivač');
+    const challengedName = escapeHtml(challenged.nickname || challenged.name || 'Izazvani');
+
+    let confirmationText = '';
+    if(c.status === 'pending') {
+      confirmationText = `<span class="challenge-vs-warn">Čeka odgovor: ${challengedName}</span>`;
+    } else if(c.status === 'accepted') {
+      confirmationText = `<span class="challenge-vs-ok">✓ ${challengerName}</span><span class="challenge-vs-ok">✓ ${challengedName}</span>`;
+    } else if(c.status === 'pending_result') {
+      confirmationText = `<span class="challenge-vs-warn">Čeka potvrdu rezultata</span>`;
+    } else if(c.status === 'completed') {
+      confirmationText = `<span class="challenge-vs-ok">Meč završen</span>`;
+    } else {
+      confirmationText = `<span class="challenge-vs-muted">${escapeHtml(statusLabel[c.status] || c.status)}</span>`;
+    }
+
+    let resultRows = '';
+    if(['completed','pending_result','surrendered'].includes(c.status)) {
+      const winner = allTeams.find(t=>t.id===c.result_winner_id);
+      resultRows = `
+        <div class="challenge-vs-info-row">
+          <div class="challenge-vs-info-label">🏆 Pobjednik</div>
+          <div class="challenge-vs-info-value accent">${escapeHtml(winner?.nickname || winner?.name || '—')}</div>
+        </div>
+        ${c.result_score ? `<div class="challenge-vs-info-row">
+          <div class="challenge-vs-info-label">🎾 Rezultat</div>
+          <div class="challenge-vs-info-value">${escapeHtml(c.result_score)}</div>
+        </div>` : ''}`;
+    }
 
     let actions = '';
     if(c.status==='pending' && isChallenged && iAmCaptain) {
@@ -2473,18 +2777,45 @@ async function renderChallenges() {
     if(c.status==='accepted' && isMyChallenge) {
       actions = `<button class="btn-accept" onclick="openResultModal('${c.id}')">📝 Unesi rezultat</button>`;
     }
+    if(currentPlayer?.is_admin) {
+      actions += `<button class="admin-small-btn" onclick="openEditChallenge('${c.id}')">⚙ Admin uredi</button>`;
+    }
 
-    return `<div class="challenge-card" style="animation-delay:${i*0.05}s;${!isMyChallenge?'opacity:0.6;':''}">
-      <div class="challenge-header">
-        <div>
-          <div class="challenge-title">⚔️ ${challengerDisplay} vs ${challengedDisplay}</div>
-          <div class="challenge-meta">${new Date(c.created_at).toLocaleDateString('hr-HR')} · Odbijanja: ${c.rejection_count}/1</div>
-        </div>
-        <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||c.status}</span>
+    return `<div class="challenge-card challenge-vs-box" style="animation-delay:${i*0.05}s;${!isMyChallenge?'opacity:0.72;':''}">
+      <div class="challenge-vs-top">
+        <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||escapeHtml(c.status)}</span>
+        <span class="challenge-vs-id">#${escapeHtml(c.id).slice(0,8)}</span>
       </div>
-      ${timerHtml}
-      ${scheduledHtml}
-      ${actions ? `<div class="challenge-actions" style="margin-top:0.75rem;">${actions}</div>` : ''}
+
+      <div class="challenge-vs-layout">
+        <div class="challenge-vs-pair">
+          ${buildChallengeTeamCard(challenger, 'challenger', c)}
+          <div class="challenge-vs-label">VS</div>
+          ${buildChallengeTeamCard(challenged, 'challenged', c)}
+        </div>
+
+        <div class="challenge-vs-info">
+          <div class="challenge-vs-info-row">
+            <div class="challenge-vs-info-label">🛡️ Potvrde</div>
+            <div class="challenge-vs-info-value challenge-vs-confirm">${confirmationText}</div>
+          </div>
+          <div class="challenge-vs-info-row">
+            <div class="challenge-vs-info-label">📅 Termin meča</div>
+            <div class="challenge-vs-info-value ${hasSchedule ? 'accent' : 'muted'}">${escapeHtml(scheduleText)}</div>
+          </div>
+          <div class="challenge-vs-info-row">
+            <div class="challenge-vs-info-label">⏱️ ${escapeHtml(timerInfo.label)}</div>
+            <div class="challenge-vs-info-value ${timerInfo.urgent ? 'danger' : 'accent'}">${escapeHtml(timerInfo.value)}</div>
+          </div>
+          <div class="challenge-vs-info-row">
+            <div class="challenge-vs-info-label">✉️ Poslano</div>
+            <div class="challenge-vs-info-value">${formatChallengeDateTime(c.created_at)}</div>
+          </div>
+          ${resultRows}
+        </div>
+      </div>
+
+      ${actions ? `<div class="challenge-actions challenge-vs-actions">${actions}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -2975,59 +3306,91 @@ function openEditChallenge(id) {
   editChallengeId = id;
   const c = allChallenges.find(x=>x.id===id);
   if(!c) return;
+
   const t1 = allTeams.find(t=>t.id===c.challenger_id);
   const t2 = allTeams.find(t=>t.id===c.challenged_id);
+  const challengerLabel = adminTeamName(t1);
+  const challengedLabel = adminTeamName(t2);
+
+  document.getElementById('edit-ch-summary').innerHTML =
+    '<strong>' + escapeHtml(challengerLabel) + '</strong> vs <strong>' + escapeHtml(challengedLabel) + '</strong><br>' +
+    'Trenutni status: <strong>' + escapeHtml(statusLabelHr(c.status)) + '</strong><br>' +
+    'Poslano: ' + escapeHtml(formatChallengeDateTime(c.created_at));
+
   document.getElementById('edit-ch-winner').innerHTML =
-    '<option value="'+c.challenger_id+'">'+(t1?.name||'?')+'</option>'
-    + '<option value="'+c.challenged_id+'">'+(t2?.name||'?')+'</option>';
-  document.getElementById('edit-ch-winner').value = c.result_winner_id || c.challenger_id;
+    '<option value="">— bez pobjednika —</option>'
+    + '<option value="'+c.challenger_id+'">'+escapeHtml(challengerLabel)+'</option>'
+    + '<option value="'+c.challenged_id+'">'+escapeHtml(challengedLabel)+'</option>';
+  document.getElementById('edit-ch-winner').value = c.result_winner_id || '';
   document.getElementById('edit-ch-score').value = c.result_score || '';
-  document.getElementById('edit-ch-status').value = c.status;
+  document.getElementById('edit-ch-status').value = c.status || 'pending';
+  document.getElementById('edit-ch-scheduled-at').value = toDatetimeLocalInput(c.scheduled_at);
+  document.getElementById('edit-ch-response-expires').value = toDatetimeLocalInput(c.response_expires_at);
+  document.getElementById('edit-ch-match-expires').value = toDatetimeLocalInput(c.match_expires_at);
   openModal('modal-edit-challenge');
 }
 
 async function saveEditChallenge() {
-  const winnerId = document.getElementById('edit-ch-winner').value;
-  const score = document.getElementById('edit-ch-score').value.trim();
+  const c = allChallenges.find(x=>x.id===editChallengeId);
+  if(!c) return;
+
+  const winnerId = document.getElementById('edit-ch-winner').value || null;
+  const score = document.getElementById('edit-ch-score').value.trim() || null;
   const status = document.getElementById('edit-ch-status').value;
+  const scheduledAt = datetimeLocalToIso(document.getElementById('edit-ch-scheduled-at').value);
+  const responseExpiresAt = datetimeLocalToIso(document.getElementById('edit-ch-response-expires').value);
+  const matchExpiresAt = datetimeLocalToIso(document.getElementById('edit-ch-match-expires').value);
 
   const btn = document.getElementById('save-edit-challenge-btn');
   btn.disabled=true; btn.textContent='Spremam...';
 
-  // Spremi stari pobjednik prije promjene
-  const oldChallenge = allChallenges.find(x=>x.id===editChallengeId);
-  const oldWinnerId = oldChallenge?.result_winner_id;
-
-  const { error } = await sb.from('challenges').update({
+  const update = {
+    status,
     result_winner_id: winnerId,
     result_score: score,
-    status: status,
+    scheduled_at: scheduledAt,
+    response_expires_at: responseExpiresAt,
+    match_expires_at: matchExpiresAt,
     updated_at: new Date().toISOString()
-  }).eq('id', editChallengeId);
+  };
+
+  if(status === 'accepted' && !update.match_expires_at) {
+    update.match_expires_at = new Date(Date.now() + 6*24*60*60*1000).toISOString();
+  }
+  if(status === 'pending' && !update.response_expires_at) {
+    update.response_expires_at = new Date(Date.now() + 3*24*60*60*1000).toISOString();
+  }
+  if(['pending','accepted','declined','cancelled'].includes(status) && !score) {
+    update.result_score = null;
+    if(!['completed','pending_result','surrendered'].includes(status)) update.result_winner_id = null;
+  }
+
+  const { error } = await sb.from('challenges').update(update).eq('id', editChallengeId);
 
   btn.disabled=false; btn.textContent='💾 Spremi promjene';
   if(error) { showToast('Greška: '+error.message,'error'); return; }
 
-  // Ako se pobjednik promijenio — automatski zamijeni mjesta timova
-  if(oldWinnerId && winnerId !== oldWinnerId && ['completed','surrendered'].includes(status)) {
-    await safeLoadAll('manual');
-    const c = oldChallenge;
-    const challenger = allTeams.find(t=>t.id===c.challenger_id);
-    const challenged = allTeams.find(t=>t.id===c.challenged_id);
-
-    if(challenger && challenged) {
-      // Novi pobjednik je izazivač ali je i dalje na nižoj stepenici → popni ga
-      // Novi pobjednik je izazvani ali je izazivač gore → vrati ga dolje
-      // U oba slučaja — zamijeni mjesta
-      await swapTeams(c.challenger_id, c.challenged_id);
-      showToast('Pobjednik ispravljen — timovi zamijenili mjesta! 🔄', 'success');
-    }
-  } else {
-    showToast('Meč ažuriran! ✓', 'success');
-  }
-
+  showToast('Izazov ažuriran! ✓', 'success');
   closeModal('modal-edit-challenge');
-  await safeLoadAll('manual'); renderAdmin();
+  await safeLoadAll('manual');
+  await renderChallenges();
+  if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+}
+
+async function deleteChallengeAdmin() {
+  const c = allChallenges.find(x=>x.id===editChallengeId);
+  if(!c) return;
+  const { challenger, challenged } = adminChallengeTeams(c);
+  if(!confirm('Obrisati izazov/meč: ' + adminTeamName(challenger) + ' vs ' + adminTeamName(challenged) + '?\n\nOvo briše zapis iz tablice challenges. Ako je taj meč već promijenio poredak, poredak se neće automatski vratiti.')) return;
+
+  const { error } = await sb.from('challenges').delete().eq('id', editChallengeId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+
+  showToast('Izazov obrisan. 🗑', 'success');
+  closeModal('modal-edit-challenge');
+  await safeLoadAll('manual');
+  await renderChallenges();
+  if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
 }
 
 async function adminAcceptChallenge(challengeId) {
