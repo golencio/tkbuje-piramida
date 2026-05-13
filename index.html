@@ -2454,7 +2454,7 @@ async function renderChallenges() {
     if(c.status === 'accepted' && c.scheduled_at) {
       scheduledHtml = `<div class="timer-wrap" style="margin-top:0.45rem;">
         <span style="color:var(--text3);font-size:0.72rem;">Termin:</span>
-        <span class="timer ok">${new Date(c.scheduled_at).toLocaleString('hr-HR')}</span>
+        <span class="timer ok">${new Date(c.scheduled_at).toLocaleDateString('hr-HR')} ${new Date(c.scheduled_at).toLocaleTimeString('hr-HR',{   hour:'2-digit',   minute:'2-digit' })}</span>
       </div>`;
     }
 
