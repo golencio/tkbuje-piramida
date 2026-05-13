@@ -1,0 +1,52 @@
+/* TK Buje Piramida — modali, forme, toast, profil */
+
+/* DOLAZNI IZAZOV POPUP */
+    .incoming-challenge-modal { max-width:440px; text-align:center; padding:1.7rem; }
+    .incoming-icon { width:72px; height:72px; border-radius:24px; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2.2rem; background:radial-gradient(circle, rgba(255,107,43,0.28), rgba(255,107,43,0.08)); border:1px solid rgba(255,107,43,0.35); box-shadow:0 0 36px rgba(255,107,43,0.22); }
+    .incoming-title { font-family:'Space Grotesk',sans-serif; font-size:1.55rem; font-weight:900; color:var(--text); margin-bottom:0.35rem; letter-spacing:-0.4px; }
+    .incoming-sub { color:var(--text2); font-size:0.9rem; line-height:1.45; margin-bottom:1rem; }
+    .incoming-info { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:0.85rem; margin:1rem 0; text-align:left; }
+    .incoming-info-row { display:flex; justify-content:space-between; gap:1rem; padding:0.42rem 0; color:var(--text2); font-size:0.82rem; border-bottom:1px solid var(--border); }
+    .incoming-info-row:last-child { border-bottom:none; }
+    .incoming-info-row strong { color:var(--text); text-align:right; }
+    .incoming-actions { display:grid; grid-template-columns:1fr; gap:0.65rem; margin-top:1rem; }
+    .incoming-action { width:100%; border-radius:13px; padding:0.85rem 1rem; font-family:'Inter',sans-serif; font-size:0.92rem; font-weight:900; cursor:pointer; transition:all 0.18s; border:1px solid var(--border2); }
+    .incoming-action.accept { color:white; background:linear-gradient(135deg,var(--green2),var(--green)); border-color:rgba(34,197,94,0.45); }
+    .incoming-action.decline { color:white; background:linear-gradient(135deg,#b91c1c,var(--red)); border-color:rgba(239,68,68,0.45); }
+    .incoming-action:hover { transform:translateY(-1px); filter:brightness(1.06); }
+
+
+    /* WORKFLOW POPUPI */
+    .workflow-modal { max-width:460px; padding:1.7rem; }
+    .workflow-icon { width:64px; height:64px; border-radius:22px; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2rem; background:radial-gradient(circle, rgba(255,107,43,0.28), rgba(255,107,43,0.08)); border:1px solid rgba(255,107,43,0.35); box-shadow:0 0 34px rgba(255,107,43,0.2); }
+    .workflow-title { font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:900; color:var(--text); text-align:center; margin-bottom:0.35rem; letter-spacing:-0.3px; }
+    .workflow-sub { color:var(--text2); font-size:0.9rem; line-height:1.45; text-align:center; margin-bottom:1rem; }
+    .workflow-card { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:0.9rem; margin:1rem 0; }
+    .workflow-row { display:flex; justify-content:space-between; gap:1rem; padding:0.42rem 0; border-bottom:1px solid var(--border); color:var(--text2); font-size:0.84rem; }
+    .workflow-row:last-child { border-bottom:none; }
+    .workflow-row strong { color:var(--text); text-align:right; }
+    .workflow-actions { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-top:1rem; }
+    .workflow-actions.single { grid-template-columns:1fr; }
+    .workflow-btn { border:none; border-radius:12px; padding:0.8rem 0.9rem; font-family:'Inter',sans-serif; font-size:0.88rem; font-weight:800; cursor:pointer; transition:all 0.18s; }
+    .workflow-btn:hover { transform:translateY(-1px); }
+    .workflow-btn.primary { background:var(--orange); color:white; }
+    .workflow-btn.green { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,0.28); }
+    .workflow-btn.red { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.25); }
+    .workflow-btn.muted { background:var(--bg3); color:var(--text2); border:1px solid var(--border2); }
+    .workflow-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-top:0.8rem; }
+    .workflow-note { color:var(--text3); font-size:0.76rem; line-height:1.45; margin-top:0.75rem; text-align:center; }
+    @media(max-width:520px) { .workflow-form-grid, .workflow-actions { grid-template-columns:1fr; } }
+
+/* FER PLAY POPUP */
+    .fairplay-modal { max-width:440px; text-align:center; padding:1.7rem; }
+    .fairplay-icon { width:72px; height:72px; border-radius:24px; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2.2rem; background:radial-gradient(circle, rgba(34,197,94,0.28), rgba(34,197,94,0.08)); border:1px solid rgba(34,197,94,0.35); box-shadow:0 0 36px rgba(34,197,94,0.18); }
+    .fairplay-title { font-family:'Space Grotesk',sans-serif; font-size:1.55rem; font-weight:900; color:var(--text); margin-bottom:0.35rem; letter-spacing:-0.4px; }
+    .fairplay-sub { color:var(--green); font-size:0.92rem; font-weight:600; margin-bottom:1rem; }
+    .fairplay-card { background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.28); border-radius:14px; padding:1rem 1.1rem; margin:1rem 0; text-align:left; }
+    .fairplay-card-header { color:var(--green); font-size:0.76rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:0.6rem; }
+    .fairplay-card-body { color:var(--text2); font-size:0.88rem; line-height:1.55; margin-bottom:0.75rem; padding-bottom:0.75rem; border-bottom:1px solid rgba(34,197,94,0.2); }
+    .fairplay-card-body strong { color:var(--text); }
+    .fairplay-captain { color:var(--text3); font-size:0.82rem; }
+    .fairplay-captain strong { color:var(--text); }
+    .fairplay-btn { width:100%; border-radius:13px; padding:0.88rem 1rem; font-family:'Inter',sans-serif; font-size:0.92rem; font-weight:900; cursor:pointer; transition:all 0.18s; border:1px solid rgba(34,197,94,0.45); color:white; background:linear-gradient(135deg, var(--green2), var(--green)); margin-top:0.5rem; }
+    .fairplay-btn:hover { transform:translateY(-1px); filter:brightness(1.06); }

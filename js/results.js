@@ -1,0 +1,135 @@
+// TK Buje Piramida — unos rezultata, zamjena mjesta, kazne
+
+// ---- SWAP TEAMS ----
+async function swapTeams(challengerId, challengedId) {
+  const t1 = allTeams.find(t=>t.id===challengerId);
+  const t2 = allTeams.find(t=>t.id===challengedId);
+  if(!t1||!t2) return;
+  await Promise.all([
+    sb.from('teams').update({ step:t2.step, position:t2.position }).eq('id',challengerId),
+    sb.from('teams').update({ step:t1.step, position:t1.position }).eq('id',challengedId)
+  ]);
+  showToast('Timovi su zamijenili mjesta! 🔄', 'success');
+}
+
+// ---- RESULT MODAL ----
+function openResultModal(challengeId) {
+  const challenge = allChallenges.find(c=>c.id===challengeId);
+  if(!challenge) return;
+  activeResultChallenge = challenge;
+  const t1 = allTeams.find(t=>t.id===challenge.challenger_id);
+  const t2 = allTeams.find(t=>t.id===challenge.challenged_id);
+  document.getElementById('result-match-info').innerHTML = `⚔️ <strong>${t1?.nickname}</strong> vs <strong>${t2?.nickname}</strong>`;
+  document.getElementById('result-winner').innerHTML = `
+    <option value="">— odaberi pobjednika —</option>
+    <option value="${t1?.id}">${t1?.nickname}</option>
+    <option value="${t2?.id}">${t2?.nickname}</option>`;
+  document.getElementById('result-score').value = '';
+  openModal('modal-result');
+}
+
+async function submitResult() {
+  const winnerId = document.getElementById('result-winner').value;
+  const score = document.getElementById('result-score').value.trim();
+  if(!winnerId||!score) { showToast('Ispuni sva polja!','error'); return; }
+
+  const btn = document.getElementById('submit-result-btn');
+  btn.disabled=true; btn.textContent='Šaljem...';
+
+  const { error } = await sb.from('challenges').update({
+    status: 'pending_result',
+    result_winner_id: winnerId,
+    result_score: score,
+    updated_at: new Date().toISOString()
+  }).eq('id', activeResultChallenge.id);
+
+  btn.disabled=false; btn.textContent='Pošalji na potvrdu';
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  showToast('Rezultat poslan adminu na potvrdu! ✓','success');
+  closeModal('modal-result');
+  await safeLoadAll('manual');
+}
+
+// ---- PENALTY SYSTEM ----
+async function checkPenalties() {
+  if(tournamentPause?.is_paused) return;
+  const now = new Date();
+  for(const team of allTeams) {
+    if(team.penalty || team.step <= 2) continue; // Stepenice 1 i 2 su izuzete
+    const lastMatch = team.last_match_at ? new Date(team.last_match_at) : new Date(team.created_at);
+    const daysSince = (now - lastMatch) / (1000*60*60*24);
+    if(daysSince >= 15) {
+      await applyPenalty(team);
+    }
+  }
+}
+
+async function applyPenalty(team) {
+  await sb.from('teams').update({ penalty: true, original_step: team.step }).eq('id', team.id);
+
+  // Pomakni nasumični tim SAMO sa stepenica ispod kažnjene prema gore
+  // Stepenice IZNAD kažnjene ostaju netaknute!
+  const maxStep = Math.max(...allTeams.map(t => t.step));
+  for(let s = team.step + 1; s <= maxStep; s++) {
+    const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty);
+    const available = teamsOnStep.filter(t =>
+      !allChallenges.some(c =>
+        ['pending','accepted'].includes(c.status) &&
+        (c.challenger_id===t.id || c.challenged_id===t.id)
+      )
+    );
+    if(available.length > 0) {
+      const lucky = available[Math.floor(Math.random() * available.length)];
+      await sb.from('teams').update({ step: s - 1 }).eq('id', lucky.id);
+    }
+  }
+
+  showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
+  // NE zovemo loadAll() ovdje - poziva se izvana
+}
+
+
+async function adminSimulatePenalty(teamId) {
+  const team = allTeams.find(t => t.id === teamId);
+  if(!team) return;
+  if(team.step === 1) { showToast('Timovi na stepenici 1 su izuzeti od kazne!', 'error'); return; }
+  if(team.penalty) { showToast('Tim je već u kaznenoj zoni!', 'error'); return; }
+  if(!confirm('Simulirati kaznu za tim "' + team.name + '"?')) return;
+  await applyPenalty(team);
+  await safeLoadAll('manual');
+  showToast(team.name + ' premješten u kaznu! ✓', 'success');
+  renderAdmin();
+}
+
+async function adminRemoveCooldown(challengeId) {
+  if(!confirm('Ukloniti zaštitni rok za ovaj tim?')) return;
+  // Postavi updated_at u prošlost da cooldown istekne
+  await sb.from('challenges').update({
+    updated_at: '2000-01-01T00:00:00.000Z'
+  }).eq('id', challengeId);
+  showToast('Zaštitni rok uklonjen! ✓', 'success');
+  await safeLoadAll('manual'); renderAdmin();
+}
+
+async function adminRemovePenalty(teamId) {
+  const team = allTeams.find(t => t.id === teamId);
+  if(!team) return;
+  if(!confirm('Izvaditi tim "' + team.name + '" iz kazne i vratiti ga na originalnu stepenicu?')) return;
+  const originalStep = team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
+  await sb.from('teams').update({ penalty: false, step: originalStep, original_step: null }).eq('id', teamId);
+  showToast(team.name + ' vraćen iz kazne! ✓', 'success');
+  await safeLoadAll('manual'); renderAdmin();
+}
+
+async function returnFromPenalty(challengeId, penaltyTeamId) {
+  // Tim iz kaznene zone je pobijedio — vraća ga u piramidu
+  const team = allTeams.find(t => t.id === penaltyTeamId);
+  if(!team) return;
+  const targetStep = Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
+  await sb.from('teams').update({
+    penalty: false,
+    step: targetStep,
+    original_step: null,
+    last_match_at: new Date().toISOString()
+  }).eq('id', penaltyTeamId);
+}

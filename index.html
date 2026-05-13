@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TK Buje — Piramida</title>
+
+  <!-- Fontovi -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <!-- Stilovi -->
+  <link rel="stylesheet" href="css/base.css"/>
+  <link rel="stylesheet" href="css/pyramid.css"/>
+  <link rel="stylesheet" href="css/challenges.css"/>
+  <link rel="stylesheet" href="css/modals.css"/>
+  <link rel="stylesheet" href="css/admin.css"/>
+  <link rel="stylesheet" href="css/stats.css"/>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <div class="login-logo">TK <span>Buje</span></div>
+    <div class="login-sub">Piramida Turnir</div>
+    <button class="btn-google" onclick="loginWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+      Prijava s Google računom
+    </button>
+    <!-- magic link skriven -->
+    <div id="magic-sent" style="display:none;background:var(--green-glow);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:0.75rem;margin-top:0.75rem;font-size:0.82rem;color:var(--green);">
+      ✓ Link poslan! Provjeri email i klikni link za prijavu.
+    </div>
+    <p style="font-size:0.72rem;color:var(--text3);margin-top:1rem;">Samo registrirani članovi kluba</p>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">TK <span>Buje</span> <small>Piramida</small></div>
+    <nav>
+      <button class="active" id="nav-piramida" onclick="showSection('piramida',this)">🔺 Piramida</button>
+      <button id="nav-izazovi" onclick="showSection('izazovi',this)">⚔️ Izazovi <span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
+      <button id="nav-statistika" onclick="showSection('statistika',this)">📊 Statistika</button>
+      <button id="nav-pravilnik" onclick="showSection('pravilnik',this)">📋 Pravilnik</button>
+      <button class="admin-btn" id="admin-btn" style="display:none" onclick="showSection('admin',this)">⚙ Admin</button>
+      <button onclick="location.href='https://golencio.github.io/tkbuje-portal/'">🏠 Portal</button>
+      <div class="user-badge" id="user-badge" style="display:none">
+        <div class="user-avatar" id="user-initials">?</div>
+        <button class="btn-logout" onclick="logout()">Odjava</button>
+      </div>
+    </nav>
+    <button class="hamburger" id="hamburger" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+
+<div class="mobile-menu" id="mobile-menu">
+  <div class="mobile-user" id="mob-user" style="display:none">
+    <div class="user-avatar" id="mob-initials">?</div>
+    <span style="color:var(--text);font-weight:600;font-size:0.9rem;" id="mob-name"></span>
+  </div>
+  <button onclick="mobileNav('piramida')" id="mob-piramida" class="active">🔺 Piramida</button>
+  <button onclick="mobileNav('izazovi')" id="mob-izazovi">⚔️ Izazovi</button>
+  <button onclick="mobileNav('statistika')" id="mob-statistika">📊 Statistika</button>
+  <button onclick="mobileNav('pravilnik')" id="mob-pravilnik">📋 Pravilnik</button>
+  <button onclick="mobileNav('admin')" id="mob-admin" style="display:none">⚙ Admin</button>
+  <button onclick="location.href='https://golencio.github.io/tkbuje-portal/'">🏠 Portal</button>
+  <button onclick="logout()" class="mob-logout">← Odjava</button>
+</div>
+
+<main>
+  <!-- PIRAMIDA -->
+  <section id="sec-piramida" class="section active">
+    <div class="section-title">🔺 Piramida Timova</div>
+    <div id="pyramid-container">
+      <div class="loading"><div class="spinner"></div>Učitavam...</div>
+    </div>
+  </section>
+
+  <!-- IZAZOVI -->
+  <section id="sec-izazovi" class="section">
+    <div class="section-title">⚔️ Izazovi</div>
+    <div id="challenges-container">
+      <div class="loading"><div class="spinner"></div>Učitavam...</div>
+    </div>
+  </section>
+
+
+
+  <!-- STATISTIKA -->
+  <section id="sec-statistika" class="section">
+    <div class="section-title">📊 Statistika</div>
+    <div id="stats-container">
+      <div class="loading"><div class="spinner"></div>Učitavam...</div>
+    </div>
+  </section>
+
+  <!-- PRAVILNIK -->
+  <section id="sec-pravilnik" class="section">
+    <div style="max-width:700px;margin:0 auto;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;color:var(--text);">📋 Pravilnik Piramida Turnira</div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
+
+        <div style="background:var(--orange-glow);border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--orange);margin-bottom:0.25rem;">1. Struktura piramide</div>
+          <p style="font-size:0.88rem;color:var(--text2);line-height:1.6;">Piramida se sastoji od više stepenica s timovima raspoređenim po rangu. Svaki tim zauzima određenu stepenicu, a cilj je popeti se što više prema vrhu.</p>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">2. Sastav timova</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Svaki tim se sastoji od <strong style="color:var(--text);">najmanje 2 i najviše 3 igrača</strong></li>
+            <li>Svaki igrač može biti član <strong style="color:var(--text);">samo jednog tima</strong></li>
+            <li>Svaki tim ima <strong style="color:var(--text);">kapetana</strong> odgovornog za dogovaranje mečeva</li>
+            <li>Timove kreira admin kluba</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">3. Igranje mečeva</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Mečevi se igraju na <strong style="color:var(--orange);">dva dobivena seta</strong></li>
+            <li>Svaki kapetan određuje koji igrači iz tima igraju dogovoreni meč</li>
+            <li>Kapetan pobjedničkog tima unosi rezultat u aplikaciju</li>
+            <li><strong style="color:var(--text);">Admin kluba mora potvrditi</strong> rezultat</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">4. Izazovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Tim može izazvati samo tim <strong style="color:var(--text);">jednu stepenicu iznad</strong></li>
+            <li>Izazov može poslati <strong style="color:var(--text);">samo kapetan</strong> tima</li>
+            <li>Tim može imati <strong style="color:var(--text);">samo jedan aktivan izazov</strong> u isto vrijeme</li>
+            <li>Tim koji već ima aktivan izazov ne može biti izazvan</li>
+            <li style="list-style:none;margin-top:0.5rem;padding:0.6rem 0.85rem;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.28);border-radius:10px;"><span style="color:var(--green);font-weight:700;">🤝 Fer play:</span> nakon slanja izazova, kapetan je dužan obavijestiti protivničkog kapetana pozivom ili SMS-om — nije svaki igrač svaki dan na aplikaciji!</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">5. Rokovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Izazvani tim ima <strong style="color:var(--orange);">3 dana</strong> za odgovor na izazov</li>
+            <li>Neodgovaranje u roku smatra se <strong style="color:var(--text);">odbijanjem</strong></li>
+            <li>Nakon prihvaćanja, timovi imaju <strong style="color:var(--orange);">6 dana</strong> za igranje meča</li>
+            <li>Ako meč nije odigran u roku, admin može <strong style="color:var(--text);">produžiti rok</strong> ili evidentirati <strong style="color:var(--red);">predaju</strong></li>
+            <li>Tim koji preda gubi stepenicu, <strong style="color:var(--text);">predaja se ne upisuje u opću ljestvicu</strong></li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">6. Odbijanje izazova</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Izazvani tim ima pravo <strong style="color:var(--text);">jednom odbiti</strong> izazov od istog izazivača</li>
+            <li>Nakon odbijanja, tim ulazi u <strong style="color:var(--orange);">zaštitni rok od 3 dana</strong> — ne može biti izazvan</li>
+            <li>Ako izazvani tim odbije <strong style="color:var(--red);">drugi put</strong> od istog izazivača, timovi automatski <strong style="color:var(--red);">mijenjaju mjesta</strong> bez igranja meča</li>
+            <li>Brojač odbijanja se <strong style="color:var(--text);">resetira</strong> nakon svake zamjene mjesta</li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">7. Rezultati i bodovi</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Nakon potvrde rezultata — ako je <strong style="color:var(--green);">pobijedio izazivač</strong> → timovi mijenjaju mjesta</li>
+            <li>Ako je <strong style="color:var(--text);">pobijedio izazvani</strong> → sve ostaje isto</li>
+            <li>Rezultati mečeva piramide <strong style="color:var(--text);">boduju se i u općoj ljestvici</strong> kluba</li>
+            <li>Zamjena mjesta zbog odbijanja <strong style="color:var(--text);">ne donosi bodove</strong></li>
+          </ul>
+        </div>
+
+        <div style="border-bottom:1px solid var(--border);padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--red);margin-bottom:0.25rem;">8. Neaktivnost i kaznena zona</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Tim koji nije odigrao meč u piramidi <strong style="color:var(--orange);">15 dana</strong> pada u <strong style="color:var(--red);">kaznu</strong></li>
+            <li>Timovi na <strong style="color:var(--text);">stepenici 1</strong> su izuzeti — nemaju koga izazvati</li>
+            <li>Svaki tim vidi <strong style="color:var(--text);">odbrojavanje</strong> do kazne na svojoj kartici</li>
+            <li>Kad tim padne u kaznu, nasumični timovi s nižih stepenica se pomiču gore</li>
+            <li><strong style="color:var(--red);">Kaznena zona</strong> funkcionira kao najdonja stepenica — u nju se ne pada porazom</li>
+            <li>Kažnjeni tim izaziva timove na zadnjoj pravoj stepenici — ako pobijedi, vraća se u piramidu</li>
+            <li>Odbrojavanje se <strong style="color:var(--text);">resetira</strong> čim tim odigra potvrđeni meč</li>
+          </ul>
+        </div>
+
+        <div style="padding:1rem 1.5rem;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text);margin-bottom:0.25rem;">9. Admin</div>
+          <ul style="font-size:0.88rem;color:var(--text2);line-height:1.8;padding-left:1.25rem;">
+            <li>Admin može <strong style="color:var(--text);">poništiti odluku</strong> kapetana u slučaju greške</li>
+            <li>Admin može <strong style="color:var(--text);">prihvatiti ili odbiti</strong> izazov umjesto kapetana</li>
+            <li>Admin dodaje nove timove na dno piramide po potrebi</li>
+            <li>Svi sporovi rješavaju se uz posredovanje admina kluba</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="sec-admin" class="section">
+    <div class="section-title">⚙️ Admin Panel</div>
+    <div id="admin-container"></div>
+  </section>
+</main>
+
+<!-- MODAL: Detalji tima -->
+<div class="modal-overlay" id="modal-team">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-team')">×</button>
+    <div id="team-modal-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Edit meča / izazova (admin) -->
+<div class="modal-overlay" id="modal-edit-challenge">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-edit-challenge')">×</button>
+    <div class="modal-title">Admin uređivanje izazova</div>
+    <div id="edit-ch-summary" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:0.75rem;margin-bottom:1rem;color:var(--text2);font-size:0.86rem;line-height:1.45;"></div>
+    <div class="form-group">
+      <label>Status / potvrda</label>
+      <select id="edit-ch-status">
+        <option value="pending">Na čekanju</option>
+        <option value="accepted">Prihvaćeno</option>
+        <option value="declined">Odbijeno</option>
+        <option value="pending_result">Čeka potvrdu rezultata</option>
+        <option value="completed">Završeno / potvrđeno</option>
+        <option value="surrendered">Predaja</option>
+        <option value="cancelled">Otkazano</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Termin meča</label>
+      <input type="datetime-local" id="edit-ch-scheduled-at"/>
+    </div>
+    <div class="form-group">
+      <label>Rok za odgovor</label>
+      <input type="datetime-local" id="edit-ch-response-expires"/>
+    </div>
+    <div class="form-group">
+      <label>Rok za odigravanje meča</label>
+      <input type="datetime-local" id="edit-ch-match-expires"/>
+    </div>
+    <div class="form-group">
+      <label>Pobjednički tim</label>
+      <select id="edit-ch-winner"></select>
+    </div>
+    <div class="form-group">
+      <label>Rezultat</label>
+      <input type="text" id="edit-ch-score" placeholder="6:4, 6:3"/>
+    </div>
+    <div class="form-row">
+      <button class="btn-primary" id="save-edit-challenge-btn" onclick="saveEditChallenge()">💾 Spremi promjene</button>
+      <button class="btn-primary" style="background:var(--red);" onclick="deleteChallengeAdmin()">🗑 Obriši izazov</button>
+    </div>
+    <div style="color:var(--text3);font-size:0.76rem;line-height:1.45;margin-top:0.75rem;">Napomena: ručna promjena pobjednika i statusa ne vraća automatski staru zamjenu poretka ako je ona već ranije napravljena.</div>
+  </div>
+</div>
+
+<!-- MODAL: Odabir igrača -->
+<div class="modal-overlay" id="modal-select-players">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-select-players')">×</button>
+    <div class="modal-title">Odaberi igrače koji igraju</div>
+    <p style="font-size:0.82rem;color:var(--text3);margin-bottom:1.25rem;">Tvoj tim ima 3 igrača — odaberi koja 2 igraju ovaj meč.</p>
+    <div id="select-players-list" style="margin-bottom:1rem;"></div>
+    <button class="btn-primary" id="confirm-players-btn" onclick="confirmPlayerSelection()">Potvrdi i pošalji izazov</button>
+  </div>
+</div>
+
+<!-- MODAL: Unos rezultata -->
+<div class="modal-overlay" id="modal-result">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-result')">×</button>
+    <div class="modal-title">Unesi Rezultat</div>
+    <div id="result-match-info" style="background:var(--bg3);border-radius:10px;padding:0.75rem;margin-bottom:1rem;font-size:0.88rem;color:var(--text2);"></div>
+    <div class="form-group">
+      <label>Pobjednički tim *</label>
+      <select id="result-winner"></select>
+    </div>
+    <div class="form-group">
+      <label>Rezultat (npr. 6:4, 7:5) *</label>
+      <input type="text" id="result-score" placeholder="6:4, 6:3"/>
+    </div>
+    <button class="btn-primary" id="submit-result-btn" onclick="submitResult()">Pošalji na potvrdu</button>
+  </div>
+</div>
+
+
+<!-- MODAL: Dolazni izazov -->
+<div class="modal-overlay" id="modal-incoming-challenge">
+  <div class="modal incoming-challenge-modal">
+    <div id="incoming-challenge-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Workflow popupi -->
+<div class="modal-overlay" id="modal-workflow">
+  <div class="modal workflow-modal">
+    <button class="modal-close" onclick="closeWorkflowPopup()">×</button>
+    <div id="workflow-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL: Fer play popup -->
+<div class="modal-overlay" id="modal-fairplay">
+  <div class="modal fairplay-modal">
+    <div id="fairplay-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>© 2026 TK Buje Piramida · Powered by Supabase</footer>
+
+<!-- JavaScript — redoslijed je važan! -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/data.js"></script>
+<script src="js/pyramid.js"></script>
+<script src="js/challenges.js"></script>
+<script src="js/workflow.js"></script>
+<script src="js/results.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/refresh.js"></script>
+
+</body>
+</html>
