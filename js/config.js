@@ -58,3 +58,36 @@ let activeResultChallenge = null;
 let tournamentPause = { is_paused: false, paused_at: null, pause_reason: null };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
+
+function escapeContactHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function normalizePhoneForLink(phone) {
+  return String(phone || '').trim().replace(/[^\d+]/g, '');
+}
+
+function getSmsBodySeparator() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  const isiOS = /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return isiOS ? '&' : '?';
+}
+
+function renderCaptainContactButtons(captain, smsText) {
+  const phone = normalizePhoneForLink(captain?.phone);
+  if(!phone) return '<div class="contact-missing">Telefon nije upisan</div>';
+
+  const safePhone = escapeContactHtml(phone);
+  const smsHref = 'sms:' + safePhone + getSmsBodySeparator() + 'body=' + encodeURIComponent(smsText);
+
+  return '<div class="contact-actions">'
+    + '<a class="contact-btn call" href="tel:' + safePhone + '">📞 Nazovi</a>'
+    + '<a class="contact-btn sms" href="' + escapeContactHtml(smsHref) + '">💬 Pošalji SMS</a>'
+    + '</div>';
+}

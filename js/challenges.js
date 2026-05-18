@@ -203,6 +203,7 @@ function showFairPlayPopup(challengedId) {
   const challengedName = challenged?.name || challenged?.nickname || 'tim';
   const captain = allPlayers.find(p => p.email === challenged?.captain_email);
   const captainName = captain?.name || challenged?.captain_email || '—';
+  const contactHTML = renderCaptainContactButtons(captain, 'Bok, želimo dogovoriti termin izazova u TK Buje Piramidi.');
 
   const content = document.getElementById('fairplay-content');
   if(!content) return;
@@ -218,6 +219,7 @@ function showFairPlayPopup(challengedId) {
         + 'Daj im šansu da odgovore na vrijeme — <strong>nije svaki igrač svaki dan na aplikaciji!</strong>'
       + '</div>'
       + '<div class="fairplay-captain">👑 Kapetan: <strong>' + captainName + '</strong></div>'
+      + '<div class="fairplay-contact">' + contactHTML + '</div>'
     + '</div>'
     + '<button class="fairplay-btn" onclick="closeModal(\'modal-fairplay\')">Razumijem, javit ću se! 👍</button>';
 

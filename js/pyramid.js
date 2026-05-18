@@ -272,6 +272,8 @@ function openTeam(teamId) {
 
   const winRateLabel = record.matches ? record.winRate + '%' : '—';
   const title = getTeamDisplayTitle(team);
+  const captain = derivedCache.playerByEmail.get(team.captain_email) || allPlayers.find(p=>p.email===team.captain_email);
+  const contactHTML = renderCaptainContactButtons(captain, 'Bok, javljam se vezano uz TK Buje Piramidu.');
 
   document.getElementById('team-modal-content').innerHTML =
     '<div class="team-profile-hero ' + (team.penalty ? 'danger' : '') + '">'
@@ -286,6 +288,10 @@ function openTeam(teamId) {
       + '<div class="profile-stat-card green"><strong>' + record.wins + '</strong><span>Pobjede</span></div>'
       + '<div class="profile-stat-card red"><strong>' + record.losses + '</strong><span>Porazi</span></div>'
       + '<div class="profile-stat-card orange"><strong>' + winRateLabel + '</strong><span>Uspješnost</span></div>'
+    + '</div>'
+    + '<div class="captain-contact-card">'
+      + '<div class="captain-contact-label">Kontakt kapetana</div>'
+      + contactHTML
     + '</div>'
     + (canCurrentUserChallengeTeam(team) ? '<button class="modal-challenge-btn" onclick="challengeFromTeamModal(\'' + team.id + '\')">⚔️ Izazovi ovaj tim</button>' : '')
     + '<div class="modal-tabs profile-tabs" style="margin-top:1rem;">'

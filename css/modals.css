@@ -37,6 +37,18 @@
     .workflow-note { color:var(--text3); font-size:0.76rem; line-height:1.45; margin-top:0.75rem; text-align:center; }
     @media(max-width:520px) { .workflow-form-grid, .workflow-actions { grid-template-columns:1fr; } }
 
+/* KONTAKT KAPETANA */
+    .captain-contact-card { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:0.85rem; margin:0.9rem 0 0; }
+    .captain-contact-label { color:var(--text3); font-size:0.72rem; font-weight:800; text-transform:uppercase; letter-spacing:0.7px; margin-bottom:0.55rem; }
+    .contact-actions { display:grid; grid-template-columns:1fr 1fr; gap:0.55rem; }
+    .contact-btn { display:flex; align-items:center; justify-content:center; min-height:46px; border-radius:12px; padding:0.75rem 0.8rem; font-size:0.88rem; font-weight:900; text-decoration:none; transition:all 0.18s; }
+    .contact-btn:hover { transform:translateY(-1px); filter:brightness(1.06); }
+    .contact-btn.call { color:white; background:linear-gradient(135deg,var(--green2),var(--green)); border:1px solid rgba(34,197,94,0.45); }
+    .contact-btn.sms { color:var(--text); background:var(--bg4); border:1px solid var(--border2); }
+    .contact-missing { color:var(--text3); font-size:0.82rem; line-height:1.45; padding:0.3rem 0; }
+    .fairplay-contact { margin-top:0.85rem; }
+    @media(max-width:520px) { .contact-actions { grid-template-columns:1fr; } .contact-btn { min-height:50px; } }
+
 /* FER PLAY POPUP */
     .fairplay-modal { max-width:440px; text-align:center; padding:1.7rem; }
     .fairplay-icon { width:72px; height:72px; border-radius:24px; margin:0 auto 1rem; display:flex; align-items:center; justify-content:center; font-size:2.2rem; background:radial-gradient(circle, rgba(34,197,94,0.28), rgba(34,197,94,0.08)); border:1px solid rgba(34,197,94,0.35); box-shadow:0 0 36px rgba(34,197,94,0.18); }
