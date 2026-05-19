@@ -818,8 +818,8 @@ async function saveEditTeam() {
   const newCaptain = document.getElementById('edit-team-captain').value;
   const btn = Array.from(document.querySelectorAll('#modal-team button')).find(b => (b.getAttribute('onclick') || '').includes('saveEditTeam'));
 
-  if(!name || !Number.isFinite(step) || step < 1 || !Number.isFinite(position)) {
-    showToast('Ispuni sva polja!','error');
+  if(!Number.isFinite(step) || step < 1 || !Number.isFinite(position)) {
+    showToast('Provjeri stepenicu i poziciju.','error');
     return;
   }
 
