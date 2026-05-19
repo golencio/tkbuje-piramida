@@ -716,7 +716,7 @@ async function openEditTeam(teamId) {
   const team = allTeams.find(t=>t.id===teamId);
   if(!team) return;
 
-  const { data: members } = await sb.from('team_members').select('*').eq('team_id', teamId);
+  const members = allMembers.filter(m => m.team_id === teamId);
   const membersSorted = getSortedTeamMembers(teamId, team.captain_email, members || []);
   const memberEmails = membersSorted.map(m=>m.player_email);
 
@@ -816,18 +816,39 @@ async function saveEditTeam() {
   const step = parseInt(document.getElementById('edit-team-step').value);
   const position = parseInt(document.getElementById('edit-team-position').value);
   const newCaptain = document.getElementById('edit-team-captain').value;
+  const btn = Array.from(document.querySelectorAll('#modal-team button')).find(b => (b.getAttribute('onclick') || '').includes('saveEditTeam'));
 
-  if(!name||!step||!position) { showToast('Ispuni sva polja!','error'); return; }
+  if(!name || !Number.isFinite(step) || step < 1 || !Number.isFinite(position)) {
+    showToast('Ispuni sva polja!','error');
+    return;
+  }
 
   const updates = { name, nickname: name, step, position };
   if(newCaptain) updates.captain_email = newCaptain;
 
-  const { error } = await sb.from('teams').update(updates).eq('id', editTeamId);
-  if(error) { showToast('Greška: '+error.message,'error'); return; }
+  if(btn) { btn.disabled = true; btn.textContent = 'Spremam...'; }
 
-  showToast('Tim ažuriran! ✓','success');
-  closeModal('modal-team');
-  await safeLoadAll('manual'); renderAdmin();
+  try {
+    console.log('[SAVE TEAM] SAVE_START', { teamId: editTeamId });
+    await supabaseRestRequest('/rest/v1/teams?id=eq.' + encodeURIComponent(editTeamId), {
+      method: 'PATCH',
+      body: JSON.stringify(updates)
+    });
+    console.log('[SAVE TEAM] SAVE_SUCCESS', { teamId: editTeamId });
+    const team = allTeams.find(t => t.id === editTeamId);
+    if(team) Object.assign(team, updates);
+    buildDerivedCaches();
+    showToast('Tim ažuriran! ✓','success');
+    closeModal('modal-team');
+    renderPyramid();
+    renderAdmin();
+  } catch(err) {
+    console.error('[SAVE TEAM] SAVE_ERROR', err);
+    showToast('Spremanje nije uspjelo. Provjeri internet i pokušaj ponovno.', 'error');
+  } finally {
+    console.log('[SAVE TEAM] SAVE_FINALLY', { teamId: editTeamId });
+    if(btn) { btn.disabled = false; btn.textContent = '💾 Spremi promjene'; }
+  }
 }
 
 async function removeMember(teamId, email) {
