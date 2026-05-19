@@ -36,18 +36,35 @@ async function submitResult() {
   const btn = document.getElementById('submit-result-btn');
   btn.disabled=true; btn.textContent='Šaljem...';
 
-  const { error } = await sb.from('challenges').update({
-    status: 'pending_result',
-    result_winner_id: winnerId,
-    result_score: score,
-    updated_at: new Date().toISOString()
-  }).eq('id', activeResultChallenge.id);
-
-  btn.disabled=false; btn.textContent='Pošalji na potvrdu';
-  if(error) { showToast('Greška: '+error.message,'error'); return; }
-  showToast('Rezultat poslan adminu na potvrdu! ✓','success');
-  closeModal('modal-result');
-  await safeLoadAll('manual');
+  try {
+    console.log('[SUBMIT RESULT] SAVE_START', { challengeId: activeResultChallenge.id });
+    const updatedAt = new Date().toISOString();
+    await supabaseRestRequest('/rest/v1/challenges?id=eq.' + encodeURIComponent(activeResultChallenge.id), {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: 'pending_result',
+        result_winner_id: winnerId,
+        result_score: score,
+        updated_at: updatedAt
+      })
+    });
+    console.log('[SUBMIT RESULT] SAVE_SUCCESS', { challengeId: activeResultChallenge.id });
+    Object.assign(activeResultChallenge, {
+      status: 'pending_result',
+      result_winner_id: winnerId,
+      result_score: score,
+      updated_at: updatedAt
+    });
+    showToast('Rezultat poslan adminu na potvrdu! ✓','success');
+    closeModal('modal-result');
+    await renderChallenges();
+  } catch(err) {
+    console.error('[SUBMIT RESULT] SAVE_ERROR', err);
+    showToast('Spremanje nije uspjelo. Provjeri internet i pokušaj ponovno.', 'error');
+  } finally {
+    console.log('[SUBMIT RESULT] SAVE_FINALLY', { challengeId: activeResultChallenge?.id });
+    btn.disabled=false; btn.textContent='Pošalji na potvrdu';
+  }
 }
 
 // ---- PENALTY SYSTEM ----

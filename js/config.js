@@ -41,6 +41,53 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   }
 });
 
+function getStoredAccessToken() {
+  try {
+    const storageKey = 'sb-aglbdjyljbzzpddrshno-auth-token';
+    const raw = localStorage.getItem(storageKey);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || parsed?.currentSession?.access_token || null;
+  } catch(err) {
+    console.warn('Ne mogu pročitati Supabase session token:', err);
+    return null;
+  }
+}
+
+async function supabaseRestRequest(path, options = {}) {
+  const token = getStoredAccessToken();
+  const headers = {
+    apikey: SUPABASE_KEY,
+    Authorization: 'Bearer ' + (token || SUPABASE_KEY),
+    'Content-Type': 'application/json',
+    Prefer: 'return=minimal',
+    ...(options.headers || {})
+  };
+
+  const response = await supabaseFetchWithTimeout(SUPABASE_URL + path, {
+    ...options,
+    headers
+  });
+
+  if(!response.ok) {
+    let message = 'Supabase request failed (' + response.status + ')';
+    try {
+      const body = await response.json();
+      message = body.message || body.error || message;
+    } catch(err) {
+      try {
+        const text = await response.text();
+        if(text) message = text;
+      } catch(_err) {}
+    }
+    throw new Error(message);
+  }
+
+  if(response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
 let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
 let isLoadingAll = false;
 let pendingReloadReason = null;

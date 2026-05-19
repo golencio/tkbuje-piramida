@@ -395,16 +395,25 @@ async function saveEditChallenge() {
     if(!['completed','pending_result','surrendered'].includes(status)) update.result_winner_id = null;
   }
 
-  const { error } = await sb.from('challenges').update(update).eq('id', editChallengeId);
-
-  btn.disabled=false; btn.textContent='💾 Spremi promjene';
-  if(error) { showToast('Greška: '+error.message,'error'); return; }
-
-  showToast('Izazov ažuriran! ✓', 'success');
-  closeModal('modal-edit-challenge');
-  await safeLoadAll('manual');
-  await renderChallenges();
-  if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+  try {
+    console.log('[SAVE CHALLENGE] SAVE_START', { challengeId: editChallengeId });
+    await supabaseRestRequest('/rest/v1/challenges?id=eq.' + encodeURIComponent(editChallengeId), {
+      method: 'PATCH',
+      body: JSON.stringify(update)
+    });
+    console.log('[SAVE CHALLENGE] SAVE_SUCCESS', { challengeId: editChallengeId });
+    Object.assign(c, update);
+    showToast('Izazov ažuriran! ✓', 'success');
+    closeModal('modal-edit-challenge');
+    await renderChallenges();
+    if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
+  } catch(err) {
+    console.error('[SAVE CHALLENGE] SAVE_ERROR', err);
+    showToast('Spremanje nije uspjelo. Provjeri internet i pokušaj ponovno.', 'error');
+  } finally {
+    console.log('[SAVE CHALLENGE] SAVE_FINALLY', { challengeId: editChallengeId });
+    btn.disabled=false; btn.textContent='💾 Spremi promjene';
+  }
 }
 
 async function deleteChallengeAdmin() {

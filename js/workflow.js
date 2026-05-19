@@ -164,18 +164,32 @@ async function saveChallengeSchedule(challengeId) {
   const scheduledAt = new Date(date + 'T' + time + ':00');
   if(isNaN(scheduledAt.getTime())) { showToast('Datum ili vrijeme nisu ispravni.', 'error'); return; }
 
-  const { error } = await sb.from('challenges').update({
-    scheduled_at: scheduledAt.toISOString(),
-    scheduled_by: currentPlayer?.email || null,
-    scheduled_created_at: new Date().toISOString(),
-    scheduled_note: note,
-    updated_at: new Date().toISOString()
-  }).eq('id', challengeId);
-
-  if(error) { showToast('Greška: ' + error.message, 'error'); return; }
-  showToast('Termin meča je spremljen. 📅', 'success');
-  closeWorkflowPopup();
-  await safeLoadAll('manual');
+  try {
+    console.log('[SAVE SCHEDULE] SAVE_START', { challengeId });
+    const updatedAt = new Date().toISOString();
+    const update = {
+      scheduled_at: scheduledAt.toISOString(),
+      scheduled_by: currentPlayer?.email || null,
+      scheduled_created_at: updatedAt,
+      scheduled_note: note,
+      updated_at: updatedAt
+    };
+    await supabaseRestRequest('/rest/v1/challenges?id=eq.' + encodeURIComponent(challengeId), {
+      method: 'PATCH',
+      body: JSON.stringify(update)
+    });
+    console.log('[SAVE SCHEDULE] SAVE_SUCCESS', { challengeId });
+    const challenge = allChallenges.find(c => c.id === challengeId);
+    if(challenge) Object.assign(challenge, update);
+    showToast('Termin meča je spremljen. 📅', 'success');
+    closeWorkflowPopup();
+    await renderChallenges();
+  } catch(err) {
+    console.error('[SAVE SCHEDULE] SAVE_ERROR', err);
+    showToast('Spremanje nije uspjelo. Provjeri internet i pokušaj ponovno.', 'error');
+  } finally {
+    console.log('[SAVE SCHEDULE] SAVE_FINALLY', { challengeId });
+  }
 }
 
 function showResultDuePopup(challenge) {
@@ -211,17 +225,31 @@ async function submitWorkflowResult(challengeId) {
   const score = document.getElementById('workflow-result-score')?.value.trim();
   if(!winnerId || !score) { showToast('Odaberi pobjednika i upiši rezultat.', 'error'); return; }
 
-  const { error } = await sb.from('challenges').update({
-    status: 'pending_result',
-    result_winner_id: winnerId,
-    result_score: score,
-    updated_at: new Date().toISOString()
-  }).eq('id', challengeId);
-
-  if(error) { showToast('Greška: ' + error.message, 'error'); return; }
-  showToast('Rezultat je poslan adminu na potvrdu. ✓', 'success');
-  closeWorkflowPopup();
-  await safeLoadAll('manual');
+  try {
+    console.log('[WORKFLOW RESULT] SAVE_START', { challengeId });
+    const updatedAt = new Date().toISOString();
+    const update = {
+      status: 'pending_result',
+      result_winner_id: winnerId,
+      result_score: score,
+      updated_at: updatedAt
+    };
+    await supabaseRestRequest('/rest/v1/challenges?id=eq.' + encodeURIComponent(challengeId), {
+      method: 'PATCH',
+      body: JSON.stringify(update)
+    });
+    console.log('[WORKFLOW RESULT] SAVE_SUCCESS', { challengeId });
+    const challenge = allChallenges.find(c => c.id === challengeId);
+    if(challenge) Object.assign(challenge, update);
+    showToast('Rezultat je poslan adminu na potvrdu. ✓', 'success');
+    closeWorkflowPopup();
+    await renderChallenges();
+  } catch(err) {
+    console.error('[WORKFLOW RESULT] SAVE_ERROR', err);
+    showToast('Spremanje nije uspjelo. Provjeri internet i pokušaj ponovno.', 'error');
+  } finally {
+    console.log('[WORKFLOW RESULT] SAVE_FINALLY', { challengeId });
+  }
 }
 
 function showAdminConfirmationPopup(challenge) {
