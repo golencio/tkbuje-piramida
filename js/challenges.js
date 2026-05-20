@@ -64,6 +64,9 @@ async function confirmPlayerSelection() {
 
   if(selectionMode === 'challenge') {
     const challenged = allTeams.find(t=>t.id===pendingChallengeData.challengedId);
+    const rematchBlockReason = getRematchBlockReason(myTeam.id, pendingChallengeData.challengedId);
+    if(rematchBlockReason) { showToast(rematchBlockReason, 'error'); closeModal('modal-select-players'); return; }
+
     if(!confirm('Izazvati tim "'+challenged?.name+'"?')) return;
     const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
     const { error } = await sb.from('challenges').insert({
@@ -165,6 +168,9 @@ async function sendChallenge(challengedId) {
     new Date(c.updated_at) > threeDaysAgo
   );
   if(inCooldown) { showToast('Tim je u zaštitnom roku — ne može biti izazvan!', 'error'); return; }
+
+  const rematchBlockReason = getRematchBlockReason(myTeam.id, challengedId);
+  if(rematchBlockReason) { showToast(rematchBlockReason, 'error'); return; }
 
   // Koristi cache umjesto novog Supabase selecta u click-pathu.
   const myMembers = getCachedTeamMembers(myTeam.id);

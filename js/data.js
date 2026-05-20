@@ -229,6 +229,39 @@ function getSortedTeamMembers(teamId, captainEmail, membersList = allMembers) {
   });
 }
 
+function getRematchBlockReason(challengerId, challengedId) {
+  const completedBetweenTeams = allChallenges
+    .filter(c =>
+      c.status === 'completed' &&
+      c.result_winner_id &&
+      c.result_score &&
+      (
+        (c.challenger_id === challengerId && c.challenged_id === challengedId) ||
+        (c.challenger_id === challengedId && c.challenged_id === challengerId)
+      )
+    )
+    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+
+  const lastMatch = completedBetweenTeams[0];
+  if(!lastMatch || lastMatch.result_winner_id !== challengedId) return '';
+
+  const lastMatchDate = new Date(lastMatch.updated_at || lastMatch.created_at);
+  const challengedPlayedAnotherMatch = allChallenges.some(c => {
+    if(c.status !== 'completed') return false;
+    if(!c.result_score) return false;
+    if(c.id === lastMatch.id) return false;
+    if(new Date(c.updated_at || c.created_at) <= lastMatchDate) return false;
+    if(c.challenger_id !== challengedId && c.challenged_id !== challengedId) return false;
+
+    const opponentId = c.challenger_id === challengedId ? c.challenged_id : c.challenger_id;
+    return opponentId !== challengerId;
+  });
+
+  return challengedPlayedAnotherMatch
+    ? ''
+    : 'Ne možete ponovno izazvati ovaj tim dok oni ne odigraju barem jedan meč protiv drugog protivnika.';
+}
+
 function updateNotifBadge() {
   if(!myTeam) return;
   const pending = allChallenges.filter(c =>

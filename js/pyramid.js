@@ -130,6 +130,7 @@ function renderTeamStatusBadges(team, context, flags) {
 function renderTeamCard(team, context) {
   const isMyTeam = myTeam?.id === team.id;
   const inCooldown = context.cooldownByTeamId.has(team.id);
+  const rematchBlockReason = myTeam ? getRematchBlockReason(myTeam.id, team.id) : '';
   const tStepEffective = team.penalty ? 0 : team.step;
   const isAboveEffective = myTeam && (
     (!myTeam.penalty && tStepEffective === context.myStepEffective - 1) ||
@@ -138,7 +139,7 @@ function renderTeamCard(team, context) {
   const hasPendingChallenge = context.busyTeams.has(team.id);
   const canChallenge = !isMyTeam && isAboveEffective && myTeam &&
     !context.busyTeams.has(myTeam.id) && !hasPendingChallenge && !inCooldown &&
-    myTeam.captain_email === currentPlayer?.email;
+    myTeam.captain_email === currentPlayer?.email && !rematchBlockReason;
 
   const flags = { isMyTeam, hasPendingChallenge, canChallenge };
   let cardClass = 'team-card';
@@ -216,6 +217,7 @@ function canCurrentUserChallengeTeam(team) {
 
   const context = getPyramidContext();
   const inCooldown = context.cooldownByTeamId.has(team.id);
+  const rematchBlockReason = getRematchBlockReason(myTeam.id, team.id);
   const targetStep = team.penalty ? 0 : team.step;
   const canReachStep = (!myTeam.penalty && targetStep === context.myStepEffective - 1) ||
     (myTeam.penalty && targetStep === context.maxStep);
@@ -223,7 +225,8 @@ function canCurrentUserChallengeTeam(team) {
   return canReachStep &&
     !context.busyTeams.has(myTeam.id) &&
     !context.busyTeams.has(team.id) &&
-    !inCooldown;
+    !inCooldown &&
+    !rematchBlockReason;
 }
 
 function challengeFromTeamModal(teamId) {
