@@ -2,6 +2,7 @@
 
 // ---- ADMIN ----
 let activeAdminTab = 'overview';
+const pendingPyramidMatchInserts = new Set();
 
 function adminTeamName(team) {
   if(!team) return '?';
@@ -18,6 +19,108 @@ function adminChallengeTeams(c) {
 
 function getPendingResults() {
   return allChallenges.filter(c=>c.status==='pending_result');
+}
+
+async function insertPyramidMatchIfMissing(challenge, adminEmail) {
+  console.log('[PYRAMID -> MATCHES] START', { challengeId: challenge?.id });
+
+  if(!challenge?.id) {
+    console.error('[PYRAMID -> MATCHES] INSERT_ERROR', { message: 'Missing challenge id' });
+    return { status: 'error' };
+  }
+
+  if(pendingPyramidMatchInserts.has(challenge.id)) {
+    console.log('[PYRAMID -> MATCHES] ALREADY_EXISTS', { challengeId: challenge.id, reason: 'insert_in_progress' });
+    return { status: 'exists' };
+  }
+
+  const winnerIsChallenger = challenge.result_winner_id === challenge.challenger_id;
+  const winnerIsChallenged = challenge.result_winner_id === challenge.challenged_id;
+
+  if(!winnerIsChallenger && !winnerIsChallenged) {
+    console.error('[PYRAMID -> MATCHES] INSERT_ERROR', {
+      challengeId: challenge.id,
+      message: 'result_winner_id does not match challenger_id or challenged_id'
+    });
+    return { status: 'error' };
+  }
+
+  pendingPyramidMatchInserts.add(challenge.id);
+
+  try {
+    const { data: existing, error: existingError } = await sb
+      .from('matches')
+      .select('id')
+      .eq('pyramid_challenge_id', challenge.id)
+      .limit(1);
+
+    if(existingError) {
+      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', existingError);
+      return { status: 'error' };
+    }
+
+    if(existing?.length) {
+      console.log('[PYRAMID -> MATCHES] ALREADY_EXISTS', { challengeId: challenge.id, matchId: existing[0].id });
+      return { status: 'exists' };
+    }
+
+    const { data: latestMatch, error: matchNumberError } = await sb
+      .from('matches')
+      .select('match_number')
+      .order('match_number', { ascending: false })
+      .limit(1);
+
+    if(matchNumberError) {
+      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', matchNumberError);
+      return { status: 'error' };
+    }
+
+    const nextMatchNumber = Number(latestMatch?.[0]?.match_number || 0) + 1;
+    const now = new Date().toISOString();
+    const insertData = winnerIsChallenger ? {
+      match_number: nextMatchNumber,
+      created_by_email: adminEmail || challenge.challenger_player1,
+      status: 'Potvrđeno',
+      winner1_email: challenge.challenger_player1,
+      winner2_email: challenge.challenger_player2,
+      loser1_email: challenge.challenged_player1,
+      loser2_email: challenge.challenged_player2,
+      notes: challenge.result_score,
+      potvrdio_admin: adminEmail || null,
+      vrijeme_potvrde: now,
+      created_at: now,
+      source: 'pyramid',
+      pyramid_challenge_id: challenge.id
+    } : {
+      match_number: nextMatchNumber,
+      created_by_email: adminEmail || challenge.challenged_player1,
+      status: 'Potvrđeno',
+      winner1_email: challenge.challenged_player1,
+      winner2_email: challenge.challenged_player2,
+      loser1_email: challenge.challenger_player1,
+      loser2_email: challenge.challenger_player2,
+      notes: challenge.result_score,
+      potvrdio_admin: adminEmail || null,
+      vrijeme_potvrde: now,
+      created_at: now,
+      source: 'pyramid',
+      pyramid_challenge_id: challenge.id
+    };
+
+    console.log('[PYRAMID -> MATCHES] INSERT_DATA', insertData);
+
+    const { error: insertError } = await sb.from('matches').insert(insertData);
+
+    if(insertError) {
+      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', insertError);
+      return { status: 'error' };
+    }
+
+    console.log('[PYRAMID -> MATCHES] INSERT_SUCCESS', { challengeId: challenge.id });
+    return { status: 'inserted' };
+  } finally {
+    pendingPyramidMatchInserts.delete(challenge.id);
+  }
 }
 
 function getExpiredMatches() {
@@ -539,7 +642,18 @@ async function adminConfirmResult(challengeId) {
   await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
   await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenged_id);
 
-  await sb.from('challenges').update({ status:'completed', updated_at:new Date().toISOString() }).eq('id',challengeId);
+  const completedAt = new Date().toISOString();
+  const { error } = await sb.from('challenges').update({ status:'completed', updated_at:completedAt }).eq('id',challengeId);
+  if(error) { showToast('Greška: '+error.message,'error'); return; }
+
+  const completedChallenge = { ...c, status: 'completed', updated_at: completedAt };
+  const matchInsertResult = await insertPyramidMatchIfMissing(completedChallenge, currentUser?.email || currentPlayer?.email || null);
+  if(matchInsertResult.status === 'error') {
+    showToast('Rezultat potvrđen, ali upis u matches nije napravljen. Provjeri konzolu/Supabase.', 'error');
+    await safeLoadAll('manual'); renderAdmin();
+    return;
+  }
+
   showToast('Rezultat potvrđen! ✓','success');
   await safeLoadAll('manual'); renderAdmin();
 }
