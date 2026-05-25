@@ -491,3 +491,30 @@
   .team-badge { font-size:0.56rem !important; padding:0.13rem 0.32rem !important; max-width:78px !important; }
   .challenge-btn { font-size:0.62rem !important; padding:0.28rem !important; margin-top:0.35rem !important; }
 }
+
+.team-badge-penalty-timer {
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:0.05rem;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  text-align:center;
+}
+.team-badge-penalty-timer span {
+  display:block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+@media(max-width:700px) {
+  .team-badge-penalty-timer {
+    width:78px;
+    max-width:78px !important;
+    line-height:1.08;
+  }
+}
