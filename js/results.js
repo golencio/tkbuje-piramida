@@ -68,14 +68,45 @@ async function submitResult() {
 }
 
 // ---- PENALTY SYSTEM ----
+function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
+  const isExemptStep = Number(team?.step) <= 2;
+  const activeChallenge = allChallenges.find(c =>
+    (
+      (c.status === 'pending' && (!c.response_expires_at || new Date(c.response_expires_at) >= baseDate)) ||
+      c.status === 'accepted' ||
+      c.status === 'pending_result'
+    ) &&
+    (c.challenger_id === team.id || c.challenged_id === team.id)
+  );
+  const sentChallenges = allChallenges.filter(c => c.challenger_id === team.id && c.created_at);
+  const lastSentChallengeAt = sentChallenges
+    .map(c => new Date(c.created_at))
+    .filter(d => !isNaN(d.getTime()))
+    .sort((a, b) => b - a)[0] || null;
+  const lastMatchAt = team.last_match_at ? new Date(team.last_match_at) : null;
+  const createdAt = team.created_at ? new Date(team.created_at) : null;
+  const activityDates = [lastMatchAt, lastSentChallengeAt, createdAt]
+    .filter(d => d && !isNaN(d.getTime()));
+  const lastActivityAt = activityDates.sort((a, b) => b - a)[0] || baseDate;
+  const daysInactive = Math.floor((baseDate - lastActivityAt) / DAY_MS);
+  const daysLeft = 15 - daysInactive;
+
+  return {
+    isExemptStep,
+    activeChallenge,
+    lastActivityAt,
+    daysInactive,
+    daysLeft,
+    shouldPenalize: !team.penalty && !isExemptStep && !activeChallenge && daysInactive >= 15
+  };
+}
+
 async function checkPenalties() {
   if(tournamentPause?.is_paused) return;
-  const now = new Date();
+  const now = getPauseTimerNow();
   for(const team of allTeams) {
-    if(team.penalty || team.step <= 2) continue; // Stepenice 1 i 2 su izuzete
-    const lastMatch = team.last_match_at ? new Date(team.last_match_at) : new Date(team.created_at);
-    const daysSince = (now - lastMatch) / (1000*60*60*24);
-    if(daysSince >= 15) {
+    const activityInfo = getTeamPenaltyActivityInfo(team, now);
+    if(activityInfo.shouldPenalize) {
       await applyPenalty(team);
     }
   }
@@ -109,7 +140,7 @@ async function applyPenalty(team) {
 async function adminSimulatePenalty(teamId) {
   const team = allTeams.find(t => t.id === teamId);
   if(!team) return;
-  if(team.step === 1) { showToast('Timovi na stepenici 1 su izuzeti od kazne!', 'error'); return; }
+  if(team.step <= 2) { showToast('Timovi na stepenicama 1 i 2 su izuzeti od kazne!', 'error'); return; }
   if(team.penalty) { showToast('Tim je već u kaznenoj zoni!', 'error'); return; }
   if(!confirm('Simulirati kaznu za tim "' + team.name + '"?')) return;
   await applyPenalty(team);

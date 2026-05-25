@@ -113,13 +113,12 @@ function renderTeamStatusBadges(team, context, flags) {
   }
 
   if(!team.penalty && team.step > 2) {
-    const lastMatch = team.last_match_at ? new Date(team.last_match_at) : new Date(team.created_at);
-    const timerNow = getPauseTimerNow();
-    const daysInactive = Math.floor((timerNow - lastMatch) / DAY_MS);
-    const daysLeft = 15 - daysInactive;
+    const activityInfo = getTeamPenaltyActivityInfo(team);
+    const daysLeft = activityInfo.daysLeft;
     const pausePrefix = tournamentPause?.is_paused ? '⏸ ' : '';
 
-    if(daysLeft <= 0) html += '<div class="team-badge team-badge-danger">' + pausePrefix + '⚠️ Kazna!</div>';
+    if(activityInfo.activeChallenge) html += '<div class="team-badge team-badge-muted">' + pausePrefix + '⏳ Rok kazne ne teče</div>';
+    else if(daysLeft <= 0) html += '<div class="team-badge team-badge-danger">' + pausePrefix + '⚠️ Kazna!</div>';
     else if(daysLeft <= 5) html += '<div class="team-badge team-badge-danger">' + pausePrefix + '⚠️ Kazna za ' + daysLeft + ' dan(a)</div>';
     else html += '<div class="team-badge team-badge-muted">' + pausePrefix + '📅 ' + daysLeft + ' dana do kazne</div>';
   }

@@ -403,7 +403,7 @@ function renderAdmin() {
             const captain = allPlayers.find(p=>p.email===t.captain_email);
             return `<div class="admin-team-row">
               <div><div class="admin-row-title">${adminTeamName(t)}</div><div class="admin-row-meta">Stepenica ${t.step}${t.penalty ? ' · Kazna' : ''} · 👑 ${captain?.name||t.captain_email}</div></div>
-              <div class="admin-row-actions"><button class="admin-small-btn" onclick="openEditTeam('${t.id}')">✏️ Edit</button><button class="admin-small-btn" onclick="openAddMember('${t.id}')">+ Član</button>${t.step > 1 && !t.penalty ? `<button class="admin-danger-small" onclick="adminSimulatePenalty('${t.id}')">⚠️ Kazna</button>` : ''}${t.penalty ? `<button class="admin-success-small" onclick="adminRemovePenalty('${t.id}')">↩ Izvadi</button>` : ''}<button class="admin-trash" onclick="deleteTeam('${t.id}','${adminTeamName(t).replace(/'/g, "\\'")}')">🗑</button></div>
+              <div class="admin-row-actions"><button class="admin-small-btn" onclick="openEditTeam('${t.id}')">✏️ Edit</button><button class="admin-small-btn" onclick="openAddMember('${t.id}')">+ Član</button>${t.step > 2 && !t.penalty ? `<button class="admin-danger-small" onclick="adminSimulatePenalty('${t.id}')">⚠️ Kazna</button>` : ''}${t.penalty ? `<button class="admin-success-small" onclick="adminRemovePenalty('${t.id}')">↩ Izvadi</button>` : ''}<button class="admin-trash" onclick="deleteTeam('${t.id}','${adminTeamName(t).replace(/'/g, "\\'")}')">🗑</button></div>
             </div>`;
           }).join('')}
         </div>
