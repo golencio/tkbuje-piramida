@@ -471,6 +471,7 @@
   .profile-stat-card { padding:0.72rem 0.45rem; border-radius:14px; }
   .profile-stat-card strong { font-size:1.12rem; }
   .profile-member-row { grid-template-columns:34px 1fr; gap:0.6rem; padding:0.68rem; }
+}
 /* RESTORE ORIGINAL PYRAMID CARD SIZE — production mobile fix */
 .team-card-v2,
 .team-card-v2:hover {
@@ -482,7 +483,7 @@
     flex:0 0 86px !important;
     max-width:86px !important;
     min-width:86px !important;
-    min-height:80px !important;
+    min-height:96px !important;
     padding:0.55rem 0.3rem !important;
   }
   .team-card-title { font-size:0.62rem !important; margin-bottom:0.18rem !important; }
@@ -506,8 +507,8 @@
 .team-badge-penalty-timer span {
   display:block;
   max-width:100%;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  overflow:visible;
+  text-overflow:clip;
   white-space:nowrap;
 }
 

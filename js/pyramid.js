@@ -117,10 +117,10 @@ function renderTeamStatusBadges(team, context, flags) {
     const daysLeft = activityInfo.daysLeft;
     const pausePrefix = tournamentPause?.is_paused ? '⏸ ' : '';
 
-    if(activityInfo.activeChallenge) html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '⏳ Rok kazne</span><span>ne teče</span></div>';
+    if(activityInfo.activeChallenge) html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '⏳ Aktivno</span><span>bez kazne</span></div>';
     else if(daysLeft <= 0) html += '<div class="team-badge team-badge-danger team-badge-penalty-timer"><span>' + pausePrefix + '⚠️ Kazna!</span></div>';
-    else if(daysLeft <= 5) html += '<div class="team-badge team-badge-danger team-badge-penalty-timer"><span>' + pausePrefix + '⚠️ Kazna za</span><span>' + daysLeft + ' dan(a)</span></div>';
-    else html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '📅 ' + daysLeft + ' dana</span><span>do kazne</span></div>';
+    else if(daysLeft <= 5) html += '<div class="team-badge team-badge-danger team-badge-penalty-timer"><span>' + pausePrefix + '⚠️ Kazna</span><span>za ' + daysLeft + ' dana</span></div>';
+    else html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '📅 ' + daysLeft + ' dana</span><span>kazna</span></div>';
   }
 
   return html;
