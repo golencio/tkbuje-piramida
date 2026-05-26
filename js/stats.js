@@ -264,7 +264,13 @@ async function safeLoadAll(reason = 'auto') {
   if(!currentPlayer) return false;
 
   // Automatski refresh ne smije prekidati klik, modal, unos ili admin uređivanje.
-  if(['interval','visible','focus'].includes(reason) && isUserBusy()) return false;
+  if(['interval','focus'].includes(reason) && isUserBusy()) return false;
+  if(reason === 'visible') {
+    const active = document.activeElement;
+    const typing = active && ['INPUT','SELECT','TEXTAREA'].includes(active.tagName);
+    const modalOpen = !!document.querySelector('.modal-overlay.open');
+    if(typing || modalOpen) return false;
+  }
 
   if(!navigator.onLine) {
     showToast('Nema internet veze. Pokušat ću ponovno kad se veza vrati.', 'error');
@@ -272,15 +278,20 @@ async function safeLoadAll(reason = 'auto') {
   }
 
   isRefreshing = true;
+  console.log('[REFRESH MATCHES] START', { reason });
   try {
     const didLoad = await loadAll({ checkPenalties: reason === 'init' });
     if(didLoad) {
       lastSuccessfulRefresh = Date.now();
       refreshFailures = 0;
+      console.log('[REFRESH MATCHES] SUCCESS', { reason });
+    } else {
+      console.error('[REFRESH MATCHES] ERROR', { reason, message: 'loadAll returned false' });
     }
     return didLoad;
   } catch (error) {
     refreshFailures++;
+    console.error('[REFRESH MATCHES] ERROR', { reason, error });
     console.error('Greška kod osvježavanja aplikacije (' + reason + '):', error);
     if(error?.name === 'AbortError') {
       showToast('Veza je zaspala. Pokušaj još jednom.', 'error');
@@ -331,13 +342,13 @@ function setupAutoRefresh() {
 
     if(appWasHidden) {
       appWasHidden = false;
-      // Nakon povratka u tab NE pokrećemo automatski Supabase request.
-      // Samo ponovno pokrećemo timer; prvi auto-refresh dolazi tek za 120 sekundi.
-      console.log('[TKB] tab visible again - refresh timer restarted, no immediate request');
+      console.log('[TKB] tab visible again - refreshing data');
       startRefreshTimer();
       shownIncomingChallengeId = null;
       shownWorkflowPopupId = null;
-      maybeShowAppWorkflowPopups();
+      safeLoadAll('visible').then(didLoad => {
+        if(!didLoad) maybeShowAppWorkflowPopups();
+      });
     }
   });
 
@@ -357,9 +368,18 @@ function setupAutoRefresh() {
 
 async function init() {
   const ok = await handleAuth();
-  if(ok) await safeLoadAll('init');
+  if(ok) {
+    await safeLoadAll('init');
+    restoreActiveTab();
+  }
   sb.auth.onAuthStateChange(async (event) => {
-    if(event==='SIGNED_IN') { const ok=await handleAuth(); if(ok) await safeLoadAll('signed-in'); }
+    if(event==='SIGNED_IN') {
+      const ok=await handleAuth();
+      if(ok) {
+        await safeLoadAll('signed-in');
+        restoreActiveTab();
+      }
+    }
   });
 
   setupAutoRefresh();

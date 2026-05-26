@@ -23,7 +23,7 @@ function supabaseFetchWithTimeout(input, init = {}) {
 
   const timeoutId = setTimeout(() => controller.abort(), SUPABASE_REQUEST_TIMEOUT_MS);
 
-  return fetch(input, { ...init, signal: controller.signal })
+  return fetch(input, { ...init, cache: 'no-store', signal: controller.signal })
     .finally(() => {
       clearTimeout(timeoutId);
       if(originalSignal && originalAbortHandler) {

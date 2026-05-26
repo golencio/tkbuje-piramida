@@ -82,12 +82,61 @@ async function handleAuth() {
 }
 
 // ---- NAV ----
-function showSection(id, btn) {
+const ACTIVE_TAB_STORAGE_KEY = 'tkbuje_active_tab';
+
+function canOpenSection(id) {
+  if(!id) return false;
+  if(id === 'admin' && !currentPlayer?.is_admin) return false;
+  return !!document.getElementById('sec-' + id) && !!document.getElementById('nav-' + id);
+}
+
+function getDefaultSection() {
+  return 'piramida';
+}
+
+function saveActiveTab(id) {
+  try {
+    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, id);
+    console.log('[ACTIVE TAB] SAVE', { tab: id });
+  } catch(err) {
+    console.warn('[ACTIVE TAB] SAVE', { tab: id, error: err });
+  }
+}
+
+function restoreActiveTab() {
+  let savedTab = null;
+  try {
+    savedTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+  } catch(err) {
+    console.warn('[ACTIVE TAB] FALLBACK', { reason: 'localStorage unavailable', error: err });
+  }
+
+  const tabToOpen = canOpenSection(savedTab) ? savedTab : getDefaultSection();
+  if(savedTab && tabToOpen === savedTab) {
+    console.log('[ACTIVE TAB] RESTORE', { tab: tabToOpen });
+  } else {
+    console.log('[ACTIVE TAB] FALLBACK', { savedTab, tab: tabToOpen });
+  }
+  showSection(tabToOpen, document.getElementById('nav-' + tabToOpen), { skipSave: true });
+}
+
+function showSection(id, btn, options = {}) {
+  if(!canOpenSection(id)) {
+    console.log('[ACTIVE TAB] FALLBACK', { requested: id, tab: getDefaultSection() });
+    id = getDefaultSection();
+    btn = document.getElementById('nav-' + id);
+  }
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.mobile-menu button').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
-  if(id==='admin') renderAdmin();
+  document.getElementById('mob-'+id)?.classList.add('active');
+  if(!options.skipSave) saveActiveTab(id);
+  if(id==='admin') {
+    renderAdmin();
+    safeLoadAll('admin-open');
+  }
   if(id==='statistika') renderStatistics();
   if(id==='piramida') {
     // Kad se korisnik vrati na Piramidu, ponovno pokaži aktualni workflow popup.

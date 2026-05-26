@@ -57,7 +57,8 @@ async function submitResult() {
     });
     showToast('Rezultat poslan adminu na potvrdu! ✓','success');
     closeModal('modal-result');
-    await renderChallenges();
+    const didReload = await safeLoadAll('result-submit');
+    if(!didReload) await renderChallenges();
   } catch(err) {
     console.error('[SUBMIT RESULT] SAVE_ERROR', err);
     showToast('Spremanje nije uspjelo. Provjeri internet i pokušaj ponovno.', 'error');

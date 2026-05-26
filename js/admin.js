@@ -21,6 +21,23 @@ function getPendingResults() {
   return allChallenges.filter(c=>c.status==='pending_result');
 }
 
+async function adminRefreshMatches() {
+  if(!currentPlayer?.is_admin) return;
+  const btn = document.getElementById('admin-refresh-btn');
+  if(btn) {
+    btn.disabled = true;
+    btn.textContent = 'Osvježavam...';
+  }
+  try {
+    await safeLoadAll('admin-manual');
+  } finally {
+    if(btn) {
+      btn.disabled = false;
+      btn.textContent = 'Osvježi';
+    }
+  }
+}
+
 async function insertPyramidMatchIfMissing(challenge, adminEmail) {
   console.log('[PYRAMID -> MATCHES] START', { challengeId: challenge?.id });
 
@@ -426,7 +443,10 @@ function renderAdmin() {
           <div class="admin-title">Admin pregled</div>
           <div class="admin-subtitle">Brze odluke, promjene poretka i najvažnije akcije bez beskonačnog skrolanja.</div>
         </div>
-        <div class="admin-status-pill ${tournamentPause?.is_paused?'paused':'active'}">${tournamentPause?.is_paused?'⏸ PAUZA':'● AKTIVAN'}</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="admin-small-btn" id="admin-refresh-btn" onclick="adminRefreshMatches()">Osvježi</button>
+          <div class="admin-status-pill ${tournamentPause?.is_paused?'paused':'active'}">${tournamentPause?.is_paused?'⏸ PAUZA':'● AKTIVAN'}</div>
+        </div>
       </div>
       <div class="admin-tabs">${tabButtons}</div>
       ${body}
