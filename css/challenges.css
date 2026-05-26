@@ -254,3 +254,137 @@
     .tab-content.active { display:block; }
     .member-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.88rem; }
     .member-row:last-child { border-bottom:none; }
+
+/* IZAZOVI — kompaktni pregled */
+.challenge-group {
+  margin-bottom:1.1rem;
+}
+.challenge-group-title {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:0.75rem;
+  color:var(--text);
+  font-family:'Space Grotesk',sans-serif;
+  font-size:0.82rem;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+  margin:0 0 0.48rem;
+}
+.challenge-group-title span {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:24px;
+  height:22px;
+  padding:0 0.42rem;
+  border-radius:999px;
+  color:var(--text2);
+  background:rgba(255,255,255,0.055);
+  border:1px solid var(--border);
+  font-family:'Inter',sans-serif;
+  font-size:0.68rem;
+  letter-spacing:0;
+}
+.challenge-compact-list {
+  display:grid;
+  gap:0.55rem;
+}
+.challenge-compact-card {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:0.75rem;
+  align-items:center;
+  padding:0.78rem 0.9rem;
+  margin-bottom:0;
+  border-radius:12px;
+  cursor:pointer;
+}
+.challenge-compact-card:hover {
+  border-color:var(--border2);
+  background:var(--bg3);
+}
+.challenge-compact-card.mine {
+  border-color:rgba(255,107,43,0.28);
+}
+.challenge-compact-main {
+  min-width:0;
+}
+.challenge-compact-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:0.75rem;
+  margin-bottom:0.42rem;
+}
+.challenge-compact-title {
+  color:var(--text);
+  font-family:'Space Grotesk',sans-serif;
+  font-size:0.96rem;
+  font-weight:900;
+  line-height:1.18;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.challenge-compact-title span {
+  color:var(--orange);
+  font-size:0.78rem;
+  font-weight:800;
+}
+.challenge-compact-meta {
+  color:var(--text3);
+  font-size:0.78rem;
+  line-height:1.35;
+  margin-top:0.18rem;
+}
+.challenge-compact-actions {
+  justify-content:flex-end;
+  flex-wrap:nowrap;
+}
+.challenge-compact-actions button {
+  white-space:nowrap;
+}
+.challenge-detail-modal {
+  max-width:860px;
+}
+.challenge-detail .challenge-vs-top {
+  margin-bottom:0.85rem;
+}
+
+@media(max-width:700px) {
+  .challenge-group { margin-bottom:0.95rem; }
+  .challenge-group-title {
+    font-size:0.74rem;
+    letter-spacing:0.9px;
+    padding:0 0.12rem;
+  }
+  .challenge-compact-card {
+    grid-template-columns:1fr;
+    gap:0.58rem;
+    padding:0.72rem;
+    border-radius:12px;
+  }
+  .challenge-compact-top {
+    justify-content:flex-start;
+    gap:0.5rem;
+    margin-bottom:0.34rem;
+  }
+  .challenge-compact-title {
+    font-size:0.88rem;
+    white-space:normal;
+  }
+  .challenge-compact-meta {
+    font-size:0.72rem;
+  }
+  .challenge-compact-actions {
+    justify-content:flex-start;
+    gap:0.4rem;
+  }
+  .challenge-compact-actions button {
+    flex:1 1 auto;
+    min-height:36px;
+    padding:0.36rem 0.55rem;
+  }
+}

@@ -333,6 +333,183 @@ function buildChallengeTeamCard(team, role, c) {
     </div>`;
 }
 
+function getChallengeContext(c) {
+  const challenger = allTeams.find(t=>t.id===c.challenger_id);
+  const challenged = allTeams.find(t=>t.id===c.challenged_id);
+  const winner = allTeams.find(t=>t.id===c.result_winner_id);
+  const isMyChallenge = myTeam && (c.challenger_id===myTeam.id||c.challenged_id===myTeam.id);
+  const isChallenged = myTeam && c.challenged_id===myTeam.id;
+  const iAmCaptain = myTeam?.captain_email === currentPlayer?.email;
+  return { challenger, challenged, winner, isMyChallenge, isChallenged, iAmCaptain };
+}
+
+function getChallengeGroup(c) {
+  if(['accepted','pending_result'].includes(c.status)) return 'accepted';
+  if(c.status === 'pending') return 'pending';
+  if(['completed','surrendered'].includes(c.status)) return 'completed';
+  if(['declined','cancelled'].includes(c.status)) return 'declined';
+  return 'other';
+}
+
+function getChallengeSortTime(c) {
+  const group = getChallengeGroup(c);
+  const value = group === 'accepted'
+    ? (c.scheduled_at || c.match_expires_at || c.updated_at || c.created_at)
+    : group === 'pending'
+      ? (c.response_expires_at || c.created_at)
+      : (c.updated_at || c.created_at);
+  const time = new Date(value || 0).getTime();
+  return isNaN(time) ? 0 : time;
+}
+
+function sortChallengesForOverview(a, b) {
+  const order = { accepted:0, pending:1, completed:2, declined:3, other:4 };
+  const groupDiff = order[getChallengeGroup(a)] - order[getChallengeGroup(b)];
+  if(groupDiff) return groupDiff;
+  const aTime = getChallengeSortTime(a);
+  const bTime = getChallengeSortTime(b);
+  return ['accepted','pending'].includes(getChallengeGroup(a)) ? aTime - bTime : bTime - aTime;
+}
+
+function getChallengeActionsHTML(c, options = {}) {
+  const { isMyChallenge, isChallenged, iAmCaptain } = getChallengeContext(c);
+  const stop = options.stopPropagation ? 'event.stopPropagation();' : '';
+  let actions = '';
+  if(c.status==='pending' && isChallenged && iAmCaptain) {
+    actions += `<button class="btn-accept" onclick="${stop}respondChallenge('${c.id}','accepted')">✓ Prihvati</button>
+      <button class="btn-decline" onclick="${stop}respondChallenge('${c.id}','declined')">✕ Odbij</button>`;
+  }
+  if(c.status==='accepted' && isMyChallenge) {
+    actions += `<button class="btn-accept" onclick="${stop}openResultModal('${c.id}')">📝 Unesi rezultat</button>`;
+  }
+  if(currentPlayer?.is_admin) {
+    actions += `<button class="admin-small-btn" onclick="${stop}openEditChallenge('${c.id}')">⚙ Admin uredi</button>`;
+  }
+  return actions;
+}
+
+function getCompactChallengeMeta(c) {
+  if(c.status === 'accepted') {
+    return c.scheduled_at ? 'Termin: ' + formatChallengeDateTime(c.scheduled_at) : 'Termin nije dogovoren';
+  }
+  if(c.status === 'pending_result') return 'Čeka potvrdu rezultata' + (c.result_score ? ': ' + c.result_score : '');
+  if(c.status === 'pending') return 'Na čekanju' + (c.response_expires_at ? ' · rok ' + formatChallengeDateTime(c.response_expires_at) : '');
+  if(c.status === 'completed') return 'Rezultat: ' + (c.result_score || '—');
+  if(c.status === 'surrendered') return 'Predaja' + (c.result_score ? ' · ' + c.result_score : '');
+  if(c.status === 'declined') return 'Odbijen';
+  if(c.status === 'cancelled') return 'Otkazano';
+  return statusLabelHr(c.status);
+}
+
+function renderCompactChallengeCard(c, index) {
+  const { challenger, challenged, isMyChallenge } = getChallengeContext(c);
+  if(!challenger || !challenged) return '';
+  const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined', surrendered:'s-declined', pending_result:'s-pending' };
+  const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Odigrano', declined:'Odbijeno', cancelled:'Otkazano', surrendered:'Predaja', pending_result:'Čeka potvrdu' };
+  const actions = getChallengeActionsHTML(c, { stopPropagation:true });
+  const challengerName = escapeHtml(challenger.nickname || challenger.name || 'Izazivač');
+  const challengedName = escapeHtml(challenged.nickname || challenged.name || 'Izazvani');
+  const meta = escapeHtml(getCompactChallengeMeta(c));
+
+  return `<div class="challenge-card challenge-compact-card ${isMyChallenge ? 'mine' : ''}" onclick="openChallengeDetail('${c.id}')" style="animation-delay:${index*0.035}s;">
+    <div class="challenge-compact-main">
+      <div class="challenge-compact-top">
+        <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||escapeHtml(c.status)}</span>
+        <span class="challenge-vs-id">#${escapeHtml(c.id).slice(0,8)}</span>
+      </div>
+      <div class="challenge-compact-title">${challengerName} <span>vs</span> ${challengedName}</div>
+      <div class="challenge-compact-meta">${meta}</div>
+    </div>
+    ${actions ? `<div class="challenge-actions challenge-compact-actions">${actions}</div>` : ''}
+  </div>`;
+}
+
+function buildChallengeDetailHTML(c) {
+  const { challenger, challenged, winner, isMyChallenge } = getChallengeContext(c);
+  if(!challenger || !challenged) return '<div class="empty">Izazov nije pronađen.</div>';
+
+  const now = new Date();
+  const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
+  let timerInfo = { label:'Rok', value:'—', urgent:false };
+  if(expires && ['pending','accepted'].includes(c.status)) {
+    const timerBase = c.status === 'accepted' ? getPauseTimerNow() : now;
+    const remaining = formatRemainingTime(expires, timerBase);
+    const pausedText = c.status === 'accepted' && tournamentPause?.is_paused ? ' ⏸' : '';
+    timerInfo = {
+      label: c.status==='pending' ? 'Rok za odgovor' : 'Rok za meč' + pausedText,
+      value: remaining.text,
+      urgent: remaining.diff < DAY_MS
+    };
+  }
+
+  const hasSchedule = c.status === 'accepted' && c.scheduled_at;
+  const scheduleText = hasSchedule ? formatChallengeDateTime(c.scheduled_at) : (c.status === 'accepted' ? 'Termin još nije zakazan' : '—');
+  const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined', surrendered:'s-declined', pending_result:'s-pending' };
+  const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano', surrendered:'Predaja', pending_result:'Čeka potvrdu' };
+  const challengerName = escapeHtml(challenger.nickname || challenger.name || 'Izazivač');
+  const challengedName = escapeHtml(challenged.nickname || challenged.name || 'Izazvani');
+
+  let confirmationText = '';
+  if(c.status === 'pending') confirmationText = `<span class="challenge-vs-warn">Čeka odgovor: ${challengedName}</span>`;
+  else if(c.status === 'accepted') confirmationText = `<span class="challenge-vs-ok">✓ ${challengerName}</span><span class="challenge-vs-ok">✓ ${challengedName}</span>`;
+  else if(c.status === 'pending_result') confirmationText = `<span class="challenge-vs-warn">Čeka potvrdu rezultata</span>`;
+  else if(c.status === 'completed') confirmationText = `<span class="challenge-vs-ok">Meč završen</span>`;
+  else confirmationText = `<span class="challenge-vs-muted">${escapeHtml(statusLabel[c.status] || c.status)}</span>`;
+
+  const resultRows = ['completed','pending_result','surrendered'].includes(c.status) ? `
+    <div class="challenge-vs-info-row">
+      <div class="challenge-vs-info-label">🏆 Pobjednik</div>
+      <div class="challenge-vs-info-value accent">${escapeHtml(winner?.nickname || winner?.name || '—')}</div>
+    </div>
+    ${c.result_score ? `<div class="challenge-vs-info-row">
+      <div class="challenge-vs-info-label">🎾 Rezultat</div>
+      <div class="challenge-vs-info-value">${escapeHtml(c.result_score)}</div>
+    </div>` : ''}` : '';
+  const actions = getChallengeActionsHTML(c);
+
+  return `<div class="challenge-detail">
+    <div class="challenge-vs-top">
+      <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||escapeHtml(c.status)}</span>
+      <span class="challenge-vs-id">#${escapeHtml(c.id).slice(0,8)}</span>
+    </div>
+    <div class="challenge-vs-layout">
+      <div class="challenge-vs-pair">
+        ${buildChallengeTeamCard(challenger, 'challenger', c)}
+        <div class="challenge-vs-label">VS</div>
+        ${buildChallengeTeamCard(challenged, 'challenged', c)}
+      </div>
+      <div class="challenge-vs-info">
+        <div class="challenge-vs-info-row">
+          <div class="challenge-vs-info-label">🛡️ Potvrde</div>
+          <div class="challenge-vs-info-value challenge-vs-confirm">${confirmationText}</div>
+        </div>
+        <div class="challenge-vs-info-row">
+          <div class="challenge-vs-info-label">📅 Termin meča</div>
+          <div class="challenge-vs-info-value ${hasSchedule ? 'accent' : 'muted'}">${escapeHtml(scheduleText)}</div>
+        </div>
+        <div class="challenge-vs-info-row">
+          <div class="challenge-vs-info-label">⏱️ ${escapeHtml(timerInfo.label)}</div>
+          <div class="challenge-vs-info-value ${timerInfo.urgent ? 'danger' : 'accent'}">${escapeHtml(timerInfo.value)}</div>
+        </div>
+        <div class="challenge-vs-info-row">
+          <div class="challenge-vs-info-label">✉️ Poslano</div>
+          <div class="challenge-vs-info-value">${formatChallengeDateTime(c.created_at)}</div>
+        </div>
+        ${resultRows}
+      </div>
+    </div>
+    ${actions ? `<div class="challenge-actions challenge-vs-actions">${actions}</div>` : ''}
+  </div>`;
+}
+
+function openChallengeDetail(challengeId) {
+  const challenge = allChallenges.find(c=>c.id===challengeId);
+  const content = document.getElementById('challenge-detail-content');
+  if(!challenge || !content) return;
+  content.innerHTML = buildChallengeDetailHTML(challenge);
+  openModal('modal-challenge-detail');
+}
+
 async function renderChallenges() {
   const container = document.getElementById('challenges-container');
   if(!allChallenges.length) { container.innerHTML='<div class="empty">Nema izazova.</div>'; return; }
@@ -346,114 +523,31 @@ async function renderChallenges() {
     }
   }
 
-  const html = allChallenges.map((c,i) => {
-    const challenger = allTeams.find(t=>t.id===c.challenger_id);
-    const challenged = allTeams.find(t=>t.id===c.challenged_id);
-    if(!challenger||!challenged) return '';
+  const groupLabels = {
+    accepted: 'Prihvaćeni / u tijeku',
+    pending: 'Na čekanju',
+    completed: 'Odigrani',
+    declined: 'Odbijeni',
+    other: 'Ostalo'
+  };
+  const sorted = [...allChallenges].sort(sortChallengesForOverview);
+  const grouped = sorted.reduce((acc, c) => {
+    const group = getChallengeGroup(c);
+    if(!acc[group]) acc[group] = [];
+    acc[group].push(c);
+    return acc;
+  }, {});
 
-    const isMyChallenge = myTeam && (c.challenger_id===myTeam.id||c.challenged_id===myTeam.id);
-    const isChallenged = myTeam && c.challenged_id===myTeam.id;
-    const iAmCaptain = myTeam?.captain_email === currentPlayer?.email;
-
-    const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
-    let timerInfo = { label:'Rok', value:'—', urgent:false };
-    if(expires && ['pending','accepted'].includes(c.status)) {
-      const timerBase = c.status === 'accepted' ? getPauseTimerNow() : now;
-      const remaining = formatRemainingTime(expires, timerBase);
-      const pausedText = c.status === 'accepted' && tournamentPause?.is_paused ? ' ⏸' : '';
-      timerInfo = {
-        label: c.status==='pending' ? 'Rok za odgovor' : 'Rok za meč' + pausedText,
-        value: remaining.text,
-        urgent: remaining.diff < DAY_MS
-      };
-    }
-
-    const hasSchedule = c.status === 'accepted' && c.scheduled_at;
-    const scheduleText = hasSchedule ? formatChallengeDateTime(c.scheduled_at) : (c.status === 'accepted' ? 'Termin još nije zakazan' : '—');
-
-    const statusMap = { pending:'s-pending', accepted:'s-accepted', completed:'s-completed', declined:'s-declined', cancelled:'s-declined', surrendered:'s-declined', pending_result:'s-pending' };
-    const statusLabel = { pending:'Na čekanju', accepted:'Prihvaćeno', completed:'Završeno', declined:'Odbijeno', cancelled:'Otkazano', surrendered:'Predaja', pending_result:'Čeka potvrdu' };
-
-    const challengerName = escapeHtml(challenger.nickname || challenger.name || 'Izazivač');
-    const challengedName = escapeHtml(challenged.nickname || challenged.name || 'Izazvani');
-
-    let confirmationText = '';
-    if(c.status === 'pending') {
-      confirmationText = `<span class="challenge-vs-warn">Čeka odgovor: ${challengedName}</span>`;
-    } else if(c.status === 'accepted') {
-      confirmationText = `<span class="challenge-vs-ok">✓ ${challengerName}</span><span class="challenge-vs-ok">✓ ${challengedName}</span>`;
-    } else if(c.status === 'pending_result') {
-      confirmationText = `<span class="challenge-vs-warn">Čeka potvrdu rezultata</span>`;
-    } else if(c.status === 'completed') {
-      confirmationText = `<span class="challenge-vs-ok">Meč završen</span>`;
-    } else {
-      confirmationText = `<span class="challenge-vs-muted">${escapeHtml(statusLabel[c.status] || c.status)}</span>`;
-    }
-
-    let resultRows = '';
-    if(['completed','pending_result','surrendered'].includes(c.status)) {
-      const winner = allTeams.find(t=>t.id===c.result_winner_id);
-      resultRows = `
-        <div class="challenge-vs-info-row">
-          <div class="challenge-vs-info-label">🏆 Pobjednik</div>
-          <div class="challenge-vs-info-value accent">${escapeHtml(winner?.nickname || winner?.name || '—')}</div>
-        </div>
-        ${c.result_score ? `<div class="challenge-vs-info-row">
-          <div class="challenge-vs-info-label">🎾 Rezultat</div>
-          <div class="challenge-vs-info-value">${escapeHtml(c.result_score)}</div>
-        </div>` : ''}`;
-    }
-
-    let actions = '';
-    if(c.status==='pending' && isChallenged && iAmCaptain) {
-      actions = `
-        <button class="btn-accept" onclick="respondChallenge('${c.id}','accepted')">✓ Prihvati</button>
-        <button class="btn-decline" onclick="respondChallenge('${c.id}','declined')">✕ Odbij</button>`;
-    }
-    if(c.status==='accepted' && isMyChallenge) {
-      actions = `<button class="btn-accept" onclick="openResultModal('${c.id}')">📝 Unesi rezultat</button>`;
-    }
-    if(currentPlayer?.is_admin) {
-      actions += `<button class="admin-small-btn" onclick="openEditChallenge('${c.id}')">⚙ Admin uredi</button>`;
-    }
-
-    return `<div class="challenge-card challenge-vs-box" style="animation-delay:${i*0.05}s;${!isMyChallenge?'opacity:0.72;':''}">
-      <div class="challenge-vs-top">
-        <span class="status-pill ${statusMap[c.status]||'s-pending'}">${statusLabel[c.status]||escapeHtml(c.status)}</span>
-        <span class="challenge-vs-id">#${escapeHtml(c.id).slice(0,8)}</span>
-      </div>
-
-      <div class="challenge-vs-layout">
-        <div class="challenge-vs-pair">
-          ${buildChallengeTeamCard(challenger, 'challenger', c)}
-          <div class="challenge-vs-label">VS</div>
-          ${buildChallengeTeamCard(challenged, 'challenged', c)}
-        </div>
-
-        <div class="challenge-vs-info">
-          <div class="challenge-vs-info-row">
-            <div class="challenge-vs-info-label">🛡️ Potvrde</div>
-            <div class="challenge-vs-info-value challenge-vs-confirm">${confirmationText}</div>
-          </div>
-          <div class="challenge-vs-info-row">
-            <div class="challenge-vs-info-label">📅 Termin meča</div>
-            <div class="challenge-vs-info-value ${hasSchedule ? 'accent' : 'muted'}">${escapeHtml(scheduleText)}</div>
-          </div>
-          <div class="challenge-vs-info-row">
-            <div class="challenge-vs-info-label">⏱️ ${escapeHtml(timerInfo.label)}</div>
-            <div class="challenge-vs-info-value ${timerInfo.urgent ? 'danger' : 'accent'}">${escapeHtml(timerInfo.value)}</div>
-          </div>
-          <div class="challenge-vs-info-row">
-            <div class="challenge-vs-info-label">✉️ Poslano</div>
-            <div class="challenge-vs-info-value">${formatChallengeDateTime(c.created_at)}</div>
-          </div>
-          ${resultRows}
+  const html = ['accepted','pending','completed','declined','other']
+    .filter(group => grouped[group]?.length)
+    .map(group => `
+      <div class="challenge-group">
+        <div class="challenge-group-title">${groupLabels[group]} <span>${grouped[group].length}</span></div>
+        <div class="challenge-compact-list">
+          ${grouped[group].map((c,i) => renderCompactChallengeCard(c,i)).join('')}
         </div>
       </div>
-
-      ${actions ? `<div class="challenge-actions challenge-vs-actions">${actions}</div>` : ''}
-    </div>`;
-  }).join('');
+    `).join('');
 
   container.innerHTML = html || '<div class="empty">Nema izazova.</div>';
 }
