@@ -87,7 +87,7 @@ const ACTIVE_TAB_STORAGE_KEY = 'tkbuje_active_tab';
 function canOpenSection(id) {
   if(!id) return false;
   if(id === 'admin' && !currentPlayer?.is_admin) return false;
-  return !!document.getElementById('sec-' + id) && !!getSectionNavButton(id);
+  return !!document.getElementById('sec-' + id);
 }
 
 function getSectionNavButton(id) {
