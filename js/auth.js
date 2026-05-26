@@ -87,7 +87,11 @@ const ACTIVE_TAB_STORAGE_KEY = 'tkbuje_active_tab';
 function canOpenSection(id) {
   if(!id) return false;
   if(id === 'admin' && !currentPlayer?.is_admin) return false;
-  return !!document.getElementById('sec-' + id) && !!document.getElementById('nav-' + id);
+  return !!document.getElementById('sec-' + id) && !!getSectionNavButton(id);
+}
+
+function getSectionNavButton(id) {
+  return document.getElementById('nav-' + id) || (id === 'admin' ? document.getElementById('admin-btn') : null);
 }
 
 function getDefaultSection() {
@@ -117,14 +121,14 @@ function restoreActiveTab() {
   } else {
     console.log('[ACTIVE TAB] FALLBACK', { savedTab, tab: tabToOpen });
   }
-  showSection(tabToOpen, document.getElementById('nav-' + tabToOpen), { skipSave: true });
+  showSection(tabToOpen, getSectionNavButton(tabToOpen), { skipSave: true });
 }
 
 function showSection(id, btn, options = {}) {
   if(!canOpenSection(id)) {
     console.log('[ACTIVE TAB] FALLBACK', { requested: id, tab: getDefaultSection() });
     id = getDefaultSection();
-    btn = document.getElementById('nav-' + id);
+    btn = getSectionNavButton(id);
   }
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
@@ -154,7 +158,7 @@ function toggleMenu() {
 function mobileNav(id) {
   document.querySelectorAll('.mobile-menu button').forEach(b=>b.classList.remove('active'));
   document.getElementById('mob-'+id)?.classList.add('active');
-  showSection(id, document.getElementById('nav-'+id));
+  showSection(id, getSectionNavButton(id));
   document.getElementById('mobile-menu').classList.remove('open');
   document.getElementById('hamburger').classList.remove('open');
 }
