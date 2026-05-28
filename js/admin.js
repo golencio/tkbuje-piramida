@@ -81,21 +81,8 @@ async function insertPyramidMatchIfMissing(challenge, adminEmail) {
       return { status: 'exists' };
     }
 
-    const { data: latestMatch, error: matchNumberError } = await sb
-      .from('matches')
-      .select('match_number')
-      .order('match_number', { ascending: false })
-      .limit(1);
-
-    if(matchNumberError) {
-      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', matchNumberError);
-      return { status: 'error' };
-    }
-
-    const nextMatchNumber = Number(latestMatch?.[0]?.match_number || 0) + 1;
     const now = new Date().toISOString();
     const insertData = winnerIsChallenger ? {
-      match_number: nextMatchNumber,
       created_by_email: adminEmail || challenge.challenger_player1,
       status: 'Potvrđeno',
       winner1_email: challenge.challenger_player1,
@@ -109,7 +96,6 @@ async function insertPyramidMatchIfMissing(challenge, adminEmail) {
       source: 'pyramid',
       pyramid_challenge_id: challenge.id
     } : {
-      match_number: nextMatchNumber,
       created_by_email: adminEmail || challenge.challenged_player1,
       status: 'Potvrđeno',
       winner1_email: challenge.challenged_player1,
