@@ -37,7 +37,7 @@ function buildTeamStats() {
   });
 
   const relevant = allChallenges
-    .filter(c => ['completed','surrendered'].includes(c.status) && c.result_winner_id)
+    .filter(isPlayedCompletedChallenge)
     .sort((a,b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at));
 
   relevant.forEach(c => {
@@ -45,7 +45,6 @@ function buildTeamStats() {
     const challengedId = c.challenged_id;
     const winnerId = c.result_winner_id;
     const loserId = winnerId === challengerId ? challengedId : challengerId;
-    const isSurrender = c.status === 'surrendered';
 
     if(stats[challengerId]) {
       stats[challengerId].challengesSent += 1;
@@ -61,11 +60,6 @@ function buildTeamStats() {
     if(stats[winnerId]) stats[winnerId].wins += 1;
     if(stats[loserId]) stats[loserId].losses += 1;
 
-    if(isSurrender) {
-      if(stats[loserId]) stats[loserId].surrenders += 1;
-      return;
-    }
-
     if(stats[winnerId]) stats[winnerId].points += 3;
     if(stats[loserId]) stats[loserId].points += 1;
 
@@ -77,6 +71,11 @@ function buildTeamStats() {
       stats[challengedId].successfulDefenses += 1;
       stats[challengedId].points += 1;
     }
+  });
+
+  allChallenges.filter(c => c.status === 'surrendered' && c.result_winner_id).forEach(c => {
+    const loserId = c.result_winner_id === c.challenger_id ? c.challenged_id : c.challenger_id;
+    if(stats[loserId]) stats[loserId].surrenders += 1;
   });
 
   allChallenges.filter(c => c.status === 'declined').forEach(c => {
@@ -142,7 +141,7 @@ function renderStatistics() {
   if(!container) return;
 
   const stats = buildTeamStats();
-  const totalCompleted = allChallenges.filter(c => c.status === 'completed').length;
+  const totalCompleted = allChallenges.filter(isPlayedCompletedChallenge).length;
   const totalPending = allChallenges.filter(c => ['pending','accepted','pending_result'].includes(c.status)).length;
   const totalSurrendered = allChallenges.filter(c => c.status === 'surrendered').length;
   const activeTeams = stats.filter(s => s.matches > 0).length;

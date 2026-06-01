@@ -70,7 +70,7 @@ function getTeamInitials(team) {
 
 function getTeamRecord(teamId) {
   const matches = allChallenges.filter(c =>
-    ['completed','surrendered'].includes(c.status) &&
+    isPlayedCompletedChallenge(c) &&
     (c.challenger_id === teamId || c.challenged_id === teamId)
   );
   const wins = matches.filter(c => c.result_winner_id === teamId).length;
@@ -252,7 +252,7 @@ function openTeam(teamId) {
   });
 
   const allTeamMatches = allChallenges.filter(c=>
-    ['completed','surrendered'].includes(c.status) &&
+    isPlayedCompletedChallenge(c) &&
     (c.challenger_id===teamId||c.challenged_id===teamId)
   ).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
 
@@ -262,9 +262,8 @@ function openTeam(teamId) {
       const isWin = c.result_winner_id === teamId;
       const opponentId = c.challenger_id===teamId ? c.challenged_id : c.challenger_id;
       const opponent = derivedCache.teamById.get(opponentId) || allTeams.find(t=>t.id===opponentId);
-      const isSurrender = c.status === 'surrendered';
       matchesHTML += '<div class="profile-match-row ' + (isWin ? 'win' : 'loss') + '">'
-        + '<div><strong>' + (isWin ? '↑ Pobjeda' : '↓ Poraz') + '</strong><span>vs ' + adminTeamName(opponent) + (isSurrender ? ' · predaja' : '') + '</span></div>'
+        + '<div><strong>' + (isWin ? '↑ Pobjeda' : '↓ Poraz') + '</strong><span>vs ' + adminTeamName(opponent) + '</span></div>'
         + '<div class="profile-match-score"><strong>' + (c.result_score || '—') + '</strong><span>' + new Date(c.created_at).toLocaleDateString('hr-HR') + '</span></div>'
         + '</div>';
     });

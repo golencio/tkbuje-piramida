@@ -229,6 +229,12 @@ function getSortedTeamMembers(teamId, captainEmail, membersList = allMembers) {
   });
 }
 
+function isPlayedCompletedChallenge(challenge) {
+  return challenge.status === 'completed' &&
+    !!challenge.result_winner_id &&
+    !!challenge.result_score;
+}
+
 function getRematchBlockReason(challengerId, challengedId) {
   const completedBetweenTeams = allChallenges
     .filter(c =>
