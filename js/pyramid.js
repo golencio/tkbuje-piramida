@@ -233,6 +233,16 @@ function challengeFromTeamModal(teamId) {
   setTimeout(() => sendChallenge(teamId), 80);
 }
 
+function formatProfileCountLabel(count, singular, few, many) {
+  const value = Math.abs(Number(count) || 0);
+  const lastTwo = value % 100;
+  const last = value % 10;
+  if(lastTwo >= 11 && lastTwo <= 14) return many;
+  if(last === 1) return singular;
+  if(last >= 2 && last <= 4) return few;
+  return many;
+}
+
 function openTeam(teamId) {
   const team = derivedCache.teamById.get(teamId) || allTeams.find(t=>t.id===teamId);
   if(!team) return;
@@ -246,7 +256,7 @@ function openTeam(teamId) {
     const isCaptain = m.player_email === team.captain_email;
     memberList += '<div class="profile-member-row">'
       + '<div class="profile-member-avatar">' + ((player?.name || m.player_email).substring(0,2).toUpperCase()) + '</div>'
-      + '<div class="profile-member-main"><strong>' + (player?.name||m.player_email) + '</strong><span>' + m.player_email + '</span></div>'
+      + '<div class="profile-member-main"><strong>' + (player?.name||m.player_email) + '</strong><span class="profile-member-email">✉&nbsp;' + m.player_email + '</span></div>'
       + (isCaptain ? '<span class="captain-tag">Kapetan</span>' : '')
       + '</div>';
   });
@@ -272,6 +282,8 @@ function openTeam(teamId) {
   }
 
   const winRateLabel = record.matches ? record.winRate + '%' : '—';
+  const winsLabel = formatProfileCountLabel(record.wins, 'Pobjeda', 'Pobjede', 'Pobjeda');
+  const lossesLabel = formatProfileCountLabel(record.losses, 'Poraz', 'Poraza', 'Poraza');
   const title = getTeamDisplayTitle(team);
   const captain = derivedCache.playerByEmail.get(team.captain_email) || allPlayers.find(p=>p.email===team.captain_email);
   const contactHTML = renderCaptainContactButtons(captain, 'Bok, javljam se vezano uz TK Buje Piramidu.');
@@ -286,9 +298,9 @@ function openTeam(teamId) {
       + '</div>'
     + '</div>'
     + '<div class="profile-stats-grid">'
-      + '<div class="profile-stat-card green"><strong>' + record.wins + '</strong><span>Pobjede</span></div>'
-      + '<div class="profile-stat-card red"><strong>' + record.losses + '</strong><span>Porazi</span></div>'
-      + '<div class="profile-stat-card orange"><strong>' + winRateLabel + '</strong><span>Uspješnost</span></div>'
+      + '<div class="profile-stat-card green"><div class="profile-stat-line"><strong>' + record.wins + '</strong> <span>' + winsLabel + '</span></div></div>'
+      + '<div class="profile-stat-card red"><div class="profile-stat-line"><strong>' + record.losses + '</strong> <span>' + lossesLabel + '</span></div></div>'
+      + '<div class="profile-stat-card orange"><div class="profile-stat-line"><strong>' + winRateLabel + '</strong> <span>Uspješnost</span></div></div>'
     + '</div>'
     + '<div class="captain-contact-card">'
       + '<div class="captain-contact-label">Kontakt kapetana</div>'
