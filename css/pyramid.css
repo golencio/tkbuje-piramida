@@ -554,8 +554,14 @@
 
 /* Team profile popup spacing/layout guard */
 .profile-stats-grid {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  display:flex;
+  flex-wrap:wrap;
+  gap:0.65rem;
+}
+.profile-stat-card {
+  box-sizing:border-box;
+  flex:1 1 0;
+  min-width:0;
 }
 .profile-stat-line {
   display:inline-flex;
@@ -603,7 +609,19 @@
 }
 
 @media(max-width:700px) {
-  .profile-stat-line { gap:0.22rem; }
+  .profile-stats-grid { gap:0.5rem; }
+  .profile-stat-card {
+    flex:1 1 calc(50% - 0.5rem);
+    min-width:min(100%, 126px);
+  }
+  .profile-stat-line {
+    gap:0.22rem;
+    width:100%;
+  }
+  .profile-stat-line span {
+    font-size:0.58rem;
+    letter-spacing:0.22px;
+  }
   .profile-member-row {
     grid-template-columns:34px minmax(0,1fr);
     gap:0.6rem;
@@ -612,5 +630,12 @@
     grid-column:2;
     justify-self:start;
     width:max-content;
+  }
+}
+
+@media(max-width:374px) {
+  .profile-stat-card {
+    flex-basis:100%;
+    min-width:0;
   }
 }
