@@ -211,6 +211,39 @@ function getRankingChangeLog(limit = 8) {
     .slice(0, limit);
 }
 
+function adminTeamNameById(teamId) {
+  const team = allTeams.find(t => t.id === teamId);
+  return team ? adminTeamName(team) : ('Tim #' + String(teamId || '—').slice(0, 8));
+}
+
+function renderAdminMovementLog(logs = allMovementLogs, compact = false) {
+  if(!logs.length) return '<div class="admin-empty-small">Nema zabilježenih automatskih pomaka.</div>';
+  const list = compact ? logs.slice(0, 4) : logs.slice(0, 20);
+  return list.map(log => {
+    const movedTeam = escapeContactHtml(adminTeamNameById(log.moved_team_id));
+    const affectedTeam = escapeContactHtml(adminTeamNameById(log.affected_team_id));
+    const oldPosition = log.old_position ?? '—';
+    const newPosition = log.new_position ?? '—';
+    const created = log.created_at ? new Date(log.created_at) : new Date();
+    const createdText = created.toLocaleString('hr-HR');
+    const detail = 'Tim ' + movedTeam
+      + ' pomaknut sa stepenice ' + (log.old_step ?? '—')
+      + ' pozicije ' + oldPosition
+      + ' na stepenicu ' + (log.new_step ?? '—')
+      + ' poziciju ' + newPosition
+      + ' zbog kaznene zone tima ' + affectedTeam + '.';
+
+    return '<div class="admin-action-row">'
+      + '<div class="admin-row-icon gold">↗</div>'
+      + '<div class="admin-row-main">'
+        + '<div class="admin-row-title">' + movedTeam + '</div>'
+        + '<div class="admin-row-meta">' + detail + '</div>'
+        + '<div class="admin-row-meta">Vrijeme: ' + createdText + (log.created_by ? ' · ' + escapeContactHtml(log.created_by) : '') + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('') + (compact && logs.length > 4 ? `<button class="admin-link-btn" onclick="showAdminTab('changes')">Pogledaj sve automatske pomake →</button>` : '');
+}
+
 function adminMetricCard(label, value, sub, tone='orange') {
   return `<div class="admin-metric-card ${tone}">
     <div class="admin-metric-label">${label}</div>
@@ -270,6 +303,7 @@ function renderAdmin() {
   const pendingChallenges = allChallenges.filter(c=>c.status==='pending');
   const cooldownList = getCooldownList();
   const rankingChanges = getRankingChangeLog(20);
+  const movementLogs = allMovementLogs.slice(0, 20);
   const pauseStartedText = tournamentPause?.paused_at ? new Date(tournamentPause.paused_at).toLocaleString('hr-HR') : '—';
   const pauseReasonText = tournamentPause?.pause_reason ? tournamentPause.pause_reason : 'nije upisan';
   const teamsInPenalty = allTeams.filter(t=>t.penalty).length;
@@ -308,6 +342,10 @@ function renderAdmin() {
           <div class="admin-panel-head"><span>Zadnje promjene u poretku</span><button onclick="showAdminTab('changes')">Pogledaj sve →</button></div>
           ${renderAdminChangeLog(rankingChanges, true)}
         </div>
+        <div class="admin-panel-card">
+          <div class="admin-panel-head"><span>Zadnji automatski pomaci</span><button onclick="showAdminTab('changes')">Pogledaj sve →</button></div>
+          ${renderAdminMovementLog(movementLogs, true)}
+        </div>
       </div>
 
       <div class="admin-panel-card">
@@ -328,7 +366,8 @@ function renderAdmin() {
   }
 
   if(activeAdminTab === 'changes') {
-    body = `<div class="admin-panel-card"><div class="admin-panel-head"><span>🔁 Promjene u poretku</span></div>${renderAdminChangeLog(rankingChanges, false)}<div class="admin-note">Napomena: promjene su izvedene iz postojećih izazova i trenutnog stanja kaznene zone. Za apsolutnu povijest svakog pomaka kasnije možemo dodati posebnu Supabase tablicu <strong>pyramid_events</strong>.</div></div>`;
+    body = `<div class="admin-panel-card"><div class="admin-panel-head"><span>🔁 Promjene u poretku</span></div>${renderAdminChangeLog(rankingChanges, false)}<div class="admin-note">Napomena: ovaj dio je izveden iz postojećih izazova i trenutnog stanja kaznene zone.</div></div>
+      <div class="admin-panel-card"><div class="admin-panel-head"><span>↗ Zadnji automatski pomaci</span></div>${renderAdminMovementLog(movementLogs, false)}</div>`;
   }
 
   if(activeAdminTab === 'challenges') {

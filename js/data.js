@@ -123,6 +123,21 @@ async function adminResumeTournament() {
   }
 }
 
+async function loadMovementLogs() {
+  const { data, error } = await sb
+    .from('pyramid_movement_log')
+    .select('*')
+    .eq('reason', 'penalty_zone_rebalance')
+    .order('created_at', { ascending:false })
+    .limit(20);
+
+  if(error) {
+    console.warn('pyramid_movement_log nije dostupna:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
 // ---- LOAD DATA ----
 async function loadAll(options = {}) {
   if(isLoadingAll) return false;
@@ -130,12 +145,13 @@ async function loadAll(options = {}) {
   const runId = ++loadAllRunId;
   try {
     const shouldCheckPenalties = options.checkPenalties === true;
-    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }, pauseState] = await Promise.all([
+    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }, pauseState, movementLogs] = await Promise.all([
       sb.from('teams').select('*').order('step').order('position'),
       sb.from('challenges').select('*').order('created_at', {ascending:false}),
       sb.from('players').select('*').eq('active', true),
       sb.from('team_members').select('*'),
-      getTournamentPause()
+      getTournamentPause(),
+      loadMovementLogs()
     ]);
     // Ako se u međuvremenu pokrenuo noviji loadAll, ovaj stari rezultat ignoriramo.
     if(runId !== loadAllRunId) return false;
@@ -144,6 +160,7 @@ async function loadAll(options = {}) {
     allChallenges = challenges || [];
     allPlayers = players || [];
     allMembers = members || [];
+    allMovementLogs = movementLogs || [];
     buildDerivedCaches();
     tournamentPause = pauseState || { is_paused: false, paused_at: null, pause_reason: '' };
     renderPauseBanner();

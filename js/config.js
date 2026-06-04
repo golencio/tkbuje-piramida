@@ -88,7 +88,7 @@ async function supabaseRestRequest(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [];
+let allTeams = [], allChallenges = [], allPlayers = [], allMembers = [], allMovementLogs = [];
 let isLoadingAll = false;
 let pendingReloadReason = null;
 let derivedCache = {

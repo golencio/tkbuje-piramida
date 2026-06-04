@@ -119,6 +119,8 @@ async function applyPenalty(team) {
   // Pomakni nasumični tim SAMO sa stepenica ispod kažnjene prema gore
   // Stepenice IZNAD kažnjene ostaju netaknute!
   const maxStep = Math.max(...allTeams.map(t => t.step));
+  const movementLogs = [];
+  const movementCreatedAt = new Date().toISOString();
   for(let s = team.step + 1; s <= maxStep; s++) {
     const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty);
     const available = teamsOnStep.filter(t =>
@@ -130,7 +132,24 @@ async function applyPenalty(team) {
     if(available.length > 0) {
       const lucky = available[Math.floor(Math.random() * available.length)];
       await sb.from('teams').update({ step: s - 1 }).eq('id', lucky.id);
+      movementLogs.push({
+        created_at: movementCreatedAt,
+        reason: 'penalty_zone_rebalance',
+        affected_team_id: team.id,
+        moved_team_id: lucky.id,
+        old_step: lucky.step,
+        old_position: lucky.position ?? null,
+        new_step: s - 1,
+        new_position: lucky.position ?? null,
+        created_by: currentPlayer?.email || currentUser?.email || 'system'
+      });
     }
+  }
+
+  if(movementLogs.length) {
+    const { error } = await sb.from('pyramid_movement_log').insert(movementLogs);
+    if(error) console.warn('Ne mogu spremiti pyramid_movement_log:', error.message);
+    else allMovementLogs = [...movementLogs, ...allMovementLogs].slice(0, 20);
   }
 
   showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
