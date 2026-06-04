@@ -243,6 +243,75 @@ function formatProfileCountLabel(count, singular, few, many) {
   return many;
 }
 
+function getTeamActiveChallenge(teamId) {
+  const now = new Date();
+  return allChallenges.find(c =>
+    ['pending','accepted','pending_result'].includes(c.status) &&
+    (c.status !== 'pending' || !c.response_expires_at || new Date(c.response_expires_at) >= now) &&
+    (c.challenger_id === teamId || c.challenged_id === teamId)
+  ) || null;
+}
+
+function renderProfileStatusRow(tone, icon, title, value, meta) {
+  return '<div class="profile-status-row ' + tone + '">'
+    + '<div class="profile-status-icon">' + icon + '</div>'
+    + '<div class="profile-status-main">'
+      + '<strong>' + title + '</strong>'
+      + '<span>' + value + '</span>'
+      + (meta ? '<em>' + meta + '</em>' : '')
+    + '</div>'
+    + '</div>';
+}
+
+function renderTeamStatusTab(team) {
+  const activeChallenge = getTeamActiveChallenge(team.id);
+  const cooldown = derivedCache.cooldownByTeamId?.get(team.id);
+  const activityInfo = getTeamPenaltyActivityInfo(team);
+  let html = '';
+
+  if(activeChallenge) {
+    const opponentId = activeChallenge.challenger_id === team.id ? activeChallenge.challenged_id : activeChallenge.challenger_id;
+    const opponent = derivedCache.teamById.get(opponentId) || allTeams.find(t => t.id === opponentId);
+    const opponentName = escapeContactHtml(getTeamDisplayTitle(opponent));
+    const statusMap = {
+      pending: 'Čeka odgovor',
+      accepted: 'Prihvaćen meč',
+      pending_result: 'Čeka potvrdu rezultata'
+    };
+    let meta = 'Protivnik: ' + opponentName;
+    if(activeChallenge.status === 'pending' && activeChallenge.response_expires_at) {
+      meta += ' · rok ' + formatRemainingTime(activeChallenge.response_expires_at, new Date()).text;
+    } else if(activeChallenge.status === 'accepted' && activeChallenge.match_expires_at) {
+      meta += ' · rok meča ' + formatRemainingTime(activeChallenge.match_expires_at).text;
+    }
+    html += renderProfileStatusRow('active', '⚔️', 'Aktivni izazov', statusMap[activeChallenge.status] || 'Aktivan', meta);
+  } else {
+    html += renderProfileStatusRow('muted', '⚔️', 'Aktivni izazov', 'Nema aktivnog izazova', '');
+  }
+
+  if(cooldown) {
+    const hoursLeft = Math.max(0, Math.ceil((cooldown.cooldownEnd - new Date()) / HOUR_MS));
+    html += renderProfileStatusRow('warning', '🛡', 'Zaštita nakon odbijanja', 'Zaštita još ' + hoursLeft + 'h', 'Tim trenutno ne može biti izazvan.');
+  } else {
+    html += renderProfileStatusRow('muted', '🛡', 'Zaštita nakon odbijanja', 'Nema aktivne zaštite', '');
+  }
+
+  if(team.penalty) {
+    html += renderProfileStatusRow('danger', '⚠️', 'Neaktivnost / kazna', 'Tim je u kaznenoj zoni', 'Povratak je moguć kroz pravila kaznene zone.');
+  } else if(activityInfo.isExemptStep) {
+    html += renderProfileStatusRow('muted', '📌', 'Neaktivnost / kazna', 'Tim je izuzet od kazne', 'Prve dvije stepenice ne ulaze u kaznu.');
+  } else if(activityInfo.activeChallenge) {
+    html += renderProfileStatusRow('active', '⏳', 'Neaktivnost / kazna', 'Aktivan izazov - nema kazne', tournamentPause?.is_paused ? 'Vrijeme turnira je pauzirano.' : '');
+  } else if(activityInfo.daysLeft <= 0) {
+    html += renderProfileStatusRow('danger', '⚠️', 'Neaktivnost / kazna', 'Kazna je dospjela', 'Neaktivan ' + activityInfo.daysInactive + ' dana.');
+  } else {
+    const tone = activityInfo.daysLeft <= 5 ? 'warning' : 'muted';
+    html += renderProfileStatusRow(tone, '📅', 'Neaktivnost / kazna', 'Kazna za ' + activityInfo.daysLeft + ' dana', 'Neaktivan ' + activityInfo.daysInactive + ' dana.');
+  }
+
+  return '<div class="profile-card-list profile-status-list">' + html + '</div>';
+}
+
 function openTeam(teamId) {
   const team = derivedCache.teamById.get(teamId) || allTeams.find(t=>t.id===teamId);
   if(!team) return;
@@ -308,10 +377,12 @@ function openTeam(teamId) {
     + '</div>'
     + (canCurrentUserChallengeTeam(team) ? '<button class="modal-challenge-btn" onclick="challengeFromTeamModal(\'' + team.id + '\')">⚔️ Izazovi ovaj tim</button>' : '')
     + '<div class="modal-tabs profile-tabs" style="margin-top:1rem;">'
-      + '<button class="modal-tab active" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'
+      + '<button class="modal-tab active" onclick="switchTab(\'team-tab-status\',this)">📌 Status</button>'
+      + '<button class="modal-tab" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'
       + '<button class="modal-tab" onclick="switchTab(\'team-tab-mecevi\',this)">🎾 Mečevi ('+allTeamMatches.length+')</button>'
     + '</div>'
-    + '<div class="tab-content active" id="team-tab-clanovi"><div class="profile-card-list">'+(memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>')+'</div></div>'
+    + '<div class="tab-content active" id="team-tab-status">' + renderTeamStatusTab(team) + '</div>'
+    + '<div class="tab-content" id="team-tab-clanovi"><div class="profile-card-list">'+(memberList||'<div class="empty" style="padding:1rem;">Nema članova</div>')+'</div></div>'
     + '<div class="tab-content" id="team-tab-mecevi"><div class="profile-card-list">'+matchesHTML+'</div></div>';
   openModal('modal-team');
 }
