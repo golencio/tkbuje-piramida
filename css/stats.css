@@ -37,7 +37,7 @@
     .header-inner { max-width:1220px; height:68px; }
     main { max-width:1220px; }
     .logo { font-size:1.35rem; letter-spacing:-0.3px; }
-    .logo:before { content:'◯'; color:var(--gold); margin-right:0.55rem; filter:drop-shadow(0 0 12px rgba(245,158,11,0.45)); }
+    .logo:before { content:'△'; color:var(--gold); margin-right:0.55rem; filter:drop-shadow(0 0 12px rgba(245,158,11,0.45)); }
     nav button { padding:0.55rem 0.9rem; border-radius:12px; }
     nav button.active { box-shadow:inset 3px 0 0 var(--orange); background:linear-gradient(90deg, rgba(255,107,43,0.18), rgba(255,107,43,0.06)); }
     .test-ribbon { background:rgba(7,16,26,0.92); border-bottom:1px solid rgba(255,255,255,0.08); }
