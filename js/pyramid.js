@@ -233,6 +233,58 @@ function challengeFromTeamModal(teamId) {
   setTimeout(() => sendChallenge(teamId), 80);
 }
 
+function openTeamAdminEditTeam(teamId) {
+  if(!currentPlayer?.is_admin) return;
+  openEditTeam(teamId);
+}
+
+function openTeamAdminEditChallenge(challengeId) {
+  if(!currentPlayer?.is_admin || !challengeId) return;
+  openEditChallenge(challengeId);
+}
+
+async function openTeamAdminEditCooldown(challengeId) {
+  if(!currentPlayer?.is_admin || !challengeId) return;
+  const challenge = allChallenges.find(c => c.id === challengeId);
+  if(!challenge) return;
+
+  const currentEnd = new Date(new Date(challenge.updated_at).getTime() + 3 * DAY_MS);
+  const currentHours = Math.max(0, Math.ceil((currentEnd - new Date()) / HOUR_MS));
+  const value = prompt('Zaštita traje još sati (0 = ukloni zaštitu):', String(currentHours));
+  if(value === null) return;
+
+  const hoursLeft = parseInt(value, 10);
+  if(!Number.isFinite(hoursLeft) || hoursLeft < 0 || hoursLeft > 72) {
+    showToast('Upiši broj sati između 0 i 72.', 'error');
+    return;
+  }
+
+  const updatedAt = hoursLeft === 0
+    ? '2000-01-01T00:00:00.000Z'
+    : new Date(Date.now() - (72 - hoursLeft) * HOUR_MS).toISOString();
+  const { error } = await sb.from('challenges').update({ updated_at: updatedAt }).eq('id', challengeId);
+  if(error) { showToast('Greška: ' + error.message, 'error'); return; }
+  showToast(hoursLeft === 0 ? 'Zaštita uklonjena! ✓' : 'Zaštita ažurirana! ✓', 'success');
+  await safeLoadAll('manual');
+}
+
+async function openTeamAdminEditPenalty(teamId) {
+  if(!currentPlayer?.is_admin || !teamId) return;
+  const team = allTeams.find(t => t.id === teamId);
+  if(!team) return;
+
+  if(team.penalty) {
+    await adminRemovePenalty(teamId);
+    return;
+  }
+
+  if(!confirm('Resetirati brojač neaktivnosti za tim "' + adminTeamName(team) + '"?')) return;
+  const { error } = await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', teamId);
+  if(error) { showToast('Greška: ' + error.message, 'error'); return; }
+  showToast('Brojač neaktivnosti resetiran! ✓', 'success');
+  await safeLoadAll('manual');
+}
+
 function formatProfileCountLabel(count, singular, few, many) {
   const value = Math.abs(Number(count) || 0);
   const lastTwo = value % 100;
@@ -312,6 +364,28 @@ function renderTeamStatusTab(team) {
   return '<div class="profile-card-list profile-status-list">' + html + '</div>';
 }
 
+function renderTeamAdminActions(team) {
+  if(!currentPlayer?.is_admin) return '';
+
+  const activeChallenge = getTeamActiveChallenge(team.id);
+  const cooldown = derivedCache.cooldownByTeamId?.get(team.id);
+  const activityInfo = getTeamPenaltyActivityInfo(team);
+  const canEditPenalty = team.penalty || (!activityInfo.isExemptStep && !activityInfo.activeChallenge);
+
+  return '<div class="profile-admin-actions">'
+    + '<button class="admin-small-btn" onclick="openTeamAdminEditTeam(\'' + team.id + '\')">✏️ Uredi tim</button>'
+    + (activeChallenge
+      ? '<button class="admin-small-btn" onclick="openTeamAdminEditChallenge(\'' + activeChallenge.id + '\')">✏️ Uredi izazov</button>'
+      : '<button class="admin-small-btn" disabled>Nema aktivnog izazova</button>')
+    + (cooldown
+      ? '<button class="admin-small-btn" onclick="openTeamAdminEditCooldown(\'' + cooldown.challenge.id + '\')">✏️ Uredi zaštitu</button>'
+      : '')
+    + (canEditPenalty
+      ? '<button class="admin-small-btn" onclick="openTeamAdminEditPenalty(\'' + team.id + '\')">✏️ Uredi kaznu</button>'
+      : '')
+    + '</div>';
+}
+
 function openTeam(teamId) {
   const team = derivedCache.teamById.get(teamId) || allTeams.find(t=>t.id===teamId);
   if(!team) return;
@@ -376,6 +450,7 @@ function openTeam(teamId) {
       + contactHTML
     + '</div>'
     + (canCurrentUserChallengeTeam(team) ? '<button class="modal-challenge-btn" onclick="challengeFromTeamModal(\'' + team.id + '\')">⚔️ Izazovi ovaj tim</button>' : '')
+    + renderTeamAdminActions(team)
     + '<div class="modal-tabs profile-tabs" style="margin-top:1rem;">'
       + '<button class="modal-tab active" onclick="switchTab(\'team-tab-status\',this)">📌 Status</button>'
       + '<button class="modal-tab" onclick="switchTab(\'team-tab-clanovi\',this)">👥 Članovi</button>'

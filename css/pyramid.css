@@ -663,6 +663,20 @@
   margin-top:0.14rem;
   overflow-wrap:anywhere;
 }
+.profile-admin-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:0.5rem;
+  margin-top:0.85rem;
+}
+.profile-admin-actions .admin-small-btn {
+  flex:1 1 135px;
+  min-height:38px;
+}
+.profile-admin-actions .admin-small-btn:disabled {
+  opacity:0.5;
+  cursor:not-allowed;
+}
 
 @media(max-width:700px) {
   .profile-stats-grid { gap:0.5rem; }
@@ -686,6 +700,9 @@
     grid-template-columns:34px minmax(0,1fr);
     gap:0.6rem;
     padding:0.68rem;
+  }
+  .profile-admin-actions .admin-small-btn {
+    flex:1 1 100%;
   }
   .profile-member-row .captain-tag {
     grid-column:2;
