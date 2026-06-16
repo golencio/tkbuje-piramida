@@ -671,7 +671,11 @@ async function adminConfirmResult(challengeId) {
     // Izazivač pobijedio
     if(challenger?.penalty) {
       // Iz kaznene zone — vrati u piramidu
-      await returnFromPenalty(challengeId, c.challenger_id);
+      const restored = await returnFromPenalty(challengeId, c.challenger_id);
+      if(!restored) {
+        showToast('Povrat iz kazne je zaustavljen. Provjeri strukturu piramide.', 'error');
+        return;
+      }
     } else {
       await swapTeams(c.challenger_id, c.challenged_id);
     }

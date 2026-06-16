@@ -124,6 +124,20 @@ async function adminResumeTournament() {
 }
 
 async function loadMovementLogs() {
+  const { data: penaltyLogs, error: penaltyError } = await sb
+    .from('penalty_rebalance_log')
+    .select('*')
+    .order('created_at', { ascending:false })
+    .limit(20);
+
+  if(!penaltyError) {
+    return (penaltyLogs || []).map(log => ({
+      ...log,
+      affected_team_id: log.penalty_team_id,
+      reason: log.reason || 'penalty_rebalance'
+    }));
+  }
+
   const { data, error } = await sb
     .from('pyramid_movement_log')
     .select('*')

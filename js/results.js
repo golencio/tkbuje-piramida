@@ -108,18 +108,206 @@ async function checkPenalties() {
   for(const team of allTeams) {
     const activityInfo = getTeamPenaltyActivityInfo(team, now);
     if(activityInfo.shouldPenalize) {
-      await applyPenalty(team);
+      try {
+        await applyPenalty(team);
+      } catch(err) {
+        console.error('Ne mogu primijeniti kaznu:', err);
+        showToast('Kazna nije primijenjena. Provjeri penalty SQL tablice.', 'error');
+      }
     }
   }
 }
 
+function getPenaltyActor() {
+  return currentPlayer?.email || currentUser?.email || 'system';
+}
+
+function samePyramidSlot(team, step, position) {
+  const teamStep = Number(team?.step);
+  const expectedStep = Number(step);
+  const teamPosition = team?.position == null ? null : Number(team.position);
+  const expectedPosition = position == null ? null : Number(position);
+  return teamStep === expectedStep && teamPosition === expectedPosition;
+}
+
+function getPenaltyTeamName(teamId) {
+  const team = allTeams.find(t => t.id === teamId);
+  return team ? (team.name || team.nickname || 'Tim') : 'Nepoznat tim';
+}
+
+async function createPenaltyEvent(team) {
+  const { data, error } = await sb.from('penalty_events')
+    .insert({
+      team_id: team.id,
+      old_step: team.step ?? null,
+      old_position: team.position ?? null
+    })
+    .select('*')
+    .single();
+
+  if(error) throw new Error('penalty_events nije dostupan: ' + error.message);
+  return data;
+}
+
+async function getActivePenaltyEvent(teamId) {
+  const { data, error } = await sb.from('penalty_events')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('is_active', true)
+    .order('penalty_started_at', { ascending:false })
+    .limit(1)
+    .maybeSingle();
+
+  if(error) throw new Error('Ne mogu učitati penalty_events: ' + error.message);
+  return data || null;
+}
+
+async function getPenaltyRebalanceLogs(event, penaltyTeamId) {
+  if(!event) return [];
+
+  let query = sb.from('penalty_rebalance_log')
+    .select('*')
+    .eq('is_restored', false);
+
+  if(event.id) query = query.eq('penalty_event_id', event.id);
+  else query = query.eq('penalty_team_id', penaltyTeamId);
+
+  const { data, error } = await query.order('created_at', { ascending:true });
+  if(error) throw new Error('Ne mogu učitati penalty_rebalance_log: ' + error.message);
+
+  return (data || []).sort((a, b) => Number(a.old_step || 0) - Number(b.old_step || 0));
+}
+
+function getPenaltyRestoreConflicts(event, logs, ignoredChallengeId = null) {
+  const conflicts = [];
+  const startedAt = event?.penalty_started_at ? new Date(event.penalty_started_at) : null;
+
+  logs.forEach(log => {
+    const movedTeam = allTeams.find(t => t.id === log.moved_team_id);
+    if(!movedTeam) {
+      conflicts.push('Tim ' + getPenaltyTeamName(log.moved_team_id) + ' više ne postoji.');
+      return;
+    }
+    if(!samePyramidSlot(movedTeam, log.new_step, log.new_position)) {
+      conflicts.push(
+        getPenaltyTeamName(log.moved_team_id)
+        + ' više nije na očekivanoj poziciji '
+        + '(očekivano: stepenica ' + (log.new_step ?? '—')
+        + ', pozicija ' + (log.new_position ?? '—')
+        + '; trenutno: stepenica ' + (movedTeam.step ?? '—')
+        + ', pozicija ' + (movedTeam.position ?? '—') + ').'
+      );
+    }
+  });
+
+  if(startedAt && !isNaN(startedAt.getTime())) {
+    const rankingChange = allChallenges.find(c => {
+      if(c.id === ignoredChallengeId) return false;
+      if(!['completed','surrendered'].includes(c.status)) return false;
+      const changedAt = c.updated_at || c.created_at;
+      return changedAt && new Date(changedAt) > startedAt;
+    });
+    if(rankingChange) {
+      conflicts.push('Nakon ulaska u kaznu zabilježen je meč ili predaja koji su mogli promijeniti poredak.');
+    }
+  }
+
+  return conflicts;
+}
+
+function buildPenaltyRestoreMessage(team, logs, event = null) {
+  const rows = logs.map(log => {
+    const name = getPenaltyTeamName(log.moved_team_id);
+    return name + ': stepenica ' + (log.new_step ?? '—')
+      + ' pozicija ' + (log.new_position ?? '—')
+      + ' → stepenica ' + (log.old_step ?? '—')
+      + ' pozicija ' + (log.old_position ?? '—');
+  });
+
+  return 'Vraćanjem tima iz kazne vratit će se i timovi koji su automatski pomaknuti zbog te kazne.\n\n'
+    + 'Tim iz kazne: ' + (team.name || team.nickname || 'Tim')
+    + '\nPovrat tima: Kaznena zona'
+    + ' → stepenica ' + (event?.old_step || team.original_step || team.step || '—')
+    + ' pozicija ' + (event?.old_position ?? team.position ?? '—')
+    + '\n\n'
+    + (rows.length ? rows.join('\n') : 'Nema automatski pomaknutih timova za povrat.')
+    + '\n\nNastaviti?';
+}
+
+async function restorePenaltyWithRebalance(teamId, options = {}) {
+  const team = allTeams.find(t => t.id === teamId);
+  if(!team) return false;
+
+  const event = await getActivePenaltyEvent(teamId);
+  if(!event) {
+    showToast('Nema aktivnog zapisnika za ovu kaznu. Potrebna je ručna provjera.', 'error');
+    return false;
+  }
+
+  const logs = await getPenaltyRebalanceLogs(event, teamId);
+  const conflicts = getPenaltyRestoreConflicts(event, logs, options.ignoredChallengeId || null);
+  if(conflicts.length) {
+    alert('Struktura piramide se promijenila i automatski povrat je zaustavljen.\n\n' + conflicts.join('\n') + '\n\nPotrebna je ručna provjera.');
+    return false;
+  }
+
+  if(options.confirm !== false && !confirm(buildPenaltyRestoreMessage(team, logs, event))) return false;
+
+  const restoredAt = new Date().toISOString();
+  const actor = getPenaltyActor();
+  const targetStep = event.old_step || team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
+  const targetPosition = event.old_position ?? team.position ?? null;
+
+  for(const log of logs) {
+    const { error } = await sb.from('teams').update({
+      step: log.old_step,
+      position: log.old_position
+    }).eq('id', log.moved_team_id);
+    if(error) throw error;
+  }
+
+  const teamUpdate = {
+    penalty: false,
+    step: targetStep,
+    position: targetPosition,
+    original_step: null
+  };
+  if(options.updateLastMatch) teamUpdate.last_match_at = restoredAt;
+
+  const { error: teamError } = await sb.from('teams').update(teamUpdate).eq('id', teamId);
+  if(teamError) throw teamError;
+
+  if(logs.length) {
+    const { error: logsError } = await sb.from('penalty_rebalance_log').update({
+      is_restored: true,
+      restored_at: restoredAt,
+      restored_by: actor
+    }).in('id', logs.map(log => log.id));
+    if(logsError) throw logsError;
+  }
+
+  const { error: eventError } = await sb.from('penalty_events').update({
+    is_active: false,
+    penalty_removed_at: restoredAt,
+    removed_by: actor
+  }).eq('id', event.id);
+  if(eventError) throw eventError;
+
+  return true;
+}
+
 async function applyPenalty(team) {
-  await sb.from('teams').update({ penalty: true, original_step: team.step }).eq('id', team.id);
+  const penaltyEvent = await createPenaltyEvent(team);
+  const { error: penaltyError } = await sb.from('teams')
+    .update({ penalty: true, original_step: team.step })
+    .eq('id', team.id);
+  if(penaltyError) throw penaltyError;
 
   // Pomakni nasumični tim SAMO sa stepenica ispod kažnjene prema gore
   // Stepenice IZNAD kažnjene ostaju netaknute!
   const maxStep = Math.max(...allTeams.map(t => t.step));
   const movementLogs = [];
+  const penaltyRebalanceLogs = [];
   const movementCreatedAt = new Date().toISOString();
   for(let s = team.step + 1; s <= maxStep; s++) {
     const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty);
@@ -131,7 +319,17 @@ async function applyPenalty(team) {
     );
     if(available.length > 0) {
       const lucky = available[Math.floor(Math.random() * available.length)];
-      await sb.from('teams').update({ step: s - 1 }).eq('id', lucky.id);
+      penaltyRebalanceLogs.push({
+        penalty_event_id: penaltyEvent.id,
+        penalty_team_id: team.id,
+        moved_team_id: lucky.id,
+        old_step: lucky.step,
+        old_position: lucky.position ?? null,
+        new_step: s - 1,
+        new_position: lucky.position ?? null,
+        reason: 'penalty_rebalance',
+        created_at: movementCreatedAt
+      });
       movementLogs.push({
         created_at: movementCreatedAt,
         reason: 'penalty_zone_rebalance',
@@ -146,10 +344,25 @@ async function applyPenalty(team) {
     }
   }
 
+  if(penaltyRebalanceLogs.length) {
+    const { error } = await sb.from('penalty_rebalance_log').insert(penaltyRebalanceLogs);
+    if(error) throw new Error('Ne mogu spremiti penalty_rebalance_log: ' + error.message);
+    allMovementLogs = [
+      ...penaltyRebalanceLogs.map(log => ({ ...log, affected_team_id: log.penalty_team_id })),
+      ...allMovementLogs
+    ].slice(0, 20);
+  }
+
+  for(const log of penaltyRebalanceLogs) {
+    const { error: moveError } = await sb.from('teams')
+      .update({ step: log.new_step, position: log.new_position })
+      .eq('id', log.moved_team_id);
+    if(moveError) throw moveError;
+  }
+
   if(movementLogs.length) {
     const { error } = await sb.from('pyramid_movement_log').insert(movementLogs);
     if(error) console.warn('Ne mogu spremiti pyramid_movement_log:', error.message);
-    else allMovementLogs = [...movementLogs, ...allMovementLogs].slice(0, 20);
   }
 
   showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
@@ -182,22 +395,24 @@ async function adminRemoveCooldown(challengeId) {
 async function adminRemovePenalty(teamId) {
   const team = allTeams.find(t => t.id === teamId);
   if(!team) return;
-  if(!confirm('Izvaditi tim "' + team.name + '" iz kazne i vratiti ga na originalnu stepenicu?')) return;
-  const originalStep = team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
-  await sb.from('teams').update({ penalty: false, step: originalStep, original_step: null }).eq('id', teamId);
-  showToast(team.name + ' vraćen iz kazne! ✓', 'success');
-  await safeLoadAll('manual'); renderAdmin();
+  try {
+    const restored = await restorePenaltyWithRebalance(teamId, { confirm: true });
+    if(!restored) return;
+    showToast(team.name + ' vraćen iz kazne! ✓', 'success');
+    await safeLoadAll('manual'); renderAdmin();
+  } catch(err) {
+    console.error(err);
+    showToast('Povrat iz kazne nije uspio. Provjeri zapisnik kazne.', 'error');
+  }
 }
 
 async function returnFromPenalty(challengeId, penaltyTeamId) {
   // Tim iz kaznene zone je pobijedio — vraća ga u piramidu
   const team = allTeams.find(t => t.id === penaltyTeamId);
-  if(!team) return;
-  const targetStep = Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
-  await sb.from('teams').update({
-    penalty: false,
-    step: targetStep,
-    original_step: null,
-    last_match_at: new Date().toISOString()
-  }).eq('id', penaltyTeamId);
+  if(!team) return false;
+  return restorePenaltyWithRebalance(penaltyTeamId, {
+    confirm: true,
+    updateLastMatch: true,
+    ignoredChallengeId: challengeId
+  });
 }
