@@ -110,8 +110,9 @@ async function checkPenalties() {
     if(activityInfo.shouldPenalize) {
       try {
         await applyPenalty(team);
-      } catch(err) {
-        console.error('[PENALTY ERROR]', err);
+      } catch(error) {
+        console.error('[PENALTY SQL ERROR]', error);
+        console.error('[PENALTY ERROR]', error);
         showToast('Tim nije prebačen u kaznenu zonu. Detalji su u konzoli.', 'error');
       }
     }
