@@ -111,8 +111,8 @@ async function checkPenalties() {
       try {
         await applyPenalty(team);
       } catch(err) {
-        console.error('Ne mogu primijeniti kaznu:', err);
-        showToast('Kazna nije primijenjena. Provjeri penalty SQL tablice.', 'error');
+        console.error('[PENALTY ERROR]', err);
+        showToast('Tim nije prebačen u kaznenu zonu. Detalji su u konzoli.', 'error');
       }
     }
   }
