@@ -69,16 +69,23 @@ async function submitResult() {
 }
 
 // ---- PENALTY SYSTEM ----
+const PENALTY_BLOCKING_CHALLENGE_STATUSES = ['pending', 'accepted', 'pending_result'];
+const completingResultChallengeIds = new Set();
+
+function isPenaltyBlockingChallengeForTeam(challenge, teamId, baseDate = getPauseTimerNow()) {
+  if(!challenge || !teamId) return false;
+  if(!(challenge.challenger_id === teamId || challenge.challenged_id === teamId)) return false;
+  if(!PENALTY_BLOCKING_CHALLENGE_STATUSES.includes(challenge.status)) return false;
+  return challenge.status !== 'pending' || !challenge.response_expires_at || new Date(challenge.response_expires_at) >= baseDate;
+}
+
+function hasPenaltyBlockingChallenge(teamId, baseDate = getPauseTimerNow()) {
+  return allChallenges.some(c => isPenaltyBlockingChallengeForTeam(c, teamId, baseDate));
+}
+
 function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
   const isExemptStep = Number(team?.step) <= 2;
-  const activeChallenge = allChallenges.find(c =>
-    (
-      (c.status === 'pending' && (!c.response_expires_at || new Date(c.response_expires_at) >= baseDate)) ||
-      c.status === 'accepted' ||
-      c.status === 'pending_result'
-    ) &&
-    (c.challenger_id === team.id || c.challenged_id === team.id)
-  );
+  const activeChallenge = allChallenges.find(c => isPenaltyBlockingChallengeForTeam(c, team.id, baseDate));
   const sentChallenges = allChallenges.filter(c => c.challenger_id === team.id && c.created_at);
   const lastSentChallengeAt = sentChallenges
     .map(c => new Date(c.created_at))
@@ -104,6 +111,7 @@ function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
 
 async function checkPenalties() {
   if(tournamentPause?.is_paused) return;
+  if(completingResultChallengeIds.size > 0) return;
   const now = getPauseTimerNow();
   for(const team of allTeams) {
     const activityInfo = getTeamPenaltyActivityInfo(team, now);
@@ -298,6 +306,11 @@ async function restorePenaltyWithRebalance(teamId, options = {}) {
 }
 
 async function applyPenalty(team) {
+  if(hasPenaltyBlockingChallenge(team.id)) {
+    console.warn('[PENALTY SKIPPED] Team has an active challenge', { teamId: team.id });
+    return false;
+  }
+
   const penaltyEvent = await createPenaltyEvent(team);
   const { error: penaltyError } = await sb.from('teams')
     .update({ penalty: true, original_step: team.step })
@@ -312,12 +325,7 @@ async function applyPenalty(team) {
   const movementCreatedAt = new Date().toISOString();
   for(let s = team.step + 1; s <= maxStep; s++) {
     const teamsOnStep = allTeams.filter(t => t.step === s && !t.penalty);
-    const available = teamsOnStep.filter(t =>
-      !allChallenges.some(c =>
-        ['pending','accepted'].includes(c.status) &&
-        (c.challenger_id===t.id || c.challenged_id===t.id)
-      )
-    );
+    const available = teamsOnStep.filter(t => !hasPenaltyBlockingChallenge(t.id));
     if(available.length > 0) {
       const lucky = available[Math.floor(Math.random() * available.length)];
       penaltyRebalanceLogs.push({
@@ -368,6 +376,7 @@ async function applyPenalty(team) {
 
   showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
   // NE zovemo loadAll() ovdje - poziva se izvana
+  return true;
 }
 
 

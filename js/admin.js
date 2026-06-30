@@ -664,47 +664,65 @@ async function adminConfirmResult(challengeId) {
   const c = allChallenges.find(x=>x.id===challengeId);
   if(!c) return;
 
+  completingResultChallengeIds.add(challengeId);
   const challenger = allTeams.find(t=>t.id===c.challenger_id);
   const challenged = allTeams.find(t=>t.id===c.challenged_id);
 
-  if(c.result_winner_id === c.challenger_id) {
-    // Izazivač pobijedio
-    if(challenger?.penalty) {
-      // Iz kaznene zone — vrati u piramidu
-      const restored = await returnFromPenalty(challengeId, c.challenger_id);
-      if(!restored) {
-        showToast('Povrat iz kazne je zaustavljen. Provjeri strukturu piramide.', 'error');
-        return;
+  try {
+    if(c.result_winner_id === c.challenger_id) {
+      // Izazivač pobijedio
+      if(challenger?.penalty) {
+        // Iz kaznene zone — vrati u piramidu
+        const restored = await returnFromPenalty(challengeId, c.challenger_id);
+        if(!restored) {
+          showToast('Povrat iz kazne je zaustavljen. Provjeri strukturu piramide.', 'error');
+          return;
+        }
+      } else {
+        await swapTeams(c.challenger_id, c.challenged_id);
       }
     } else {
-      await swapTeams(c.challenger_id, c.challenged_id);
+      // Izazvani pobijedio — sve ostaje, samo ažuriraj last_match_at
+      if(challenger?.penalty) {
+        // Kažnjeni ostaje u kazni, poraženi ostaje gdje jest
+        const { error: penaltyMatchError } = await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
+        if(penaltyMatchError) throw penaltyMatchError;
+      }
     }
-  } else {
-    // Izazvani pobijedio — sve ostaje, samo ažuriraj last_match_at
-    if(challenger?.penalty) {
-      // Kažnjeni ostaje u kazni, poraženi ostaje gdje jest
-      await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
+
+    // Ažuriraj last_match_at za oba tima prije zatvaranja izazova.
+    const matchConfirmedAt = new Date().toISOString();
+    const { error: lastMatchError } = await sb.from('teams')
+      .update({ last_match_at: matchConfirmedAt })
+      .in('id', [c.challenger_id, c.challenged_id]);
+    if(lastMatchError) throw lastMatchError;
+
+    [challenger, challenged].forEach(team => {
+      if(team) team.last_match_at = matchConfirmedAt;
+    });
+
+    const completedAt = new Date().toISOString();
+    const { error } = await sb.from('challenges').update({ status:'completed', updated_at:completedAt }).eq('id',challengeId);
+    if(error) { showToast('Greška: '+error.message,'error'); return; }
+
+    Object.assign(c, { status:'completed', updated_at:completedAt });
+
+    const completedChallenge = { ...c, status: 'completed', updated_at: completedAt };
+    const matchInsertResult = await insertPyramidMatchIfMissing(completedChallenge, currentUser?.email || currentPlayer?.email || null);
+    if(matchInsertResult.status === 'error') {
+      showToast('Rezultat potvrđen, ali upis u matches nije napravljen. Provjeri konzolu/Supabase.', 'error');
+      await safeLoadAll('manual'); renderAdmin();
+      return;
     }
-  }
 
-  // Ažuriraj last_match_at za oba tima
-  await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
-  await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenged_id);
-
-  const completedAt = new Date().toISOString();
-  const { error } = await sb.from('challenges').update({ status:'completed', updated_at:completedAt }).eq('id',challengeId);
-  if(error) { showToast('Greška: '+error.message,'error'); return; }
-
-  const completedChallenge = { ...c, status: 'completed', updated_at: completedAt };
-  const matchInsertResult = await insertPyramidMatchIfMissing(completedChallenge, currentUser?.email || currentPlayer?.email || null);
-  if(matchInsertResult.status === 'error') {
-    showToast('Rezultat potvrđen, ali upis u matches nije napravljen. Provjeri konzolu/Supabase.', 'error');
+    showToast('Rezultat potvrđen! ✓','success');
     await safeLoadAll('manual'); renderAdmin();
-    return;
+  } catch(err) {
+    console.error('[CONFIRM RESULT ERROR]', err);
+    showToast('Potvrda rezultata nije dovršena. last_match_at nije sigurno ažuriran.', 'error');
+  } finally {
+    completingResultChallengeIds.delete(challengeId);
   }
-
-  showToast('Rezultat potvrđen! ✓','success');
-  await safeLoadAll('manual'); renderAdmin();
 }
 
 async function adminRejectResult(challengeId) {
