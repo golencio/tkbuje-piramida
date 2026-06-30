@@ -38,6 +38,137 @@ async function adminRefreshMatches() {
   }
 }
 
+function renderAdminSendChallengeForm() {
+  const challengerOptions = allTeams
+    .map(t => '<option value="' + t.id + '">' + escapeHtml(adminTeamName(t)) + ' · Stepenica ' + (t.penalty ? 'kazna' : escapeHtml(t.step)) + '</option>')
+    .join('');
+
+  return `
+    <div class="admin-panel-card">
+      <div class="admin-panel-head"><span>Pošalji izazov u ime tima</span></div>
+      <div class="admin-form-grid">
+        <div class="form-group">
+          <label>Tim koji izaziva</label>
+          <select id="admin-send-challenger" onchange="adminRefreshChallengeTargets()">
+            <option value="">— odaberi tim —</option>
+            ${challengerOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tim koji se izaziva</label>
+          <select id="admin-send-challenged">
+            <option value="">— prvo odaberi izazivača —</option>
+          </select>
+        </div>
+      </div>
+      <div class="admin-soft-box" id="admin-send-challenge-reason">Odaberi tim koji izaziva.</div>
+      <button class="btn-primary" id="admin-send-challenge-btn" onclick="adminSendChallengeOnBehalf()">Pošalji izazov</button>
+    </div>`;
+}
+
+function adminRefreshChallengeTargets() {
+  if(!currentPlayer?.is_admin) return;
+  const challengerId = document.getElementById('admin-send-challenger')?.value || '';
+  const challengedSelect = document.getElementById('admin-send-challenged');
+  const reasonBox = document.getElementById('admin-send-challenge-reason');
+  if(!challengedSelect) return;
+
+  if(!challengerId) {
+    challengedSelect.innerHTML = '<option value="">— prvo odaberi izazivača —</option>';
+    if(reasonBox) reasonBox.textContent = 'Odaberi tim koji izaziva.';
+    return;
+  }
+
+  const allowedTeams = allTeams.filter(t => !getChallengeRuleViolation(challengerId, t.id));
+  challengedSelect.innerHTML = '<option value="">— odaberi tim —</option>' + allowedTeams
+    .map(t => '<option value="' + t.id + '">' + escapeHtml(adminTeamName(t)) + ' · Stepenica ' + (t.penalty ? 'kazna' : escapeHtml(t.step)) + '</option>')
+    .join('');
+
+  if(reasonBox) {
+    reasonBox.textContent = allowedTeams.length
+      ? 'Dostupni su samo timovi koje odabrani tim smije izazvati prema trenutnim pravilima.'
+      : 'Odabrani tim trenutno nema dozvoljenog protivnika za izazov.';
+  }
+}
+
+async function adminSendChallengeWithPlayers(challengerPlayers, challengedPlayers) {
+  if(!currentPlayer?.is_admin || !pendingAdminChallengeData) return;
+  const { challengerId, challengedId } = pendingAdminChallengeData;
+  const ruleError = getChallengeRuleViolation(challengerId, challengedId);
+  if(ruleError) { showToast(ruleError, 'error'); return; }
+
+  const challenger = allTeams.find(t=>t.id===challengerId);
+  const challenged = allTeams.find(t=>t.id===challengedId);
+  const { error } = await createPendingChallenge({
+    challengerId,
+    challengedId,
+    challengerPlayers,
+    challengedPlayers
+  });
+  if(error) { showToast('Greška: '+error.message, 'error'); return; }
+
+  console.info('[ADMIN CHALLENGE ON BEHALF]', {
+    adminEmail: currentPlayer?.email || currentUser?.email || null,
+    challengerId,
+    challengedId
+  });
+  await sendChallengeEmail(challengedId, challenger?.name || adminTeamName(challenger));
+  pendingAdminChallengeData = null;
+  showToast('Izazov poslan u ime tima ' + adminTeamName(challenger) + '. ✓', 'success');
+  await safeLoadAll('manual');
+  renderAdmin();
+}
+
+async function adminSendChallengeOnBehalf() {
+  if(!currentPlayer?.is_admin) return;
+  const challengerId = document.getElementById('admin-send-challenger')?.value || '';
+  const challengedId = document.getElementById('admin-send-challenged')?.value || '';
+  const reasonBox = document.getElementById('admin-send-challenge-reason');
+  const ruleError = getChallengeRuleViolation(challengerId, challengedId);
+  if(ruleError) {
+    if(reasonBox) reasonBox.textContent = ruleError;
+    showToast(ruleError, 'error');
+    return;
+  }
+
+  const challengerMembers = getCachedTeamMembers(challengerId);
+  const challengedMembers = getCachedTeamMembers(challengedId);
+  if(challengerMembers.length < 2 || challengedMembers.length < 2) {
+    showToast('Oba tima moraju imati barem 2 člana za izazov.', 'error');
+    return;
+  }
+
+  pendingAdminChallengeData = {
+    challengerId,
+    challengedId,
+    challengerPlayers: [],
+    selectingTeamId: challengerId
+  };
+
+  if(challengerMembers.length > 2) {
+    selectedPlayers = new Set();
+    selectionMode = 'admin-challenge-challenger';
+    renderPlayerSelection(challengerMembers);
+    document.getElementById('confirm-players-btn').textContent = 'Potvrdi igrače izazivača';
+    openModal('modal-select-players');
+    return;
+  }
+
+  const challengerPlayers = challengerMembers.map(m=>m.player_email).slice(0, 2);
+  if(challengedMembers.length > 2) {
+    pendingAdminChallengeData.challengerPlayers = challengerPlayers;
+    pendingAdminChallengeData.selectingTeamId = challengedId;
+    selectedPlayers = new Set();
+    selectionMode = 'admin-challenge-challenged';
+    renderPlayerSelection(challengedMembers);
+    document.getElementById('confirm-players-btn').textContent = 'Potvrdi igrače izazvanog tima';
+    openModal('modal-select-players');
+    return;
+  }
+
+  await adminSendChallengeWithPlayers(challengerPlayers, challengedMembers.map(m=>m.player_email).slice(0, 2));
+}
+
 async function insertPyramidMatchIfMissing(challenge, adminEmail) {
   console.log('[PYRAMID -> MATCHES] START', { challengeId: challenge?.id });
 
@@ -373,6 +504,8 @@ function renderAdmin() {
 
   if(activeAdminTab === 'challenges') {
     body = `
+      ${renderAdminSendChallengeForm()}
+
       <div class="admin-panel-card" style="border-color:${tournamentPause?.is_paused?'rgba(245,158,11,0.5)':'var(--border)'};">
         <div class="admin-panel-head"><span>⏸ Vrijeme turnira</span></div>
         <div class="admin-soft-box">

@@ -5,6 +5,7 @@ let pendingChallengeData = null;
 let selectedPlayers = new Set();
 let selectionMode = null; // 'challenge' or 'accept'
 let pendingAcceptId = null;
+let pendingAdminChallengeData = null;
 
 function openSelectPlayers(teamId, members, challengedId) {
   pendingChallengeData = { teamId, challengedId };
@@ -25,9 +26,11 @@ function openSelectPlayersAccept(teamId, members, challengeId) {
 
 function renderPlayerSelection(members) {
   const list = document.getElementById('select-players-list');
+  const referenceTeamId = pendingChallengeData?.teamId || pendingAcceptId && allChallenges.find(c=>c.id===pendingAcceptId)?.challenged_id || pendingAdminChallengeData?.selectingTeamId;
+  const referenceTeam = referenceTeamId ? allTeams.find(t=>t.id===referenceTeamId) : myTeam;
   list.innerHTML = members.map(m => {
     const player = allPlayers.find(p=>p.email===m.player_email);
-    const isCap = m.player_email === myTeam?.captain_email;
+    const isCap = m.player_email === referenceTeam?.captain_email;
     return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:var(--bg3);border-radius:10px;margin-bottom:0.5rem;cursor:pointer;border:1.5px solid var(--border);transition:all 0.2s;" 
       id="player-sel-${m.player_email.replace(/[@.]/g,'_')}"
       onclick="togglePlayerSelect('${m.player_email}', this)">
@@ -64,18 +67,14 @@ async function confirmPlayerSelection() {
 
   if(selectionMode === 'challenge') {
     const challenged = allTeams.find(t=>t.id===pendingChallengeData.challengedId);
-    const rematchBlockReason = getRematchBlockReason(myTeam.id, pendingChallengeData.challengedId);
-    if(rematchBlockReason) { showToast(rematchBlockReason, 'error'); closeModal('modal-select-players'); return; }
+    const ruleError = getChallengeRuleViolation(myTeam.id, pendingChallengeData.challengedId, { requireCaptain: true });
+    if(ruleError) { showToast(ruleError, 'error'); closeModal('modal-select-players'); return; }
 
     if(!confirm('Izazvati tim "'+challenged?.name+'"?')) return;
-    const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
-    const { error } = await sb.from('challenges').insert({
-      challenger_id: myTeam.id,
-      challenged_id: pendingChallengeData.challengedId,
-      status: 'pending',
-      response_expires_at: responseExpires,
-      challenger_player1: p1,
-      challenger_player2: p2
+    const { error } = await createPendingChallenge({
+      challengerId: myTeam.id,
+      challengedId: pendingChallengeData.challengedId,
+      challengerPlayers: [p1, p2]
     });
     if(error) { showToast('Greška: '+error.message,'error'); return; }
     await sendChallengeEmail(pendingChallengeData.challengedId, myTeam.name);
@@ -83,7 +82,7 @@ async function confirmPlayerSelection() {
     await safeLoadAll('manual');
     showFairPlayPopup(pendingChallengeData.challengedId);
     return;
-  } else {
+  } else if(selectionMode === 'accept') {
     const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
     const { error } = await sb.from('challenges').update({
       status: 'accepted',
@@ -94,6 +93,24 @@ async function confirmPlayerSelection() {
     }).eq('id', pendingAcceptId);
     if(error) { showToast('Greška: '+error.message,'error'); return; }
     showToast('Izazov prihvaćen! Imate 6 dana za meč.','success');
+  } else if(selectionMode === 'admin-challenge-challenger') {
+    pendingAdminChallengeData.challengerPlayers = [p1, p2];
+    const challengedMembers = getCachedTeamMembers(pendingAdminChallengeData.challengedId);
+    if(challengedMembers.length > 2) {
+      pendingAdminChallengeData.selectingTeamId = pendingAdminChallengeData.challengedId;
+      selectedPlayers = new Set();
+      selectionMode = 'admin-challenge-challenged';
+      renderPlayerSelection(challengedMembers);
+      document.getElementById('confirm-players-btn').textContent = 'Potvrdi igrače izazvanog tima';
+      return;
+    }
+    await adminSendChallengeWithPlayers(pendingAdminChallengeData.challengerPlayers, challengedMembers.map(m=>m.player_email).slice(0, 2));
+    closeModal('modal-select-players');
+    return;
+  } else if(selectionMode === 'admin-challenge-challenged') {
+    await adminSendChallengeWithPlayers(pendingAdminChallengeData.challengerPlayers, [p1, p2]);
+    closeModal('modal-select-players');
+    return;
   }
 
   closeModal('modal-select-players');
@@ -152,26 +169,68 @@ async function sendAcceptedEmail(challengerTeamId, challengedName) {
   }
 }
 
+function getChallengeActiveStatuses() {
+  return ['pending', 'accepted', 'pending_result'];
+}
+
+function getTeamOpenChallenge(teamId) {
+  return allChallenges.find(c =>
+    getChallengeActiveStatuses().includes(c.status) &&
+    (c.challenger_id === teamId || c.challenged_id === teamId)
+  ) || null;
+}
+
+function getChallengeRuleViolation(challengerId, challengedId, options = {}) {
+  const challenger = allTeams.find(t=>t.id===challengerId);
+  const challenged = allTeams.find(t=>t.id===challengedId);
+  if(!challenger) return 'Odaberi tim koji izaziva.';
+  if(!challenged) return 'Odaberi tim koji se izaziva.';
+  if(challenger.id === challenged.id) return 'Tim ne može izazvati sam sebe.';
+  if(options.requireCaptain && challenger.captain_email !== currentPlayer?.email) return 'Samo kapetan može slati izazove!';
+
+  const context = getPyramidContext();
+  const targetStep = challenged.penalty ? 0 : Number(challenged.step);
+  const challengerStep = challenger.penalty ? 0 : Number(challenger.step);
+  const canReachStep = (!challenger.penalty && targetStep === challengerStep - 1) ||
+    (challenger.penalty && targetStep === context.maxStep);
+  if(!canReachStep) return 'Taj tim nije na dozvoljenoj stepenici za izazov.';
+
+  const challengerOpenChallenge = getTeamOpenChallenge(challenger.id);
+  if(challengerOpenChallenge) return 'Tim koji izaziva već ima aktivan izazov.';
+  const challengedOpenChallenge = getTeamOpenChallenge(challenged.id);
+  if(challengedOpenChallenge) return 'Izazvani tim već ima aktivan izazov.';
+
+  const cooldown = derivedCache.cooldownByTeamId?.get(challenged.id);
+  if(cooldown) return 'Tim je u zaštitnom roku — ne može biti izazvan!';
+
+  const rematchBlockReason = getRematchBlockReason(challenger.id, challenged.id);
+  if(rematchBlockReason) return rematchBlockReason;
+
+  return '';
+}
+
+async function createPendingChallenge({ challengerId, challengedId, challengerPlayers = [], challengedPlayers = [] }) {
+  const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
+  return sb.from('challenges').insert({
+    challenger_id: challengerId,
+    challenged_id: challengedId,
+    status: 'pending',
+    rejection_count: 0,
+    response_expires_at: responseExpires,
+    challenger_player1: challengerPlayers[0] || null,
+    challenger_player2: challengerPlayers[1] || null,
+    challenged_player1: challengedPlayers[0] || null,
+    challenged_player2: challengedPlayers[1] || null
+  });
+}
+
 // ---- SEND CHALLENGE ----
 async function sendChallenge(challengedId) {
   if(!myTeam) { showToast('Nisi član nijednog tima!', 'error'); return; }
-  if(myTeam.captain_email !== currentPlayer.email) {
-    showToast('Samo kapetan može slati izazove!', 'error'); return;
-  }
   const challenged = allTeams.find(t=>t.id===challengedId);
   if(!challenged) return;
-
-  // Provjeri cooldown
-  const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000);
-  const inCooldown = allChallenges.some(c =>
-    c.challenged_id === challengedId &&
-    c.status === 'declined' &&
-    new Date(c.updated_at) > threeDaysAgo
-  );
-  if(inCooldown) { showToast('Tim je u zaštitnom roku — ne može biti izazvan!', 'error'); return; }
-
-  const rematchBlockReason = getRematchBlockReason(myTeam.id, challengedId);
-  if(rematchBlockReason) { showToast(rematchBlockReason, 'error'); return; }
+  const ruleError = getChallengeRuleViolation(myTeam.id, challengedId, { requireCaptain: true });
+  if(ruleError) { showToast(ruleError, 'error'); return; }
 
   // Koristi cache umjesto novog Supabase selecta u click-pathu.
   const myMembers = getCachedTeamMembers(myTeam.id);
@@ -188,14 +247,10 @@ async function sendChallenge(challengedId) {
 
   if(!confirm('Izazvati tim "'+challenged.name+'"?')) return;
 
-  const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
-  const { error } = await sb.from('challenges').insert({
-    challenger_id: myTeam.id,
-    challenged_id: challengedId,
-    status: 'pending',
-    response_expires_at: responseExpires,
-    challenger_player1: player1,
-    challenger_player2: player2
+  const { error } = await createPendingChallenge({
+    challengerId: myTeam.id,
+    challengedId,
+    challengerPlayers: [player1, player2]
   });
   if(error) { showToast('Greška: '+error.message, 'error'); return; }
   await sendChallengeEmail(challengedId, myTeam.name);

@@ -230,7 +230,7 @@ function buildDerivedCaches() {
   });
 
   allChallenges.forEach(challenge => {
-    if(['pending','accepted'].includes(challenge.status)) {
+    if(['pending','accepted','pending_result'].includes(challenge.status)) {
       activeChallengeTeamIds.add(challenge.challenger_id);
       activeChallengeTeamIds.add(challenge.challenged_id);
     }
