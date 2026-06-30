@@ -643,7 +643,10 @@ async function respondChallenge(challengeId, response) {
 
     if(totalRejections >= 2) {
       if(!confirm('Ovo je drugo odbijanje! Timovi će automatski zamijeniti mjesta. Nastavi?')) return;
-      await swapTeams(challenge.challenger_id, challenge.challenged_id);
+      await swapTeams(challenge.challenger_id, challenge.challenged_id, {
+        reason: 'Drugo odbijanje izazova',
+        relatedChallengeId: challengeId
+      });
       await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:0 }).eq('id',challengeId);
       showToast('Izazivač je pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄', 'success');
     } else {
@@ -680,7 +683,10 @@ async function handleExpired(challenge) {
   const totalRejections = getConsecutiveRejectionCount(challenge) + 1;
 
   if(totalRejections >= 2) {
-    await swapTeams(challenge.challenger_id, challenge.challenged_id);
+    await swapTeams(challenge.challenger_id, challenge.challenged_id, {
+      reason: 'Istek roka: drugo odbijanje',
+      relatedChallengeId: challenge.id
+    });
     await sb.from('challenges').update({
       status: 'completed',
       result_winner_id: challenge.challenger_id,

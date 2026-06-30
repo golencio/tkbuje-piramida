@@ -376,6 +376,132 @@ function renderAdminMovementLog(logs = allMovementLogs, compact = false) {
   }).join('') + (compact && logs.length > 4 ? `<button class="admin-link-btn" onclick="showAdminTab('changes')">Pogledaj sve automatske pomake →</button>` : '');
 }
 
+function getSelectedPyramidSnapshot() {
+  const selectedId = document.getElementById('pyramid-snapshot-select')?.value;
+  return allPyramidSnapshots.find(s => s.id === selectedId) || allPyramidSnapshots[0] || null;
+}
+
+function getSnapshotTeamMap(snapshot) {
+  return new Map((snapshot || []).map(t => [t.team_id, t]));
+}
+
+function getSnapshotComparison(snapshot) {
+  const current = getSnapshotTeamMap(buildPyramidSnapshotFromTeams(allTeams));
+  const old = getSnapshotTeamMap(snapshot || []);
+  const ids = new Set([...current.keys(), ...old.keys()]);
+  const changes = [];
+  ids.forEach(id => {
+    const before = old.get(id);
+    const now = current.get(id);
+    if(!before || !now) {
+      changes.push({ id, before, now });
+      return;
+    }
+    if(Number(before.step) !== Number(now.step) || Number(before.position || 0) !== Number(now.position || 0) || before.penalty !== now.penalty) {
+      changes.push({ id, before, now });
+    }
+  });
+  return changes;
+}
+
+function renderSnapshotPyramid(snapshot, compare = false) {
+  if(!snapshot?.length) return '<div class="admin-empty-small">Snapshot nema timova.</div>';
+  const changes = compare ? getSnapshotComparison(snapshot) : [];
+  const changedIds = new Set(changes.map(c => c.id));
+  const grouped = {};
+  snapshot.forEach(team => {
+    const step = Number(team.step);
+    if(!grouped[step]) grouped[step] = [];
+    grouped[step].push(team);
+  });
+
+  return Object.keys(grouped).map(Number).sort((a,b)=>a-b).map(step => {
+    const title = step === 0 ? 'Kaznena zona' : 'Stepenica ' + step;
+    const teams = grouped[step].sort((a,b) => Number(a.position || 0) - Number(b.position || 0));
+    return '<div class="step-section">'
+      + '<div class="step-title">' + escapeHtml(title) + '</div>'
+      + '<div class="teams-grid">'
+      + teams.map(t => {
+        const changed = changedIds.has(t.team_id);
+        return '<div class="team-card ' + (changed ? 'has-challenge' : '') + '" style="' + (changed ? 'border-color:rgba(245,158,11,0.75);' : '') + '">'
+          + '<div class="team-card-head"><div><div class="team-name">' + escapeHtml(t.team_name || 'Tim') + '</div>'
+          + '<div class="team-meta">Pozicija ' + escapeHtml(t.position || '-') + (t.penalty ? ' · Kazna' : '') + '</div></div></div>'
+          + (changed ? '<div class="team-badge team-badge-danger">Promijenjeno</div>' : '')
+          + '</div>';
+      }).join('')
+      + '</div></div>';
+  }).join('');
+}
+
+function renderSnapshotComparison(snapshot) {
+  const changes = getSnapshotComparison(snapshot || []);
+  if(!changes.length) return '<div class="admin-empty-small">Nema razlika u odnosu na trenutno stanje.</div>';
+
+  return changes.map(change => {
+    const name = change.before?.team_name || change.now?.team_name || adminTeamNameById(change.id);
+    const before = change.before
+      ? 'Stepenica ' + (Number(change.before.step) === 0 ? 'kazna' : change.before.step) + ', pozicija ' + (change.before.position || '-')
+      : 'Nije postojao u snapshotu';
+    const now = change.now
+      ? 'Stepenica ' + (Number(change.now.step) === 0 ? 'kazna' : change.now.step) + ', pozicija ' + (change.now.position || '-')
+      : 'Više nije u trenutnoj piramidi';
+    return '<div class="admin-action-row">'
+      + '<div class="admin-row-icon gold">↕</div>'
+      + '<div class="admin-row-main"><div class="admin-row-title">' + escapeHtml(name) + '</div>'
+      + '<div class="admin-row-meta">Bio: ' + escapeHtml(before) + '<br>Sada: ' + escapeHtml(now) + '</div></div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderPyramidHistoryAdmin() {
+  if(!allPyramidSnapshots.length) {
+    return '<div class="admin-panel-card"><div class="admin-panel-head"><span>📜 Povijest piramide</span></div><div class="admin-empty-small">Nema spremljenih snapshotova. Nakon primjene SQL-a prvi snapshot nastat će kod sljedeće promjene poretka.</div><button class="btn-primary" onclick="adminCreateInitialPyramidSnapshot()">Spremi trenutnu piramidu kao početni snapshot</button></div>';
+  }
+
+  const selected = getSelectedPyramidSnapshot();
+  const options = allPyramidSnapshots.map(s => {
+    const label = new Date(s.created_at).toLocaleString('hr-HR') + ' · ' + (s.reason || 'Snapshot');
+    return '<option value="' + s.id + '"' + (selected?.id === s.id ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+  }).join('');
+  const compare = document.getElementById('pyramid-compare-toggle')?.dataset.active === 'true';
+
+  return `
+    <div class="admin-panel-card">
+      <div class="admin-panel-head"><span>📜 Povijest piramide</span></div>
+      <div class="admin-form-grid">
+        <div class="form-group">
+          <label>Datum i vrijeme</label>
+          <select id="pyramid-snapshot-select" onchange="renderAdmin()">${options}</select>
+        </div>
+        <div class="form-group">
+          <label>Akcija</label>
+          <button class="btn-primary" id="pyramid-compare-toggle" data-active="${compare ? 'true' : 'false'}" onclick="this.dataset.active=this.dataset.active==='true'?'false':'true'; renderAdmin();">Usporedi s trenutnim stanjem</button>
+        </div>
+      </div>
+      <div class="admin-soft-box">
+        <strong>${escapeHtml(selected?.reason || 'Snapshot')}</strong><br>
+        <span>${escapeHtml(new Date(selected?.created_at).toLocaleString('hr-HR'))} · ${escapeHtml(selected?.created_by || 'system')}</span>
+      </div>
+    </div>
+    ${compare ? '<div class="admin-panel-card"><div class="admin-panel-head"><span>Razlike</span></div>' + renderSnapshotComparison(selected?.snapshot || []) + '</div>' : ''}
+    <div class="admin-panel-card">
+      <div class="admin-panel-head"><span>Read-only prikaz</span></div>
+      ${renderSnapshotPyramid(selected?.snapshot || [], compare)}
+    </div>`;
+}
+
+async function adminCreateInitialPyramidSnapshot() {
+  if(!currentPlayer?.is_admin) return;
+  const saved = await capturePyramidSnapshot('Početni snapshot piramide');
+  if(saved) {
+    showToast('Početni snapshot spremljen. ✓', 'success');
+    await safeLoadAll('manual');
+    renderAdmin();
+  } else {
+    showToast('Snapshot nije spremljen. Provjeri postoji li tablica pyramid_snapshots.', 'error');
+  }
+}
+
 function adminMetricCard(label, value, sub, tone='orange') {
   return `<div class="admin-metric-card ${tone}">
     <div class="admin-metric-label">${label}</div>
@@ -446,6 +572,7 @@ function renderAdmin() {
     ['confirmations','Potvrde'],
     ['changes','Promjene poretka'],
     ['challenges','Izazovi i rokovi'],
+    ['pyramid-history','📜 Povijest piramide'],
     ['teams','Timovi'],
     ['history','Svi mečevi']
   ];
@@ -549,6 +676,10 @@ function renderAdmin() {
           '<div class="admin-action-row"><div class="admin-row-icon gold">🛡</div><div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(team) + '</div><div class="admin-row-meta">Zaštita još ' + hoursLeft + 'h</div></div><div class="admin-row-actions"><button class="admin-small-btn" onclick="adminRemoveCooldown(\'' + challengeId + '\')">Ukloni zaštitu</button></div></div>'
         ).join('') : '<div class="admin-empty-small">Nema timova u zaštitnom roku ✓</div>'}
       </div>`;
+  }
+
+  if(activeAdminTab === 'pyramid-history') {
+    body = renderPyramidHistoryAdmin();
   }
 
   if(activeAdminTab === 'teams') {
@@ -737,7 +868,10 @@ async function adminDeclineChallenge(challengeId) {
 
   if(totalRejections >= 2) {
     if(!confirm('Ovo je drugo odbijanje od zadnje zamjene — timovi će zamijeniti mjesta. Nastavi?')) return;
-    await swapTeams(c.challenger_id, c.challenged_id);
+    await swapTeams(c.challenger_id, c.challenged_id, {
+      reason: 'Drugo odbijanje izazova',
+      relatedChallengeId: challengeId
+    });
     await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:0 }).eq('id',challengeId);
     showToast('Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄','success');
   } else {
@@ -754,7 +888,10 @@ async function adminSurrender(challengeId, surrenderId) {
 
   // Tim koji je predao ide na nižu stepenicu — zamjena mjesta
   const winnerId = surrenderId === c.challenger_id ? c.challenged_id : c.challenger_id;
-  await swapTeams(winnerId, surrenderId); // winner dobiva višu poziciju
+  await swapTeams(winnerId, surrenderId, {
+    reason: 'Predaja meča',
+    relatedChallengeId: challengeId
+  }); // winner dobiva višu poziciju
 
   await sb.from('challenges').update({
     status: 'surrendered',
@@ -798,7 +935,10 @@ async function adminConfirmResult(challengeId) {
           return;
         }
       } else {
-        await swapTeams(c.challenger_id, c.challenged_id);
+        await swapTeams(c.challenger_id, c.challenged_id, {
+          reason: 'Rezultat: ' + adminTeamName(challenger) + ' - ' + adminTeamName(challenged),
+          relatedChallengeId: challengeId
+        });
       }
     } else {
       // Izazvani pobijedio — sve ostaje, samo ažuriraj last_match_at
@@ -1005,6 +1145,7 @@ async function addTeam() {
   document.getElementById('new-team-step').value = '';
   psResetAll();
   showToast(name+' dodan! ✓','success');
+  await capturePyramidSnapshot('Admin dodao tim');
   await safeLoadAll('manual'); renderAdmin();
 }
 
@@ -1125,6 +1266,11 @@ async function saveEditTeam() {
 
   const updates = { name, nickname: name, step, position };
   if(newCaptain) updates.captain_email = newCaptain;
+  const teamBefore = allTeams.find(t => t.id === editTeamId);
+  const layoutChanged = teamBefore && (
+    Number(teamBefore.step) !== Number(step) ||
+    Number(teamBefore.position) !== Number(position)
+  );
 
   if(btn) { btn.disabled = true; btn.textContent = 'Spremam...'; }
 
@@ -1137,6 +1283,7 @@ async function saveEditTeam() {
     console.log('[SAVE TEAM] SAVE_SUCCESS', { teamId: editTeamId });
     const team = allTeams.find(t => t.id === editTeamId);
     if(team) Object.assign(team, updates);
+    if(layoutChanged) await capturePyramidSnapshot('Admin promjena pozicije');
     buildDerivedCaches();
     showToast('Tim ažuriran! ✓','success');
     closeModal('modal-team');
@@ -1222,5 +1369,6 @@ async function deleteTeam(id, name) {
   await sb.from('team_members').delete().eq('team_id',id);
   await sb.from('teams').delete().eq('id',id);
   showToast(name+' obrisan.','');
+  await capturePyramidSnapshot('Admin obrisao tim');
   await safeLoadAll('manual'); renderAdmin();
 }

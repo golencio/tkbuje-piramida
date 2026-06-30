@@ -1,14 +1,21 @@
 // TK Buje Piramida — unos rezultata, zamjena mjesta, kazne
 
 // ---- SWAP TEAMS ----
-async function swapTeams(challengerId, challengedId) {
+async function swapTeams(challengerId, challengedId, options = {}) {
   const t1 = allTeams.find(t=>t.id===challengerId);
   const t2 = allTeams.find(t=>t.id===challengedId);
   if(!t1||!t2) return;
+  const changed = Number(t1.step) !== Number(t2.step) || Number(t1.position) !== Number(t2.position);
   await Promise.all([
     sb.from('teams').update({ step:t2.step, position:t2.position }).eq('id',challengerId),
     sb.from('teams').update({ step:t1.step, position:t1.position }).eq('id',challengedId)
   ]);
+  if(changed) {
+    await capturePyramidSnapshot(options.reason || 'Zamjena mjesta', {
+      relatedChallengeId: options.relatedChallengeId || null,
+      relatedMatchId: options.relatedMatchId || null
+    });
+  }
   showToast('Timovi su zamijenili mjesta! 🔄', 'success');
 }
 
@@ -302,6 +309,10 @@ async function restorePenaltyWithRebalance(teamId, options = {}) {
   }).eq('id', event.id);
   if(eventError) throw eventError;
 
+  await capturePyramidSnapshot(options.reason || 'Izlazak iz kaznene zone', {
+    relatedChallengeId: options.relatedChallengeId || options.ignoredChallengeId || null
+  });
+
   return true;
 }
 
@@ -374,6 +385,8 @@ async function applyPenalty(team) {
     if(error) console.warn('Ne mogu spremiti pyramid_movement_log:', error.message);
   }
 
+  await capturePyramidSnapshot('Kazna zbog neaktivnosti');
+
   showToast(team.name + ' je kažnjen zbog neaktivnosti!', 'error');
   // NE zovemo loadAll() ovdje - poziva se izvana
   return true;
@@ -423,6 +436,8 @@ async function returnFromPenalty(challengeId, penaltyTeamId) {
   return restorePenaltyWithRebalance(penaltyTeamId, {
     confirm: true,
     updateLastMatch: true,
-    ignoredChallengeId: challengeId
+    ignoredChallengeId: challengeId,
+    relatedChallengeId: challengeId,
+    reason: 'Izlazak iz kaznene zone'
   });
 }

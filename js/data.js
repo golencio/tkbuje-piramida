@@ -152,6 +152,82 @@ async function loadMovementLogs() {
   return data || [];
 }
 
+async function loadPyramidSnapshots() {
+  const { data, error } = await sb
+    .from('pyramid_snapshots')
+    .select('*')
+    .order('created_at', { ascending:false })
+    .limit(100);
+
+  if(error) {
+    console.warn('pyramid_snapshots nije dostupna:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+function buildPyramidSnapshotFromTeams(teams = allTeams) {
+  return [...(teams || [])]
+    .map(t => ({
+      team_id: t.id,
+      team_name: t.name || t.nickname || '',
+      step: t.penalty ? 0 : Number(t.step),
+      position: t.position == null ? null : Number(t.position),
+      penalty: t.penalty === true,
+      original_step: t.original_step == null ? null : Number(t.original_step)
+    }))
+    .sort((a, b) =>
+      Number(a.step) - Number(b.step) ||
+      Number(a.position || 0) - Number(b.position || 0) ||
+      String(a.team_name || '').localeCompare(String(b.team_name || ''), 'hr')
+    );
+}
+
+function getSnapshotLayoutKey(snapshot) {
+  return JSON.stringify((snapshot || []).map(t => ({
+    team_id: t.team_id,
+    step: Number(t.step),
+    position: t.position == null ? null : Number(t.position),
+    penalty: t.penalty === true
+  })));
+}
+
+async function capturePyramidSnapshot(reason, options = {}) {
+  try {
+    const { data: teams, error: teamsError } = await sb
+      .from('teams')
+      .select('id,name,nickname,step,position,penalty,original_step')
+      .order('step')
+      .order('position');
+    if(teamsError) throw teamsError;
+
+    const snapshot = buildPyramidSnapshotFromTeams(teams || []);
+    const { data: latestRows, error: latestError } = await sb
+      .from('pyramid_snapshots')
+      .select('snapshot')
+      .order('created_at', { ascending:false })
+      .limit(1);
+    if(latestError) console.warn('Ne mogu pročitati zadnji snapshot za usporedbu:', latestError.message);
+    const latest = latestRows?.[0]?.snapshot || allPyramidSnapshots[0]?.snapshot || null;
+    if(latest && getSnapshotLayoutKey(latest) === getSnapshotLayoutKey(snapshot)) return false;
+
+    const payload = {
+      reason,
+      created_by: options.createdBy || currentPlayer?.email || currentUser?.email || 'system',
+      related_challenge_id: options.relatedChallengeId || null,
+      related_match_id: options.relatedMatchId || null,
+      snapshot
+    };
+    const { error } = await sb.from('pyramid_snapshots').insert(payload);
+    if(error) throw error;
+    allPyramidSnapshots = [{ id: 'local-' + Date.now(), created_at: new Date().toISOString(), ...payload }, ...allPyramidSnapshots].slice(0, 100);
+    return true;
+  } catch(err) {
+    console.warn('Snapshot piramide nije spremljen:', err.message || err);
+    return false;
+  }
+}
+
 // ---- LOAD DATA ----
 async function loadAll(options = {}) {
   if(isLoadingAll) return false;
@@ -159,13 +235,14 @@ async function loadAll(options = {}) {
   const runId = ++loadAllRunId;
   try {
     const shouldCheckPenalties = options.checkPenalties === true;
-    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }, pauseState, movementLogs] = await Promise.all([
+    const [{ data: teams }, { data: challenges }, { data: players }, { data: members }, pauseState, movementLogs, pyramidSnapshots] = await Promise.all([
       sb.from('teams').select('*').order('step').order('position'),
       sb.from('challenges').select('*').order('created_at', {ascending:false}),
       sb.from('players').select('*').eq('active', true),
       sb.from('team_members').select('*'),
       getTournamentPause(),
-      loadMovementLogs()
+      loadMovementLogs(),
+      loadPyramidSnapshots()
     ]);
     // Ako se u međuvremenu pokrenuo noviji loadAll, ovaj stari rezultat ignoriramo.
     if(runId !== loadAllRunId) return false;
@@ -175,6 +252,7 @@ async function loadAll(options = {}) {
     allPlayers = players || [];
     allMembers = members || [];
     allMovementLogs = movementLogs || [];
+    allPyramidSnapshots = pyramidSnapshots || [];
     buildDerivedCaches();
     tournamentPause = pauseState || { is_paused: false, paused_at: null, pause_reason: '' };
     renderPauseBanner();
