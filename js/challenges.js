@@ -87,6 +87,7 @@ async function confirmPlayerSelection() {
     const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
     const { error } = await sb.from('challenges').update({
       status: 'accepted',
+      rejection_count: 0,
       match_expires_at: matchExpires,
       challenged_player1: p1,
       challenged_player2: p2
@@ -553,34 +554,42 @@ async function renderChallenges() {
 }
 
 // ---- RESPOND TO CHALLENGE ----
+const REJECTION_STREAK_RESET_STATUSES = ['accepted', 'completed', 'cancelled'];
+
+function getConsecutiveRejectionCount(challenge) {
+  if(!challenge) return 0;
+  const previousChallenges = allChallenges
+    .filter(x =>
+      x.id !== challenge.id &&
+      x.challenger_id === challenge.challenger_id &&
+      x.challenged_id === challenge.challenged_id &&
+      new Date(x.created_at) < new Date(challenge.created_at)
+    )
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  let count = 0;
+  for(const x of previousChallenges) {
+    if(x.status === 'declined') {
+      count++;
+      continue;
+    }
+    if(REJECTION_STREAK_RESET_STATUSES.includes(x.status)) break;
+    break;
+  }
+  return count;
+}
+
 async function respondChallenge(challengeId, response) {
   const challenge = allChallenges.find(c=>c.id===challengeId);
   if(!challenge) return;
 
   if(response==='declined') {
-    // Nađi zadnji completed izazov između ova dva tima
-    const lastCompleted2 = allChallenges
-      .filter(x =>
-        x.challenger_id === challenge.challenger_id &&
-        x.challenged_id === challenge.challenged_id &&
-        x.status === 'completed'
-      )
-      .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
-
-    const afterDate2 = lastCompleted2 ? new Date(lastCompleted2.created_at) : new Date(0);
-    const prevRejections2 = allChallenges.filter(x =>
-      x.challenger_id === challenge.challenger_id &&
-      x.challenged_id === challenge.challenged_id &&
-      x.status === 'declined' &&
-      x.id !== challengeId &&
-      new Date(x.created_at) > afterDate2
-    ).length;
-    const totalRejections = prevRejections2 + 1;
+    const totalRejections = getConsecutiveRejectionCount(challenge) + 1;
 
     if(totalRejections >= 2) {
       if(!confirm('Ovo je drugo odbijanje! Timovi će automatski zamijeniti mjesta. Nastavi?')) return;
       await swapTeams(challenge.challenger_id, challenge.challenged_id);
-      await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:totalRejections }).eq('id',challengeId);
+      await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:0 }).eq('id',challengeId);
       showToast('Izazivač je pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄', 'success');
     } else {
       await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
@@ -600,6 +609,7 @@ async function respondChallenge(challengeId, response) {
     const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
     await sb.from('challenges').update({
       status:'accepted',
+      rejection_count: 0,
       match_expires_at: matchExpires,
       challenged_player1: myMembers?.[0]?.player_email || null,
       challenged_player2: myMembers?.[1]?.player_email || null
@@ -612,32 +622,14 @@ async function respondChallenge(challengeId, response) {
 
 // ---- HANDLE EXPIRED ----
 async function handleExpired(challenge) {
-  // Broji odbijanja samo NAKON zadnje zamjene mjesta između ova dva tima
-  const lastCompleted = allChallenges
-    .filter(x =>
-      x.challenger_id === challenge.challenger_id &&
-      x.challenged_id === challenge.challenged_id &&
-      x.status === 'completed'
-    )
-    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
-
-  const afterDate = lastCompleted ? new Date(lastCompleted.created_at) : new Date(0);
-  const prevRejections = allChallenges.filter(x =>
-    x.challenger_id === challenge.challenger_id &&
-    x.challenged_id === challenge.challenged_id &&
-    x.status === 'declined' &&
-    x.id !== challenge.id &&
-    new Date(x.created_at) > afterDate
-  ).length;
-
-  const totalRejections = prevRejections + 1;
+  const totalRejections = getConsecutiveRejectionCount(challenge) + 1;
 
   if(totalRejections >= 2) {
     await swapTeams(challenge.challenger_id, challenge.challenged_id);
     await sb.from('challenges').update({
       status: 'completed',
       result_winner_id: challenge.challenger_id,
-      rejection_count: totalRejections,
+      rejection_count: 0,
       updated_at: new Date().toISOString()
     }).eq('id', challenge.id);
     showToast('Rok istekao — timovi zamijenili mjesta! 🔄', 'success');

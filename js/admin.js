@@ -156,7 +156,8 @@ function getRankingChangeLog(limit = 8) {
     .forEach(c => {
       const { challenger, challenged, winner } = adminChallengeTeams(c);
       const winnerIsChallenger = c.result_winner_id === c.challenger_id;
-      const changed = winnerIsChallenger || c.status === 'surrendered' || Number(c.rejection_count || 0) >= 2;
+      const doubleRejectionSwap = c.status === 'completed' && winnerIsChallenger && !c.result_score;
+      const changed = winnerIsChallenger || c.status === 'surrendered' || doubleRejectionSwap;
       if(!changed) return;
 
       let reason = 'Meč';
@@ -164,7 +165,7 @@ function getRankingChangeLog(limit = 8) {
       let icon = '↕';
       let tone = 'green';
 
-      if(Number(c.rejection_count || 0) >= 2 && !c.result_score) {
+      if(doubleRejectionSwap) {
         reason = 'Drugo odbijanje';
         detail = 'Izazvani tim odbio je drugi put, pa je izazivač preuzeo mjesto';
         icon = '⚠';
@@ -403,7 +404,7 @@ function renderAdmin() {
           const hours = Math.max(0, Math.floor(diff/3600000));
           return '<div class="admin-action-row">'
             + '<div class="admin-row-icon">⚔️</div>'
-            + '<div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">Rok: ' + hours + 'h · Odbijanja: ' + (c.rejection_count || 0) + '/1</div></div>'
+            + '<div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">Rok: ' + hours + 'h · Odbijanja: ' + getConsecutiveRejectionCount(c) + '/1</div></div>'
             + '<div class="admin-row-actions"><button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati</button><button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij</button></div>'
             + '</div>';
         }).join('') : '<div class="admin-empty-small">Nema izazova na čekanju</div>'}
@@ -542,6 +543,9 @@ async function saveEditChallenge() {
     update.result_score = null;
     if(!['completed','pending_result','surrendered'].includes(status)) update.result_winner_id = null;
   }
+  if(['accepted','completed','cancelled'].includes(status)) {
+    update.rejection_count = 0;
+  }
 
   try {
     console.log('[SAVE CHALLENGE] SAVE_START', { challengeId: editChallengeId });
@@ -584,6 +588,7 @@ async function adminAcceptChallenge(challengeId) {
   const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
   const {error} = await sb.from('challenges').update({
     status: 'accepted',
+    rejection_count: 0,
     match_expires_at: matchExpires
   }).eq('id', challengeId);
   if(error) { showToast('Greška: '+error.message,'error'); return; }
@@ -595,31 +600,12 @@ async function adminDeclineChallenge(challengeId) {
   const c = allChallenges.find(x=>x.id===challengeId);
   if(!c) return;
 
-  // Nađi zadnji completed izazov između ova dva tima (zamjena mjesta)
-  const lastCompleted = allChallenges
-    .filter(x =>
-      x.challenger_id === c.challenger_id &&
-      x.challenged_id === c.challenged_id &&
-      x.status === 'completed'
-    )
-    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
-
-  // Broji odbijanja samo NAKON zadnje zamjene mjesta
-  const afterDate = lastCompleted ? new Date(lastCompleted.created_at) : new Date(0);
-  const prevRejections = allChallenges.filter(x =>
-    x.challenger_id === c.challenger_id &&
-    x.challenged_id === c.challenged_id &&
-    x.status === 'declined' &&
-    x.id !== c.id &&
-    new Date(x.created_at) > afterDate
-  ).length;
-
-  const totalRejections = prevRejections + 1;
+  const totalRejections = getConsecutiveRejectionCount(c) + 1;
 
   if(totalRejections >= 2) {
     if(!confirm('Ovo je drugo odbijanje od zadnje zamjene — timovi će zamijeniti mjesta. Nastavi?')) return;
     await swapTeams(c.challenger_id, c.challenged_id);
-    await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:totalRejections }).eq('id',challengeId);
+    await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:0 }).eq('id',challengeId);
     showToast('Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄','success');
   } else {
     await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
@@ -702,10 +688,10 @@ async function adminConfirmResult(challengeId) {
     });
 
     const completedAt = new Date().toISOString();
-    const { error } = await sb.from('challenges').update({ status:'completed', updated_at:completedAt }).eq('id',challengeId);
+    const { error } = await sb.from('challenges').update({ status:'completed', rejection_count:0, updated_at:completedAt }).eq('id',challengeId);
     if(error) { showToast('Greška: '+error.message,'error'); return; }
 
-    Object.assign(c, { status:'completed', updated_at:completedAt });
+    Object.assign(c, { status:'completed', rejection_count:0, updated_at:completedAt });
 
     const completedChallenge = { ...c, status: 'completed', updated_at: completedAt };
     const matchInsertResult = await insertPyramidMatchIfMissing(completedChallenge, currentUser?.email || currentPlayer?.email || null);
@@ -726,7 +712,7 @@ async function adminConfirmResult(challengeId) {
 }
 
 async function adminRejectResult(challengeId) {
-  await sb.from('challenges').update({ status:'accepted', result_winner_id:null, result_score:null }).eq('id',challengeId);
+  await sb.from('challenges').update({ status:'accepted', rejection_count:0, result_winner_id:null, result_score:null }).eq('id',challengeId);
   showToast('Rezultat odbijen, meč ostaje aktivan.','');
   await safeLoadAll('manual'); renderAdmin();
 }
