@@ -923,6 +923,7 @@ async function adminConfirmResult(challengeId) {
   completingResultChallengeIds.add(challengeId);
   const challenger = allTeams.find(t=>t.id===c.challenger_id);
   const challenged = allTeams.find(t=>t.id===c.challenged_id);
+  const matchConfirmedAt = new Date().toISOString();
 
   try {
     if(c.result_winner_id === c.challenger_id) {
@@ -941,24 +942,11 @@ async function adminConfirmResult(challengeId) {
         });
       }
     } else {
-      // Izazvani pobijedio — sve ostaje, samo ažuriraj last_match_at
-      if(challenger?.penalty) {
-        // Kažnjeni ostaje u kazni, poraženi ostaje gdje jest
-        const { error: penaltyMatchError } = await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', c.challenger_id);
-        if(penaltyMatchError) throw penaltyMatchError;
-      }
+      // Izazvani pobijedio — poredak ostaje isti.
     }
 
-    // Ažuriraj last_match_at za oba tima prije zatvaranja izazova.
-    const matchConfirmedAt = new Date().toISOString();
-    const { error: lastMatchError } = await sb.from('teams')
-      .update({ last_match_at: matchConfirmedAt })
-      .in('id', [c.challenger_id, c.challenged_id]);
-    if(lastMatchError) throw lastMatchError;
-
-    [challenger, challenged].forEach(team => {
-      if(team) team.last_match_at = matchConfirmedAt;
-    });
+    // Ažuriraj last_match_at za oba tima prije zatvaranja izazova i prije refresh/render ciklusa.
+    await updateConfirmedMatchActivity([c.challenger_id, c.challenged_id], matchConfirmedAt);
 
     const completedAt = new Date().toISOString();
     const { error } = await sb.from('challenges').update({ status:'completed', rejection_count:0, updated_at:completedAt }).eq('id',challengeId);

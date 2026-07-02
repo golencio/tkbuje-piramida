@@ -79,30 +79,25 @@ async function submitResult() {
 const PENALTY_BLOCKING_CHALLENGE_STATUSES = ['pending', 'accepted', 'pending_result'];
 const completingResultChallengeIds = new Set();
 
-function isPenaltyBlockingChallengeForTeam(challenge, teamId, baseDate = getPauseTimerNow()) {
+function isPenaltyBlockingChallengeForTeam(challenge, teamId) {
   if(!challenge || !teamId) return false;
   if(!(challenge.challenger_id === teamId || challenge.challenged_id === teamId)) return false;
   if(!PENALTY_BLOCKING_CHALLENGE_STATUSES.includes(challenge.status)) return false;
-  return challenge.status !== 'pending' || !challenge.response_expires_at || new Date(challenge.response_expires_at) >= baseDate;
+  return true;
 }
 
-function hasPenaltyBlockingChallenge(teamId, baseDate = getPauseTimerNow()) {
-  return allChallenges.some(c => isPenaltyBlockingChallengeForTeam(c, teamId, baseDate));
+function hasPenaltyBlockingChallenge(teamId) {
+  return allChallenges.some(c => isPenaltyBlockingChallengeForTeam(c, teamId));
 }
 
 function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
   const isExemptStep = Number(team?.step) <= 2;
-  const activeChallenge = allChallenges.find(c => isPenaltyBlockingChallengeForTeam(c, team.id, baseDate));
-  const sentChallenges = allChallenges.filter(c => c.challenger_id === team.id && c.created_at);
-  const lastSentChallengeAt = sentChallenges
-    .map(c => new Date(c.created_at))
-    .filter(d => !isNaN(d.getTime()))
-    .sort((a, b) => b - a)[0] || null;
+  const activeChallenge = allChallenges.find(c => isPenaltyBlockingChallengeForTeam(c, team.id));
   const lastMatchAt = team.last_match_at ? new Date(team.last_match_at) : null;
   const createdAt = team.created_at ? new Date(team.created_at) : null;
-  const activityDates = [lastMatchAt, lastSentChallengeAt, createdAt]
-    .filter(d => d && !isNaN(d.getTime()));
-  const lastActivityAt = activityDates.sort((a, b) => b - a)[0] || baseDate;
+  const matchActivityAt = lastMatchAt && !isNaN(lastMatchAt.getTime()) ? lastMatchAt : null;
+  const fallbackActivityAt = createdAt && !isNaN(createdAt.getTime()) ? createdAt : baseDate;
+  const lastActivityAt = matchActivityAt || fallbackActivityAt;
   const daysInactive = Math.floor((baseDate - lastActivityAt) / DAY_MS);
   const daysLeft = 15 - daysInactive;
 
@@ -114,6 +109,21 @@ function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
     daysLeft,
     shouldPenalize: !team.penalty && !isExemptStep && !activeChallenge && daysInactive >= 15
   };
+}
+
+async function updateConfirmedMatchActivity(teamIds, confirmedAt = new Date().toISOString()) {
+  const ids = [...new Set((teamIds || []).filter(Boolean))];
+  if(!ids.length) return confirmedAt;
+
+  const { error } = await sb.from('teams')
+    .update({ last_match_at: confirmedAt })
+    .in('id', ids);
+  if(error) throw error;
+
+  allTeams.forEach(team => {
+    if(ids.includes(team.id)) team.last_match_at = confirmedAt;
+  });
+  return confirmedAt;
 }
 
 async function checkPenalties() {
