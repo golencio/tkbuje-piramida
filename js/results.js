@@ -78,6 +78,8 @@ async function submitResult() {
 // ---- PENALTY SYSTEM ----
 const PENALTY_BLOCKING_CHALLENGE_STATUSES = ['pending', 'accepted', 'pending_result'];
 const completingResultChallengeIds = new Set();
+const recentlyCompletedTeamIds = new Set();
+const RECENTLY_COMPLETED_PENALTY_GUARD_MS = 60 * 1000;
 
 function isPenaltyBlockingChallengeForTeam(challenge, teamId) {
   if(!challenge || !teamId) return false;
@@ -115,6 +117,11 @@ async function updateConfirmedMatchActivity(teamIds, confirmedAt = new Date().to
   const ids = [...new Set((teamIds || []).filter(Boolean))];
   if(!ids.length) return confirmedAt;
 
+  ids.forEach(id => recentlyCompletedTeamIds.add(id));
+  setTimeout(() => {
+    ids.forEach(id => recentlyCompletedTeamIds.delete(id));
+  }, RECENTLY_COMPLETED_PENALTY_GUARD_MS);
+
   const { error } = await sb.from('teams')
     .update({ last_match_at: confirmedAt })
     .in('id', ids);
@@ -123,6 +130,7 @@ async function updateConfirmedMatchActivity(teamIds, confirmedAt = new Date().to
   allTeams.forEach(team => {
     if(ids.includes(team.id)) team.last_match_at = confirmedAt;
   });
+  console.log('[COMPLETE MATCH] TEAMS_RESET_INACTIVITY', { teamIds: ids, last_match_at: confirmedAt });
   return confirmedAt;
 }
 
@@ -131,8 +139,18 @@ async function checkPenalties() {
   if(completingResultChallengeIds.size > 0) return;
   const now = getPauseTimerNow();
   for(const team of allTeams) {
+    if(recentlyCompletedTeamIds.has(team.id)) {
+      console.log('[PENALTY CHECK] SKIP_RECENTLY_COMPLETED_TEAM', { teamId: team.id, teamName: team.name || team.nickname || null });
+      continue;
+    }
     const activityInfo = getTeamPenaltyActivityInfo(team, now);
     if(activityInfo.shouldPenalize) {
+      console.log('[PENALTY CHECK] APPLY', {
+        teamId: team.id,
+        teamName: team.name || team.nickname || null,
+        lastActivityAt: activityInfo.lastActivityAt?.toISOString?.() || null,
+        daysInactive: activityInfo.daysInactive
+      });
       try {
         await applyPenalty(team);
       } catch(error) {
@@ -280,6 +298,7 @@ async function restorePenaltyWithRebalance(teamId, options = {}) {
   if(options.confirm !== false && !confirm(buildPenaltyRestoreMessage(team, logs, event))) return false;
 
   const restoredAt = new Date().toISOString();
+  const lastMatchAt = options.lastMatchAt || restoredAt;
   const actor = getPenaltyActor();
   const targetStep = event.old_step || team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
   const targetPosition = event.old_position ?? team.position ?? null;
@@ -298,7 +317,7 @@ async function restorePenaltyWithRebalance(teamId, options = {}) {
     position: targetPosition,
     original_step: null
   };
-  if(options.updateLastMatch) teamUpdate.last_match_at = restoredAt;
+  if(options.updateLastMatch) teamUpdate.last_match_at = lastMatchAt;
 
   const { error: teamError } = await sb.from('teams').update(teamUpdate).eq('id', teamId);
   if(teamError) throw teamError;
@@ -439,13 +458,14 @@ async function adminRemovePenalty(teamId) {
   }
 }
 
-async function returnFromPenalty(challengeId, penaltyTeamId) {
+async function returnFromPenalty(challengeId, penaltyTeamId, options = {}) {
   // Tim iz kaznene zone je pobijedio — vraća ga u piramidu
   const team = allTeams.find(t => t.id === penaltyTeamId);
   if(!team) return false;
   return restorePenaltyWithRebalance(penaltyTeamId, {
     confirm: true,
     updateLastMatch: true,
+    lastMatchAt: options.lastMatchAt || null,
     ignoredChallengeId: challengeId,
     relatedChallengeId: challengeId,
     reason: 'Izlazak iz kaznene zone'

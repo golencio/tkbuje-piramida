@@ -926,11 +926,14 @@ async function adminConfirmResult(challengeId) {
   const matchConfirmedAt = new Date().toISOString();
 
   try {
+    // Prvo resetiraj neaktivnost za oba tima iz aktivnog izazova.
+    await updateConfirmedMatchActivity([c.challenger_id, c.challenged_id], matchConfirmedAt);
+
     if(c.result_winner_id === c.challenger_id) {
       // Izazivač pobijedio
       if(challenger?.penalty) {
         // Iz kaznene zone — vrati u piramidu
-        const restored = await returnFromPenalty(challengeId, c.challenger_id);
+        const restored = await returnFromPenalty(challengeId, c.challenger_id, { lastMatchAt: matchConfirmedAt });
         if(!restored) {
           showToast('Povrat iz kazne je zaustavljen. Provjeri strukturu piramide.', 'error');
           return;
@@ -944,9 +947,6 @@ async function adminConfirmResult(challengeId) {
     } else {
       // Izazvani pobijedio — poredak ostaje isti.
     }
-
-    // Ažuriraj last_match_at za oba tima prije zatvaranja izazova i prije refresh/render ciklusa.
-    await updateConfirmedMatchActivity([c.challenger_id, c.challenged_id], matchConfirmedAt);
 
     const completedAt = new Date().toISOString();
     const { error } = await sb.from('challenges').update({ status:'completed', rejection_count:0, updated_at:completedAt }).eq('id',challengeId);
