@@ -277,7 +277,7 @@ function getChallengeRuleViolation(challengerId, challengedId, options = {}) {
 
 async function createPendingChallenge({ challengerId, challengedId, challengerPlayers = [], challengedPlayers = [] }) {
   const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
-  return sb.from('challenges').insert({
+  const result = await sb.from('challenges').insert({
     challenger_id: challengerId,
     challenged_id: challengedId,
     status: 'pending',
@@ -289,6 +289,15 @@ async function createPendingChallenge({ challengerId, challengedId, challengerPl
     challenged_player1: challengedPlayers[0] || null,
     challenged_player2: challengedPlayers[1] || null
   });
+  if(!result.error) {
+    const { error: resetError } = await sb.from('teams')
+      .update({ inactivity_penalty_warning_sent_at: null })
+      .eq('id', challengerId);
+    if(resetError) console.error('Reset upozorenja neaktivnosti nije uspio:', challengerId, resetError);
+    const challenger = allTeams.find(team => team.id === challengerId);
+    if(challenger) challenger.inactivity_penalty_warning_sent_at = null;
+  }
+  return result;
 }
 
 // ---- SEND CHALLENGE ----

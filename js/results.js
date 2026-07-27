@@ -96,10 +96,18 @@ function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
   const isExemptStep = Number(team?.step) <= 2;
   const activeChallenge = allChallenges.find(c => isPenaltyBlockingChallengeForTeam(c, team.id));
   const lastMatchAt = team.last_match_at ? new Date(team.last_match_at) : null;
+  const lastSentChallenge = allChallenges
+    .filter(c => c.challenger_id === team.id)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+  const lastChallengeAt = lastSentChallenge?.created_at ? new Date(lastSentChallenge.created_at) : null;
   const createdAt = team.created_at ? new Date(team.created_at) : null;
   const matchActivityAt = lastMatchAt && !isNaN(lastMatchAt.getTime()) ? lastMatchAt : null;
+  const challengeActivityAt = lastChallengeAt && !isNaN(lastChallengeAt.getTime()) ? lastChallengeAt : null;
   const fallbackActivityAt = createdAt && !isNaN(createdAt.getTime()) ? createdAt : baseDate;
-  const lastActivityAt = matchActivityAt || fallbackActivityAt;
+  const activityDates = [matchActivityAt, challengeActivityAt].filter(Boolean);
+  const lastActivityAt = activityDates.length
+    ? new Date(Math.max(...activityDates.map(date => date.getTime())))
+    : fallbackActivityAt;
   const daysInactive = Math.floor((baseDate - lastActivityAt) / DAY_MS);
   const daysLeft = 15 - daysInactive;
 
@@ -113,6 +121,85 @@ function getTeamPenaltyActivityInfo(team, baseDate = getPauseTimerNow()) {
   };
 }
 
+async function sendInactivityPenaltyWarning(team, activityInfo) {
+  const captain = allPlayers.find(player => player.email === team.captain_email);
+  if(!captain) throw new Error('Nije pronađen kapetan tima.');
+
+  const message = 'Niste igrali meč niti poslali izazov 12 dana; ako se ne aktivirate u naredna 3 dana, tim će pasti u kaznu zbog neaktivnosti.';
+  const response = await fetch('https://aglbdjyljbzzpddrshno.supabase.co/functions/v1/send-challenge-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'apikey': SUPABASE_KEY
+    },
+    body: JSON.stringify({
+      to: captain.email,
+      type: 'inactivity_penalty_warning',
+      subject: 'Upozorenje zbog neaktivnosti tima',
+      message,
+      teamName: team.name || team.nickname || 'Vaš tim',
+      lastActivityAt: activityInfo.lastActivityAt.toISOString()
+    })
+  });
+  if(!response.ok) throw new Error('Email endpoint vratio je HTTP ' + response.status);
+}
+
+async function checkInactivityPenaltyWarnings() {
+  if(tournamentPause?.is_paused) return;
+  const now = getPauseTimerNow();
+
+  for(const team of allTeams) {
+    const activityInfo = getTeamPenaltyActivityInfo(team, now);
+    const warningAt = team.inactivity_penalty_warning_sent_at
+      ? new Date(team.inactivity_penalty_warning_sent_at)
+      : null;
+
+    // Nova odigrana utakmica ili novi poslani izazov započinju novi period aktivnosti.
+    if(warningAt && activityInfo.lastActivityAt > warningAt) {
+      const { error } = await sb.from('teams')
+        .update({ inactivity_penalty_warning_sent_at: null })
+        .eq('id', team.id)
+        .eq('inactivity_penalty_warning_sent_at', team.inactivity_penalty_warning_sent_at);
+      if(error) console.error('Reset upozorenja neaktivnosti nije uspio:', team.id, error);
+      else team.inactivity_penalty_warning_sent_at = null;
+      continue;
+    }
+
+    const shouldWarn = !team.penalty &&
+      !activityInfo.isExemptStep &&
+      !activityInfo.activeChallenge &&
+      !team.inactivity_penalty_warning_sent_at &&
+      activityInfo.daysInactive >= 12 &&
+      activityInfo.daysInactive < 15;
+    if(!shouldWarn) continue;
+
+    const claimedAt = new Date().toISOString();
+    const { data: claimed, error: claimError } = await sb.from('teams')
+      .update({ inactivity_penalty_warning_sent_at: claimedAt })
+      .eq('id', team.id)
+      .eq('penalty', false)
+      .is('inactivity_penalty_warning_sent_at', null)
+      .select('id');
+    if(claimError) {
+      console.error('Rezervacija upozorenja neaktivnosti nije uspjela:', team.id, claimError);
+      continue;
+    }
+    if(!claimed?.length) continue;
+
+    try {
+      await sendInactivityPenaltyWarning(team, activityInfo);
+      team.inactivity_penalty_warning_sent_at = claimedAt;
+    } catch(error) {
+      await sb.from('teams')
+        .update({ inactivity_penalty_warning_sent_at: null })
+        .eq('id', team.id)
+        .eq('inactivity_penalty_warning_sent_at', claimedAt);
+      console.error('Slanje upozorenja neaktivnosti nije uspjelo:', team.id, error);
+    }
+  }
+}
+
 async function updateConfirmedMatchActivity(teamIds, confirmedAt = new Date().toISOString()) {
   const ids = [...new Set((teamIds || []).filter(Boolean))];
   if(!ids.length) return confirmedAt;
@@ -123,12 +210,15 @@ async function updateConfirmedMatchActivity(teamIds, confirmedAt = new Date().to
   }, RECENTLY_COMPLETED_PENALTY_GUARD_MS);
 
   const { error } = await sb.from('teams')
-    .update({ last_match_at: confirmedAt })
+    .update({ last_match_at: confirmedAt, inactivity_penalty_warning_sent_at: null })
     .in('id', ids);
   if(error) throw error;
 
   allTeams.forEach(team => {
-    if(ids.includes(team.id)) team.last_match_at = confirmedAt;
+    if(ids.includes(team.id)) {
+      team.last_match_at = confirmedAt;
+      team.inactivity_penalty_warning_sent_at = null;
+    }
   });
   console.log('[COMPLETE MATCH] TEAMS_RESET_INACTIVITY', { teamIds: ids, last_match_at: confirmedAt });
   return confirmedAt;

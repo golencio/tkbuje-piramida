@@ -279,7 +279,10 @@ async function openTeamAdminEditPenalty(teamId) {
   }
 
   if(!confirm('Resetirati brojač neaktivnosti za tim "' + adminTeamName(team) + '"?')) return;
-  const { error } = await sb.from('teams').update({ last_match_at: new Date().toISOString() }).eq('id', teamId);
+  const { error } = await sb.from('teams').update({
+    last_match_at: new Date().toISOString(),
+    inactivity_penalty_warning_sent_at: null
+  }).eq('id', teamId);
   if(error) { showToast('Greška: ' + error.message, 'error'); return; }
   showToast('Brojač neaktivnosti resetiran! ✓', 'success');
   await safeLoadAll('manual');

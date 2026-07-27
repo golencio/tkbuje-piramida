@@ -259,6 +259,7 @@ async function loadAll(options = {}) {
 
     // Timovi i igrači sada su u cacheu pa podsjetnik može pronaći kapetana primatelja.
     await checkChallengeResponseReminders();
+    await checkInactivityPenaltyWarnings();
 
     // Nađi moj tim
     if(currentPlayer) {
