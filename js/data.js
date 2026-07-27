@@ -257,6 +257,9 @@ async function loadAll(options = {}) {
     tournamentPause = pauseState || { is_paused: false, paused_at: null, pause_reason: '' };
     renderPauseBanner();
 
+    // Timovi i igrači sada su u cacheu pa podsjetnik može pronaći kapetana primatelja.
+    await checkChallengeResponseReminders();
+
     // Nađi moj tim
     if(currentPlayer) {
       const { data: myMembership } = await sb.from('team_members').select('team_id').eq('player_email', currentPlayer.email).single();

@@ -169,6 +169,72 @@ async function sendAcceptedEmail(challengerTeamId, challengedName) {
   }
 }
 
+async function sendChallengeResponseReminder(challenge) {
+  const challenged = allTeams.find(t => t.id === challenge.challenged_id);
+  const challenger = allTeams.find(t => t.id === challenge.challenger_id);
+  const captain = allPlayers.find(p => p.email === challenged?.captain_email);
+  if(!challenged || !captain) throw new Error('Nije pronađen kapetan izazvanog tima.');
+
+  const response = await fetch('https://aglbdjyljbzzpddrshno.supabase.co/functions/v1/send-challenge-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'apikey': SUPABASE_KEY
+    },
+    body: JSON.stringify({
+      to: captain.email,
+      type: 'response_reminder',
+      challengerName: challenger?.name || challenger?.nickname || 'Protivnički tim',
+      challengedName: challenged.name || challenged.nickname,
+      responseExpiresAt: challenge.response_expires_at
+    })
+  });
+  if(!response.ok) throw new Error('Email endpoint vratio je HTTP ' + response.status);
+}
+
+async function checkChallengeResponseReminders() {
+  const now = new Date();
+  const reminderWindowEnd = new Date(now.getTime() + 24 * HOUR_MS);
+  const candidates = allChallenges.filter(c => {
+    if(c.status !== 'pending' || c.response_reminder_sent_at || !c.response_expires_at) return false;
+    const expiresAt = new Date(c.response_expires_at);
+    return expiresAt > now && expiresAt < reminderWindowEnd;
+  });
+
+  const results = await Promise.allSettled(candidates.map(async challenge => {
+    const claimedAt = new Date().toISOString();
+    const { data: claimed, error: claimError } = await sb
+      .from('challenges')
+      .update({ response_reminder_sent_at: claimedAt })
+      .eq('id', challenge.id)
+      .eq('status', 'pending')
+      .is('response_reminder_sent_at', null)
+      .gt('response_expires_at', now.toISOString())
+      .lt('response_expires_at', reminderWindowEnd.toISOString())
+      .select('id');
+    if(claimError) throw claimError;
+    if(!claimed?.length) return; // Drugi klijent već je rezervirao/slanjem obradio podsjetnik.
+
+    try {
+      await sendChallengeResponseReminder(challenge);
+      challenge.response_reminder_sent_at = claimedAt;
+    } catch(error) {
+      // Omogući ponovni pokušaj pri sljedećem refreshu samo ako je ovo još uvijek naša rezervacija.
+      await sb.from('challenges')
+        .update({ response_reminder_sent_at: null })
+        .eq('id', challenge.id)
+        .eq('response_reminder_sent_at', claimedAt);
+      console.error('Slanje podsjetnika za izazov nije uspjelo:', challenge.id, error);
+    }
+  }));
+  results.forEach((result, index) => {
+    if(result.status === 'rejected') {
+      console.error('Provjera podsjetnika za izazov nije uspjela:', candidates[index]?.id, result.reason);
+    }
+  });
+}
+
 function getChallengeActiveStatuses() {
   return ['pending', 'accepted', 'pending_result'];
 }
@@ -217,6 +283,7 @@ async function createPendingChallenge({ challengerId, challengedId, challengerPl
     status: 'pending',
     rejection_count: 0,
     response_expires_at: responseExpires,
+    response_reminder_sent_at: null,
     challenger_player1: challengerPlayers[0] || null,
     challenger_player2: challengerPlayers[1] || null,
     challenged_player1: challengedPlayers[0] || null,

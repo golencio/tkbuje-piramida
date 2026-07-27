@@ -803,6 +803,10 @@ async function saveEditChallenge() {
   if(status === 'pending' && !update.response_expires_at) {
     update.response_expires_at = new Date(Date.now() + 3*24*60*60*1000).toISOString();
   }
+  const returnedToPending = status === 'pending' && c.status !== 'pending';
+  const responseDeadlineExtended = status === 'pending' && update.response_expires_at &&
+    (!c.response_expires_at || new Date(update.response_expires_at) > new Date(c.response_expires_at));
+  if(returnedToPending || responseDeadlineExtended) update.response_reminder_sent_at = null;
   if(['pending','accepted','declined','cancelled'].includes(status) && !score) {
     update.result_score = null;
     if(!['completed','pending_result','surrendered'].includes(status)) update.result_winner_id = null;
@@ -981,7 +985,12 @@ async function adminRejectResult(challengeId) {
 async function revertDecision() {
   const id = document.getElementById('revert-challenge-select').value;
   if(!id) { showToast('Odaberi izazov!','error'); return; }
-  await sb.from('challenges').update({ status:'pending', rejection_count:0 }).eq('id',id);
+  await sb.from('challenges').update({
+    status:'pending',
+    rejection_count:0,
+    response_expires_at: new Date(Date.now() + 3*DAY_MS).toISOString(),
+    response_reminder_sent_at:null
+  }).eq('id',id);
   showToast('Izazov vraćen na čekanje. ↩','success');
   await safeLoadAll('manual'); renderAdmin();
 }
