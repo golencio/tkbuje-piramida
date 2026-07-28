@@ -935,11 +935,27 @@ async function adminConfirmResult(challengeId) {
 
     if(c.result_winner_id === c.challenger_id) {
       // Izazivač pobijedio
-      if(challenger?.penalty) {
+      // Lokalni cache može zastarjeti dok admin drži otvoren rezultat. Za odluku
+      // o povratku iz kazne uvijek koristi trenutačno stanje iz baze.
+      const { data: currentChallenger, error: challengerStateError } = await sb.from('teams')
+        .select('id,penalty')
+        .eq('id', c.challenger_id)
+        .maybeSingle();
+      if(challengerStateError) throw challengerStateError;
+      if(!currentChallenger) throw new Error('Tim pobjednik više ne postoji.');
+
+      if(currentChallenger.penalty === true) {
         // Iz kaznene zone — vrati u piramidu
-        const restored = await returnFromPenalty(challengeId, c.challenger_id, { lastMatchAt: matchConfirmedAt });
+        let restored = false;
+        try {
+          restored = await returnFromPenalty(challengeId, c.challenger_id, { lastMatchAt: matchConfirmedAt });
+        } catch(restoreError) {
+          console.error('[PENALTY RETURN ERROR]', restoreError);
+          showToast('Automatski povratak iz kazne nije uspio: ' + (restoreError.message || 'Supabase greška.'), 'error');
+          return;
+        }
         if(!restored) {
-          showToast('Povrat iz kazne je zaustavljen. Provjeri strukturu piramide.', 'error');
+          showToast('Automatski povratak iz kazne nije dovršen.', 'error');
           return;
         }
       } else {

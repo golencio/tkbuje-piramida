@@ -548,54 +548,28 @@ async function adminRemovePenalty(teamId) {
   }
 }
 
-function getFirstAvailablePosition(teams) {
-  const occupied = new Set((teams || [])
-    .map(team => Number(team.position))
-    .filter(position => Number.isInteger(position) && position > 0));
-  let position = 1;
-  while(occupied.has(position)) position++;
-  return position;
-}
-
-async function restorePenaltyToFifthStep(teamId, options = {}) {
+async function returnFromPenaltyAfterWin(teamId, options = {}) {
   const team = allTeams.find(t => t.id === teamId);
   if(!team) return false;
-
-  const event = await getActivePenaltyEvent(teamId);
-  if(!event) {
-    showToast('Nema aktivnog zapisnika za ovu kaznu. Potrebna je ručna provjera.', 'error');
-    return false;
-  }
 
   if(options.confirm !== false && !confirm(
     'Tim "' + (team.name || team.nickname || 'Tim')
     + '" bit će vraćen iz kaznene zone na 5. stepenicu. Ostali timovi neće se pomicati.\n\nNastaviti?'
   )) return false;
 
-  // Učitaj svježe stanje ciljne stepenice kako lokalni cache ne bi proizveo
-  // duplikat pozicije. Ako stepenica 5 ne postoji, lista je prazna i pozicija je 1.
-  const { data: fifthStepTeams, error: fifthStepError } = await sb.from('teams')
-    .select('id,position')
-    .eq('step', 5)
-    .eq('penalty', false);
-  if(fifthStepError) throw fifthStepError;
-
-  const targetPosition = getFirstAvailablePosition(
-    (fifthStepTeams || []).filter(candidate => candidate.id !== teamId)
-  );
-  const restoredAt = new Date().toISOString();
   const actor = getPenaltyActor();
-  const lastMatchAt = options.lastMatchAt || restoredAt;
+  const lastMatchAt = options.lastMatchAt || new Date().toISOString();
+  const { data, error } = await sb.rpc('return_from_penalty_after_win', {
+    p_team_id: teamId,
+    p_last_match_at: lastMatchAt,
+    p_removed_by: actor
+  });
+  if(error) throw new Error('Supabase nije dovršio automatski povratak: ' + error.message);
 
-  const { error: teamError } = await sb.from('teams').update({
-    penalty: false,
-    step: 5,
-    position: targetPosition,
-    original_step: null,
-    last_match_at: lastMatchAt,
-    inactivity_penalty_warning_sent_at: null
-  }).eq('id', teamId);
-  if(teamError) throw teamError;
+  const targetPosition = Number(data?.position);
+  if(!Number.isInteger(targetPosition) || targetPosition < 1) {
+    throw new Error('Supabase je vratio neispravnu poziciju za 5. stepenicu.');
+  }
 
   Object.assign(team, {
     penalty: false,
@@ -605,13 +579,6 @@ async function restorePenaltyToFifthStep(teamId, options = {}) {
     last_match_at: lastMatchAt,
     inactivity_penalty_warning_sent_at: null
   });
-
-  const { error: eventError } = await sb.from('penalty_events').update({
-    is_active: false,
-    penalty_removed_at: restoredAt,
-    removed_by: actor
-  }).eq('id', event.id);
-  if(eventError) throw eventError;
 
   await capturePyramidSnapshot(options.reason || 'Izlazak iz kaznene zone', {
     relatedChallengeId: options.relatedChallengeId || null
@@ -624,7 +591,7 @@ async function returnFromPenalty(challengeId, penaltyTeamId, options = {}) {
   // Tim iz kaznene zone je pobijedio — vraća ga u piramidu
   const team = allTeams.find(t => t.id === penaltyTeamId);
   if(!team) return false;
-  return restorePenaltyToFifthStep(penaltyTeamId, {
+  return returnFromPenaltyAfterWin(penaltyTeamId, {
     confirm: true,
     lastMatchAt: options.lastMatchAt || null,
     relatedChallengeId: challengeId,
