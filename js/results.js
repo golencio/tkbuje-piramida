@@ -390,7 +390,7 @@ async function restorePenaltyWithRebalance(teamId, options = {}) {
   const restoredAt = new Date().toISOString();
   const lastMatchAt = options.lastMatchAt || restoredAt;
   const actor = getPenaltyActor();
-  const targetStep = event.old_step || team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step));
+  const targetStep = options.targetStep ?? (event.old_step || team.original_step || Math.max(...allTeams.filter(t=>!t.penalty).map(t=>t.step)));
   const targetPosition = event.old_position ?? team.position ?? null;
 
   for(const log of logs) {
@@ -554,6 +554,7 @@ async function returnFromPenalty(challengeId, penaltyTeamId, options = {}) {
   if(!team) return false;
   return restorePenaltyWithRebalance(penaltyTeamId, {
     confirm: true,
+    targetStep: 5,
     updateLastMatch: true,
     lastMatchAt: options.lastMatchAt || null,
     ignoredChallengeId: challengeId,
