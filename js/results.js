@@ -209,10 +209,15 @@ async function updateConfirmedMatchActivity(teamIds, confirmedAt = new Date().to
     ids.forEach(id => recentlyCompletedTeamIds.delete(id));
   }, RECENTLY_COMPLETED_PENALTY_GUARD_MS);
 
-  const { error } = await sb.from('teams')
-    .update({ last_match_at: confirmedAt, inactivity_penalty_warning_sent_at: null })
-    .in('id', ids);
-  if(error) throw error;
+  const { data: updatedTeams, error } = await sb.rpc('set_confirmed_match_activity', {
+    p_team_ids: ids,
+    p_confirmed_at: confirmedAt
+  });
+  if(error) throw new Error('Supabase nije ažurirao aktivnost potvrđenog meča: ' + error.message);
+  const updatedIds = new Set((updatedTeams || []).map(team => team.team_id));
+  if(ids.some(id => !updatedIds.has(id))) {
+    throw new Error('Supabase nije ažurirao last_match_at za sve timove iz meča.');
+  }
 
   allTeams.forEach(team => {
     if(ids.includes(team.id)) {

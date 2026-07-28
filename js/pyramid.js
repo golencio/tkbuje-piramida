@@ -120,7 +120,7 @@ function renderTeamStatusBadges(team, context, flags) {
     if(activityInfo.activeChallenge) html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '⏳ Aktivno</span><span>bez kazne</span></div>';
     else if(daysLeft <= 0) html += '<div class="team-badge team-badge-danger team-badge-penalty-timer"><span>' + pausePrefix + '⚠️ Kazna!</span></div>';
     else if(daysLeft <= 5) html += '<div class="team-badge team-badge-danger team-badge-penalty-timer"><span>' + pausePrefix + '⚠️ Kazna</span><span>za ' + daysLeft + ' dana</span></div>';
-    else html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '📅 ' + daysLeft + ' dana</span><span>kazna</span></div>';
+    else html += '<div class="team-badge team-badge-muted team-badge-penalty-timer"><span>' + pausePrefix + '📅 Kazna za ' + daysLeft + ' dana</span></div>';
   }
 
   return html;

@@ -4,6 +4,7 @@ const vm = require('node:vm');
 
 const resultsSource = fs.readFileSync('js/results.js', 'utf8');
 const adminSource = fs.readFileSync('js/admin.js', 'utf8');
+const pyramidSource = fs.readFileSync('js/pyramid.js', 'utf8');
 
 function teamSlots(teams, excludedId = null) {
   return teams
@@ -60,6 +61,18 @@ async function runScenario({ fifthStepTeams = [], rpcError = null }) {
   const sb = {
     from: makeQuery,
     rpc: async (name, params) => {
+      if(name === 'set_confirmed_match_activity') {
+        const updated = teams.filter(team => params.p_team_ids.includes(team.id));
+        updated.forEach(team => Object.assign(team, {
+          last_match_at: params.p_confirmed_at,
+          inactivity_penalty_warning_sent_at: null
+        }));
+        return {
+          data: updated.map(team => ({ team_id: team.id, last_match_at: team.last_match_at })),
+          error: null
+        };
+      }
+
       assert.equal(name, 'return_from_penalty_after_win');
       if(rpcError) return { data: null, error: { message: rpcError } };
 
@@ -121,6 +134,7 @@ async function runScenario({ fifthStepTeams = [], rpcError = null }) {
   vm.createContext(context);
   vm.runInContext(resultsSource, context);
   vm.runInContext(adminSource, context);
+  vm.runInContext(pyramidSource, context);
   context.renderAdmin = () => {};
   context.insertPyramidMatchIfMissing = async challenge => {
     savedMatch = structuredClone(challenge);
@@ -128,7 +142,14 @@ async function runScenario({ fifthStepTeams = [], rpcError = null }) {
   };
 
   await vm.runInContext("adminConfirmResult('match-1')", context);
-  return { teams, challenges, penaltyEvents, originalOtherSlots, snapshots, toasts, savedMatch };
+  const countdown = vm.runInContext(`(() => {
+    const team = allTeams.find(candidate => candidate.id === 'A');
+    const baseDate = new Date(team.last_match_at);
+    const info = getTeamPenaltyActivityInfo(team, baseDate);
+    const html = renderTeamStatusBadges(team, { cooldownByTeamId: new Map() }, {});
+    return { daysLeft: info.daysLeft, daysInactive: info.daysInactive, html };
+  })()`, context);
+  return { teams, challenges, penaltyEvents, originalOtherSlots, snapshots, toasts, savedMatch, countdown };
 }
 
 function assertSuccessfulReturn(result, expectedPosition) {
@@ -144,6 +165,9 @@ function assertSuccessfulReturn(result, expectedPosition) {
   assert.equal(result.challenges[0].status, 'completed');
   assert.equal(result.savedMatch.status, 'completed');
   assert.equal(result.snapshots.at(-1).teams.find(team => team.id === 'A').step, 5);
+  assert.equal(result.countdown.daysInactive, 0);
+  assert.equal(result.countdown.daysLeft, 15);
+  assert.ok(result.countdown.html.includes('Kazna za 15 dana'));
 
   const positions = result.teams
     .filter(team => !team.penalty && team.step === 5)
