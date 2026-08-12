@@ -171,6 +171,7 @@ async function adminSendChallengeOnBehalf() {
 
 async function insertPyramidMatchIfMissing(challenge, adminEmail) {
   console.log('[PYRAMID -> MATCHES] START', { challengeId: challenge?.id });
+  console.log('[PYRAMID -> MATCHES] CHALLENGE_DATA', challenge);
 
   if(!challenge?.id) {
     console.error('[PYRAMID -> MATCHES] INSERT_ERROR', { message: 'Missing challenge id' });
@@ -196,6 +197,7 @@ async function insertPyramidMatchIfMissing(challenge, adminEmail) {
   pendingPyramidMatchInserts.add(challenge.id);
 
   try {
+    console.log('[PYRAMID -> MATCHES] CHECK_EXISTING', { challengeId: challenge.id });
     const { data: existing, error: existingError } = await sb
       .from('matches')
       .select('id')
@@ -203,13 +205,64 @@ async function insertPyramidMatchIfMissing(challenge, adminEmail) {
       .limit(1);
 
     if(existingError) {
-      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', existingError);
+      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', {
+        message: existingError?.message,
+        details: existingError?.details,
+        hint: existingError?.hint,
+        code: existingError?.code,
+        error: existingError
+      });
       return { status: 'error' };
     }
 
     if(existing?.length) {
       console.log('[PYRAMID -> MATCHES] ALREADY_EXISTS', { challengeId: challenge.id, matchId: existing[0].id });
       return { status: 'exists' };
+    }
+
+    const winnerEmails = winnerIsChallenger
+      ? [challenge.challenger_player1, challenge.challenger_player2]
+      : [challenge.challenged_player1, challenge.challenged_player2];
+    const loserEmails = winnerIsChallenger
+      ? [challenge.challenged_player1, challenge.challenged_player2]
+      : [challenge.challenger_player1, challenge.challenger_player2];
+    const referenceTime = new Date(challenge.updated_at || challenge.scheduled_at || challenge.created_at || Date.now());
+    const duplicateWindowMs = 3 * DAY_MS;
+    const duplicateWindowStart = new Date(referenceTime.getTime() - duplicateWindowMs).toISOString();
+    const duplicateWindowEnd = new Date(referenceTime.getTime() + duplicateWindowMs).toISOString();
+    const { data: pariciCandidates, error: pariciCandidatesError } = await sb
+      .from('matches')
+      .select('id,winner1_email,winner2_email,loser1_email,loser2_email,notes,created_at,vrijeme_potvrde,source')
+      .eq('source', 'parici')
+      .gte('created_at', duplicateWindowStart)
+      .lte('created_at', duplicateWindowEnd);
+
+    if(pariciCandidatesError) {
+      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', {
+        message: pariciCandidatesError?.message,
+        details: pariciCandidatesError?.details,
+        hint: pariciCandidatesError?.hint,
+        code: pariciCandidatesError?.code,
+        error: pariciCandidatesError
+      });
+      return { status: 'error' };
+    }
+
+    const normalizeEmails = emails => emails.filter(Boolean).map(email => email.trim().toLowerCase()).sort().join('|');
+    const normalizeScore = score => String(score || '').toLowerCase().replace(/\s+/g, '').replace(/[;,]/g, ',');
+    const possibleDuplicate = pariciCandidates?.find(match =>
+      normalizeEmails([match.winner1_email, match.winner2_email]) === normalizeEmails(winnerEmails) &&
+      normalizeEmails([match.loser1_email, match.loser2_email]) === normalizeEmails(loserEmails) &&
+      normalizeScore(match.notes) === normalizeScore(challenge.result_score)
+    );
+
+    if(possibleDuplicate) {
+      console.warn('[PYRAMID -> MATCHES] POSSIBLE_EXISTING_PARICI_MATCH', {
+        challengeId: challenge.id,
+        matchId: possibleDuplicate.id,
+        match: possibleDuplicate
+      });
+      return { status: 'possible_duplicate', match: possibleDuplicate };
     }
 
     const now = new Date().toISOString();
@@ -246,7 +299,13 @@ async function insertPyramidMatchIfMissing(challenge, adminEmail) {
     const { error: insertError } = await sb.from('matches').insert(insertData);
 
     if(insertError) {
-      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', insertError);
+      console.error('[PYRAMID -> MATCHES] INSERT_ERROR', {
+        message: insertError?.message,
+        details: insertError?.details,
+        hint: insertError?.hint,
+        code: insertError?.code,
+        error: insertError
+      });
       return { status: 'error' };
     }
 
@@ -823,7 +882,20 @@ async function saveEditChallenge() {
     });
     console.log('[SAVE CHALLENGE] SAVE_SUCCESS', { challengeId: editChallengeId });
     Object.assign(c, update);
-    showToast('Izazov ažuriran! ✓', 'success');
+
+    let syncStatus = null;
+    if(status === 'completed' && winnerId && score) {
+      const matchInsertResult = await insertPyramidMatchIfMissing(c, currentUser?.email || currentPlayer?.email || null);
+      syncStatus = matchInsertResult.status;
+    }
+
+    if(syncStatus === 'error') {
+      showToast('Izazov je spremljen, ali upis u matches nije napravljen. Provjeri konzolu/Supabase.', 'error');
+    } else if(syncStatus === 'possible_duplicate') {
+      showToast('Izazov je spremljen. Pronađen je mogući isti meč u Parićima pa novi zapis nije napravljen.', 'error');
+    } else {
+      showToast('Izazov ažuriran! ✓', 'success');
+    }
     closeModal('modal-edit-challenge');
     await renderChallenges();
     if(document.getElementById('sec-admin')?.classList.contains('active')) renderAdmin();
