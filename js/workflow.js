@@ -36,6 +36,7 @@ function maybeShowIncomingChallengePopup() {
   const challengerName = adminTeamName(challenger);
   const sentAt = challenge.created_at ? new Date(challenge.created_at).toLocaleString('hr-HR') : '—';
   const deadline = formatIncomingDeadline(challenge);
+  const rejectionDisabled = areChallengeRejectionsDisabled();
 
   content.innerHTML =
     '<button class="modal-close" onclick="closeIncomingChallengePopup()">×</button>'
@@ -44,12 +45,12 @@ function maybeShowIncomingChallengePopup() {
     + '<div class="incoming-sub">Tim <strong>' + challengerName + '</strong> izazvao je vaš tim na meč.</div>'
     + '<div class="incoming-info">'
       + '<div class="incoming-info-row"><span>Izazivač</span><strong>' + challengerName + '</strong></div>'
-      + '<div class="incoming-info-row"><span>Rok za odgovor</span><strong>' + deadline + '</strong></div>'
+      + '<div class="incoming-info-row"><span>' + (rejectionDisabled ? 'Odgovor' : 'Rok za odgovor') + '</span><strong>' + (rejectionDisabled ? 'Odbijanje nije dopušteno' : deadline) + '</strong></div>'
       + '<div class="incoming-info-row"><span>Poslano</span><strong>' + sentAt + '</strong></div>'
     + '</div>'
     + '<div class="incoming-actions">'
       + '<button class="incoming-action accept" onclick="incomingChallengeRespond(\'' + challenge.id + '\',\'accepted\')">✓ Prihvati izazov</button>'
-      + '<button class="incoming-action decline" onclick="incomingChallengeRespond(\'' + challenge.id + '\',\'declined\')">✕ Odbij</button>'
+      + (rejectionDisabled ? '' : '<button class="incoming-action decline" onclick="incomingChallengeRespond(\'' + challenge.id + '\',\'declined\')">✕ Odbij</button>')
     + '</div>';
 
   openModal('modal-incoming-challenge');
@@ -61,6 +62,10 @@ function closeIncomingChallengePopup() {
 }
 
 async function incomingChallengeRespond(challengeId, response) {
+  if(response === 'declined' && areChallengeRejectionsDisabled()) {
+    showToast(getRejectionDisabledMessage(), 'error');
+    return;
+  }
   const isAccept = response === 'accepted';
   const ok = confirm(isAccept
     ? 'Prihvatiti ovaj izazov?'

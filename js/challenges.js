@@ -195,6 +195,7 @@ async function sendChallengeResponseReminder(challenge) {
 
 async function checkChallengeResponseReminders() {
   const now = new Date();
+  if(areChallengeRejectionsDisabled(now)) return;
   const reminderWindowEnd = new Date(now.getTime() + 24 * HOUR_MS);
   const candidates = allChallenges.filter(c => {
     if(c.status !== 'pending' || c.response_reminder_sent_at || !c.response_expires_at) return false;
@@ -247,6 +248,7 @@ function getTeamOpenChallenge(teamId) {
 }
 
 function getChallengeRuleViolation(challengerId, challengedId, options = {}) {
+  if(areNewChallengesDisabled(options.now || new Date())) return getNewChallengeClosedMessage();
   const challenger = allTeams.find(t=>t.id===challengerId);
   const challenged = allTeams.find(t=>t.id===challengedId);
   if(!challenger) return 'Odaberi tim koji izaziva.';
@@ -275,7 +277,10 @@ function getChallengeRuleViolation(challengerId, challengedId, options = {}) {
   return '';
 }
 
-async function createPendingChallenge({ challengerId, challengedId, challengerPlayers = [], challengedPlayers = [] }) {
+async function createPendingChallenge({ challengerId, challengedId, challengerPlayers = [], challengedPlayers = [], now = new Date() }) {
+  if(areNewChallengesDisabled(now)) {
+    return { data: null, error: new Error(getNewChallengeClosedMessage()) };
+  }
   const responseExpires = new Date(Date.now() + 3*24*60*60*1000).toISOString();
   const result = await sb.from('challenges').insert({
     challenger_id: challengerId,
@@ -508,8 +513,10 @@ function getChallengeActionsHTML(c, options = {}) {
   const stop = options.stopPropagation ? 'event.stopPropagation();' : '';
   let actions = '';
   if(c.status==='pending' && isChallenged && iAmCaptain) {
-    actions += `<button class="btn-accept" onclick="${stop}respondChallenge('${c.id}','accepted')">✓ Prihvati</button>
-      <button class="btn-decline" onclick="${stop}respondChallenge('${c.id}','declined')">✕ Odbij</button>`;
+    actions += `<button class="btn-accept" onclick="${stop}respondChallenge('${c.id}','accepted')">✓ Prihvati</button>`;
+    if(!areChallengeRejectionsDisabled(options.now || new Date())) {
+      actions += `<button class="btn-decline" onclick="${stop}respondChallenge('${c.id}','declined')">✕ Odbij</button>`;
+    }
   }
   if(c.status==='accepted' && isMyChallenge) {
     actions += `<button class="btn-accept" onclick="${stop}openResultModal('${c.id}')">📝 Unesi rezultat</button>`;
@@ -525,7 +532,10 @@ function getCompactChallengeMeta(c) {
     return c.scheduled_at ? 'Termin: ' + formatChallengeDateTime(c.scheduled_at) : 'Termin nije dogovoren';
   }
   if(c.status === 'pending_result') return 'Čeka potvrdu rezultata' + (c.result_score ? ': ' + c.result_score : '');
-  if(c.status === 'pending') return 'Na čekanju' + (c.response_expires_at ? ' · rok ' + formatChallengeDateTime(c.response_expires_at) : '');
+  if(c.status === 'pending') {
+    if(areChallengeRejectionsDisabled()) return 'Na čekanju prihvaćanja · odbijanje nije dopušteno';
+    return 'Na čekanju' + (c.response_expires_at ? ' · rok ' + formatChallengeDateTime(c.response_expires_at) : '');
+  }
   if(c.status === 'completed') return 'Rezultat: ' + (c.result_score || '—');
   if(c.status === 'surrendered') return 'Predaja' + (c.result_score ? ' · ' + c.result_score : '');
   if(c.status === 'declined') return 'Odbijen';
@@ -561,8 +571,12 @@ function buildChallengeDetailHTML(c) {
   if(!challenger || !challenged) return '<div class="empty">Izazov nije pronađen.</div>';
 
   const now = new Date();
-  const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
+  const rejectionDisabled = areChallengeRejectionsDisabled(now);
+  const expires = c.status==='pending' && !rejectionDisabled ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
   let timerInfo = { label:'Rok', value:'—', urgent:false };
+  if(c.status === 'pending' && rejectionDisabled) {
+    timerInfo = { label:'Odgovor', value:'Odbijanje nije dopušteno', urgent:false };
+  }
   if(expires && ['pending','accepted'].includes(c.status)) {
     const timerBase = c.status === 'accepted' ? getPauseTimerNow() : now;
     const remaining = formatRemainingTime(expires, timerBase);
@@ -648,10 +662,13 @@ async function renderChallenges() {
 
   const now = new Date();
 
-  // Expire pending challenges - koristimo for...of da čekamo svaki upit
-  for(const c of allChallenges) {
-    if(c.status==='pending' && new Date(c.response_expires_at) < now) {
-      await handleExpired(c);
+  // Nakon 1. 9. rok odgovora više nema posljedice. Pending izazovi ostaju
+  // otvoreni za prihvaćanje, uključujući nakon završetka slanja novih izazova.
+  if(!areChallengeRejectionsDisabled(now)) {
+    for(const c of allChallenges) {
+      if(c.status==='pending' && new Date(c.response_expires_at) < now) {
+        await handleExpired(c);
+      }
     }
   }
 
@@ -710,11 +727,15 @@ function getConsecutiveRejectionCount(challenge) {
   return count;
 }
 
-async function respondChallenge(challengeId, response) {
+async function respondChallenge(challengeId, response, now = new Date()) {
   const challenge = allChallenges.find(c=>c.id===challengeId);
   if(!challenge) return;
 
   if(response==='declined') {
+    if(areChallengeRejectionsDisabled(now)) {
+      showToast(getRejectionDisabledMessage(), 'error');
+      return;
+    }
     const totalRejections = getConsecutiveRejectionCount(challenge) + 1;
 
     if(totalRejections >= 2) {
@@ -755,7 +776,10 @@ async function respondChallenge(challengeId, response) {
 }
 
 // ---- HANDLE EXPIRED ----
-async function handleExpired(challenge) {
+async function handleExpired(challenge, now = new Date()) {
+  // Nakon početka 1. 9. pending izazov ostaje otvoren za prihvaćanje.
+  // Istek se više ne pretvara u odbijanje i ne može promijeniti poredak.
+  if(areChallengeRejectionsDisabled(now)) return;
   const totalRejections = getConsecutiveRejectionCount(challenge) + 1;
 
   if(totalRejections >= 2) {

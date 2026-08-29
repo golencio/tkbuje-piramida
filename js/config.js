@@ -106,6 +106,41 @@ let tournamentPause = { is_paused: false, paused_at: null, pause_reason: null };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
+// Datumska pravila turnira uspoređuju lokalni kalendarski datum u Zagrebu.
+// Ne koristimo fiksni UTC pomak jer Europe/Zagreb prelazi između CET i CEST.
+const TOURNAMENT_TIME_ZONE = 'Europe/Zagreb';
+const NO_REJECTIONS_FROM_DATE_KEY = 20260901;
+const NO_NEW_CHALLENGES_FROM_DATE_KEY = 20260915;
+
+function getZagrebDateKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if(isNaN(date.getTime())) throw new Error('Neispravan datum za pravila turnira.');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TOURNAMENT_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const read = type => Number(parts.find(part => part.type === type)?.value);
+  return read('year') * 10000 + read('month') * 100 + read('day');
+}
+
+function areChallengeRejectionsDisabled(value = new Date()) {
+  return getZagrebDateKey(value) >= NO_REJECTIONS_FROM_DATE_KEY;
+}
+
+function areNewChallengesDisabled(value = new Date()) {
+  return getZagrebDateKey(value) >= NO_NEW_CHALLENGES_FROM_DATE_KEY;
+}
+
+function getNewChallengeClosedMessage() {
+  return 'Turnir završava 15. 9. 2026. i novi izazovi više nisu dopušteni.';
+}
+
+function getRejectionDisabledMessage() {
+  return 'Od 1. 9. 2026. izazove više nije moguće odbiti. Izazov se može prihvatiti i odigrati.';
+}
+
 function escapeContactHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')

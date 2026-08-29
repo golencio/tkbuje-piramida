@@ -45,6 +45,7 @@ function getTeamMembersHTML(team, options = {}) {
 }
 
 function renderChallengeButton(team) {
+  if(areNewChallengesDisabled()) return '';
   return '<button class="challenge-btn" onclick="event.stopPropagation();sendChallenge(\'' + team.id + '\')">⚔️ Izazovi</button>';
 }
 
@@ -210,6 +211,7 @@ function renderPyramid() {
 
 
 function canCurrentUserChallengeTeam(team) {
+  if(areNewChallengesDisabled()) return false;
   if(!team || !myTeam || !currentPlayer) return false;
   if(myTeam.id === team.id) return false;
   if(myTeam.captain_email !== currentPlayer.email) return false;
@@ -302,7 +304,7 @@ function getTeamActiveChallenge(teamId) {
   const now = new Date();
   return allChallenges.find(c =>
     ['pending','accepted','pending_result'].includes(c.status) &&
-    (c.status !== 'pending' || !c.response_expires_at || new Date(c.response_expires_at) >= now) &&
+    (c.status !== 'pending' || areChallengeRejectionsDisabled(now) || !c.response_expires_at || new Date(c.response_expires_at) >= now) &&
     (c.challenger_id === teamId || c.challenged_id === teamId)
   ) || null;
 }
