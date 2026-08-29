@@ -146,6 +146,14 @@ async function sendInactivityPenaltyWarning(team, activityInfo) {
 }
 
 async function checkInactivityPenaltyWarnings() {
+  // Produkcijska send-challenge-email funkcija trenutno ne prepoznaje
+  // inactivity_penalty_warning i takvu poruku pogrešno šalje kao izazov od
+  // "unknown". Ne pokušavaj slanje dok se Edge funkcija ne nadogradi; status
+  // neaktivnosti i dalje je vidljiv u aplikaciji kroz odbrojavanje do kazne.
+  // Važno: povratak je prije rezervacije upozorenja u bazi kako bi se nakon
+  // nadogradnje email funkcije slanje moglo ponovno uključiti bez resetiranja.
+  return;
+
   if(tournamentPause?.is_paused) return;
   const now = getPauseTimerNow();
 
