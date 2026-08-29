@@ -123,7 +123,18 @@ vm.runInContext(fs.readFileSync('js/admin.js', 'utf8'), context);
   assert.doesNotMatch(actions.after, /Odbij/);
   assert.match(actions.after, /Prihvati/);
 
-  console.log('Tournament boundary rules passed (Europe/Zagreb, rejection and challenge cutoffs).');
+  const postTournamentActions = vm.runInContext(`(() => {
+    const challenge = allChallenges[0];
+    const pending = getChallengeActionsHTML(challenge, { now:new Date('2026-09-14T22:00:00.000Z') });
+    challenge.status = 'accepted';
+    const accepted = getChallengeActionsHTML(challenge, { now:new Date('2026-09-16T10:00:00.000Z') });
+    return { pending, accepted };
+  })()`, context);
+  assert.match(postTournamentActions.pending, /Prihvati/);
+  assert.doesNotMatch(postTournamentActions.pending, /Odbij/);
+  assert.match(postTournamentActions.accepted, /Unesi rezultat/);
+
+  console.log('Tournament boundary rules passed (Europe/Zagreb, cutoffs and post-tournament completion actions).');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
