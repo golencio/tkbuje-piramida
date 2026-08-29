@@ -39,9 +39,6 @@ async function adminRefreshMatches() {
 }
 
 function renderAdminSendChallengeForm() {
-  if(areNewChallengesDisabled()) {
-    return `<div class="admin-panel-card"><div class="admin-panel-head"><span>Pošalji izazov u ime tima</span></div><div class="admin-soft-box">${escapeHtml(getNewChallengeClosedMessage())}</div></div>`;
-  }
   const challengerOptions = allTeams
     .map(t => '<option value="' + t.id + '">' + escapeHtml(adminTeamName(t)) + ' · Stepenica ' + (t.penalty ? 'kazna' : escapeHtml(t.step)) + '</option>')
     .join('');
@@ -229,10 +226,7 @@ async function insertPyramidMatchIfMissing(challenge, adminEmail) {
     const loserEmails = winnerIsChallenger
       ? [challenge.challenged_player1, challenge.challenged_player2]
       : [challenge.challenger_player1, challenge.challenger_player2];
-    // Admin spremanje osvježava updated_at neposredno prije ove provjere, zato
-    // duplikat tražimo oko stvarnog termina (ili nastanka) izazova, a ne oko
-    // vremena uređivanja u adminu.
-    const referenceTime = new Date(challenge.match_reference_at || challenge.scheduled_at || challenge.updated_at || challenge.created_at || Date.now());
+    const referenceTime = new Date(challenge.updated_at || challenge.scheduled_at || challenge.created_at || Date.now());
     const duplicateWindowMs = 3 * DAY_MS;
     const duplicateWindowStart = new Date(referenceTime.getTime() - duplicateWindowMs).toISOString();
     const duplicateWindowEnd = new Date(referenceTime.getTime() + duplicateWindowMs).toISOString();
@@ -366,11 +360,6 @@ function getRankingChangeLog(limit = 8) {
         detail = 'Izazvani tim odbio je drugi put, pa je izazivač preuzeo mjesto';
         icon = '⚠';
         tone = 'gold';
-      } else if(c.result_score === AUTO_LOSS_RESULT_SCORE) {
-        reason = 'Automatski poraz';
-        detail = 'Izazov nije prihvaćen u roku od 3 dana, pa je izazivač preuzeo mjesto';
-        icon = '⏰';
-        tone = 'red';
       } else if(c.status === 'surrendered') {
         reason = 'Predaja';
         detail = 'Promjena zbog predaje / isteka roka';
@@ -732,14 +721,10 @@ function renderAdmin() {
           const expires = new Date(c.response_expires_at);
           const diff = expires - new Date();
           const hours = Math.max(0, Math.floor(diff/3600000));
-          const rejectionDisabled = areChallengeRejectionsDisabled();
-          const pendingMeta = rejectionDisabled
-            ? 'Rok za prihvaćanje: ' + hours + 'h · istek znači automatski poraz'
-            : 'Rok: ' + hours + 'h · Odbijanja: ' + getConsecutiveRejectionCount(c) + '/1';
           return '<div class="admin-action-row">'
             + '<div class="admin-row-icon">⚔️</div>'
-            + '<div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">' + pendingMeta + '</div></div>'
-            + '<div class="admin-row-actions"><button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati</button>' + (rejectionDisabled ? '' : '<button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij</button>') + '</div>'
+            + '<div class="admin-row-main"><div class="admin-row-title">' + adminTeamName(challenger) + ' <span>vs</span> ' + adminTeamName(challenged) + '</div><div class="admin-row-meta">Rok: ' + hours + 'h · Odbijanja: ' + getConsecutiveRejectionCount(c) + '/1</div></div>'
+            + '<div class="admin-row-actions"><button class="btn-accept" onclick="adminAcceptChallenge(\'' + c.id + '\')">✓ Prihvati</button><button class="btn-decline" onclick="adminDeclineChallenge(\'' + c.id + '\')">✕ Odbij</button></div>'
             + '</div>';
         }).join('') : '<div class="admin-empty-small">Nema izazova na čekanju</div>'}
       </div>
@@ -854,10 +839,6 @@ async function saveEditChallenge() {
   const winnerId = document.getElementById('edit-ch-winner').value || null;
   const score = document.getElementById('edit-ch-score').value.trim() || null;
   const status = document.getElementById('edit-ch-status').value;
-  if(status === 'declined' && areChallengeRejectionsDisabled()) {
-    showToast(getRejectionDisabledMessage(), 'error');
-    return;
-  }
   const scheduledAt = datetimeLocalToIso(document.getElementById('edit-ch-scheduled-at').value);
   const responseExpiresAt = datetimeLocalToIso(document.getElementById('edit-ch-response-expires').value);
   const matchExpiresAt = datetimeLocalToIso(document.getElementById('edit-ch-match-expires').value);
@@ -894,7 +875,6 @@ async function saveEditChallenge() {
   }
 
   try {
-    const matchReferenceAt = c.scheduled_at || c.updated_at || c.created_at || null;
     console.log('[SAVE CHALLENGE] SAVE_START', { challengeId: editChallengeId });
     await supabaseRestRequest('/rest/v1/challenges?id=eq.' + encodeURIComponent(editChallengeId), {
       method: 'PATCH',
@@ -905,10 +885,7 @@ async function saveEditChallenge() {
 
     let syncStatus = null;
     if(status === 'completed' && winnerId && score) {
-      const matchInsertResult = await insertPyramidMatchIfMissing(
-        { ...c, match_reference_at: matchReferenceAt },
-        currentUser?.email || currentPlayer?.email || null
-      );
+      const matchInsertResult = await insertPyramidMatchIfMissing(c, currentUser?.email || currentPlayer?.email || null);
       syncStatus = matchInsertResult.status;
     }
 
@@ -948,14 +925,6 @@ async function deleteChallengeAdmin() {
 }
 
 async function adminAcceptChallenge(challengeId) {
-  const challenge = allChallenges.find(c => c.id === challengeId);
-  const now = new Date();
-  if(challenge?.status === 'pending' && challenge.response_expires_at && new Date(challenge.response_expires_at) <= now) {
-    await handleExpired(challenge, now);
-    showToast('Rok za prihvaćanje je istekao.', 'error');
-    await safeLoadAll('manual'); renderAdmin();
-    return;
-  }
   const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
   const {error} = await sb.from('challenges').update({
     status: 'accepted',
@@ -967,11 +936,7 @@ async function adminAcceptChallenge(challengeId) {
   await safeLoadAll('manual'); renderAdmin();
 }
 
-async function adminDeclineChallenge(challengeId, now = new Date()) {
-  if(areChallengeRejectionsDisabled(now)) {
-    showToast(getRejectionDisabledMessage(), 'error');
-    return;
-  }
+async function adminDeclineChallenge(challengeId) {
   const c = allChallenges.find(x=>x.id===challengeId);
   if(!c) return;
 
@@ -979,10 +944,12 @@ async function adminDeclineChallenge(challengeId, now = new Date()) {
 
   if(totalRejections >= 2) {
     if(!confirm('Ovo je drugo odbijanje od zadnje zamjene — timovi će zamijeniti mjesta. Nastavi?')) return;
-    await resolveChallengeAsChallengerWin(c, {
+    await swapTeams(c.challenger_id, c.challenged_id, {
       reason: 'Drugo odbijanje izazova',
-      toastMessage: 'Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄'
+      relatedChallengeId: challengeId
     });
+    await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:0 }).eq('id',challengeId);
+    showToast('Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄','success');
   } else {
     await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
     showToast('Izazov odbijen (1/2). Izazivač može poslati još jedan izazov.','');

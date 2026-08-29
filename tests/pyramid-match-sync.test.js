@@ -4,17 +4,6 @@ const vm = require('node:vm');
 
 const adminSource = fs.readFileSync('js/admin.js', 'utf8');
 const DAY_MS = 24 * 60 * 60 * 1000;
-const postTournamentNow = '2026-09-16T10:00:00.000Z';
-
-class PostTournamentDate extends Date {
-  constructor(value) {
-    super(value === undefined ? postTournamentNow : value);
-  }
-
-  static now() {
-    return new Date(postTournamentNow).getTime();
-  }
-}
 
 function makeChallenge(overrides = {}) {
   return {
@@ -82,9 +71,7 @@ function createHarness({ challenge = makeChallenge(), matches = [] } = {}) {
 
   const context = {
     console,
-    // Sve potvrde u ovom testu izvršavaju se nakon završetka turnira kako bi
-    // postojeći mečevi dokazano ostali dovršivi nakon 15. 9. 2026.
-    Date: PostTournamentDate,
+    Date,
     Math,
     Set,
     Promise,

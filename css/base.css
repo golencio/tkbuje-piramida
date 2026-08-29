@@ -63,5 +63,3 @@
 
     /* NOTIFICATION BADGE */
     .notif-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--red); color:white; font-size:0.65rem; font-weight:700; border-radius:50%; margin-left:4px; vertical-align:middle; }
-    .tournament-deadline-notice { max-width:1100px; margin:0 auto 1rem; padding:0.85rem 1rem; display:flex; flex-wrap:wrap; gap:0.35rem 0.75rem; align-items:baseline; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.38); border-radius:12px; color:var(--text2); font-size:0.85rem; line-height:1.5; }
-    .tournament-deadline-notice strong { color:var(--gold); }
