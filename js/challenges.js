@@ -83,6 +83,14 @@ async function confirmPlayerSelection() {
     showFairPlayPopup(pendingChallengeData.challengedId);
     return;
   } else if(selectionMode === 'accept') {
+    const pendingChallenge = allChallenges.find(c => c.id === pendingAcceptId);
+    if(pendingChallenge?.status === 'pending' && pendingChallenge.response_expires_at && new Date(pendingChallenge.response_expires_at) <= new Date()) {
+      await handleExpired(pendingChallenge);
+      showToast('Rok za prihvaćanje je istekao.', 'error');
+      closeModal('modal-select-players');
+      await safeLoadAll('manual');
+      return;
+    }
     const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
     const { error } = await sb.from('challenges').update({
       status: 'accepted',
@@ -195,7 +203,6 @@ async function sendChallengeResponseReminder(challenge) {
 
 async function checkChallengeResponseReminders() {
   const now = new Date();
-  if(areChallengeRejectionsDisabled(now)) return;
   const reminderWindowEnd = new Date(now.getTime() + 24 * HOUR_MS);
   const candidates = allChallenges.filter(c => {
     if(c.status !== 'pending' || c.response_reminder_sent_at || !c.response_expires_at) return false;
@@ -533,8 +540,8 @@ function getCompactChallengeMeta(c) {
   }
   if(c.status === 'pending_result') return 'Čeka potvrdu rezultata' + (c.result_score ? ': ' + c.result_score : '');
   if(c.status === 'pending') {
-    if(areChallengeRejectionsDisabled()) return 'Na čekanju prihvaćanja · odbijanje nije dopušteno';
-    return 'Na čekanju' + (c.response_expires_at ? ' · rok ' + formatChallengeDateTime(c.response_expires_at) : '');
+    const rejectionNote = areChallengeRejectionsDisabled() ? ' · odbijanje nije dopušteno' : '';
+    return 'Na čekanju prihvaćanja' + (c.response_expires_at ? ' · rok ' + formatChallengeDateTime(c.response_expires_at) : '') + rejectionNote;
   }
   if(c.status === 'completed') return 'Rezultat: ' + (c.result_score || '—');
   if(c.status === 'surrendered') return 'Predaja' + (c.result_score ? ' · ' + c.result_score : '');
@@ -571,18 +578,14 @@ function buildChallengeDetailHTML(c) {
   if(!challenger || !challenged) return '<div class="empty">Izazov nije pronađen.</div>';
 
   const now = new Date();
-  const rejectionDisabled = areChallengeRejectionsDisabled(now);
-  const expires = c.status==='pending' && !rejectionDisabled ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
+  const expires = c.status==='pending' ? new Date(c.response_expires_at) : c.match_expires_at ? new Date(c.match_expires_at) : null;
   let timerInfo = { label:'Rok', value:'—', urgent:false };
-  if(c.status === 'pending' && rejectionDisabled) {
-    timerInfo = { label:'Odgovor', value:'Odbijanje nije dopušteno', urgent:false };
-  }
   if(expires && ['pending','accepted'].includes(c.status)) {
     const timerBase = c.status === 'accepted' ? getPauseTimerNow() : now;
     const remaining = formatRemainingTime(expires, timerBase);
     const pausedText = c.status === 'accepted' && tournamentPause?.is_paused ? ' ⏸' : '';
     timerInfo = {
-      label: c.status==='pending' ? 'Rok za odgovor' : 'Rok za meč' + pausedText,
+      label: c.status==='pending' ? 'Rok za prihvaćanje' : 'Rok za meč' + pausedText,
       value: remaining.text,
       urgent: remaining.diff < DAY_MS
     };
@@ -662,13 +665,9 @@ async function renderChallenges() {
 
   const now = new Date();
 
-  // Nakon 1. 9. rok odgovora više nema posljedice. Pending izazovi ostaju
-  // otvoreni za prihvaćanje, uključujući nakon završetka slanja novih izazova.
-  if(!areChallengeRejectionsDisabled(now)) {
-    for(const c of allChallenges) {
-      if(c.status==='pending' && new Date(c.response_expires_at) < now) {
-        await handleExpired(c);
-      }
+  for(const c of allChallenges) {
+    if(c.status==='pending' && new Date(c.response_expires_at) <= now) {
+      await handleExpired(c, now);
     }
   }
 
@@ -740,17 +739,21 @@ async function respondChallenge(challengeId, response, now = new Date()) {
 
     if(totalRejections >= 2) {
       if(!confirm('Ovo je drugo odbijanje! Timovi će automatski zamijeniti mjesta. Nastavi?')) return;
-      await swapTeams(challenge.challenger_id, challenge.challenged_id, {
+      await resolveChallengeAsChallengerWin(challenge, {
         reason: 'Drugo odbijanje izazova',
-        relatedChallengeId: challengeId
+        toastMessage: 'Izazivač je pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄'
       });
-      await sb.from('challenges').update({ status:'completed', result_winner_id:challenge.challenger_id, rejection_count:0 }).eq('id',challengeId);
-      showToast('Izazivač je pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄', 'success');
     } else {
       await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
       showToast('Izazov odbijen (1/2). Tim može izazvati ponovo.', '');
     }
   } else {
+    if(challenge.response_expires_at && new Date(challenge.response_expires_at) <= now) {
+      await handleExpired(challenge, now);
+      showToast('Rok za prihvaćanje je istekao.', 'error');
+      await safeLoadAll('manual');
+      return;
+    }
     // Prihvaćeno — koristi cache umjesto novog Supabase selecta u click-pathu.
     const myMembers = getCachedTeamMembers(myTeam.id);
     
@@ -776,29 +779,62 @@ async function respondChallenge(challengeId, response, now = new Date()) {
 }
 
 // ---- HANDLE EXPIRED ----
+const AUTO_LOSS_RESULT_SCORE = 'W.O. – istek roka za prihvaćanje';
+
+function usesAutomaticNoResponseLoss(challenge) {
+  if(!challenge?.response_expires_at) return false;
+  return areChallengeRejectionsDisabled(new Date(challenge.response_expires_at));
+}
+
+async function resolveChallengeAsChallengerWin(challenge, options = {}) {
+  await swapTeams(challenge.challenger_id, challenge.challenged_id, {
+    reason: options.reason || 'Pobjeda izazivača bez odigravanja',
+    relatedChallengeId: challenge.id
+  });
+  const update = {
+    status: 'completed',
+    result_winner_id: challenge.challenger_id,
+    rejection_count: 0,
+    updated_at: new Date().toISOString()
+  };
+  if(options.resultScore) update.result_score = options.resultScore;
+  const { error } = await sb.from('challenges').update(update).eq('id', challenge.id);
+  if(error) throw error;
+  Object.assign(challenge, update);
+  if(options.toastMessage) showToast(options.toastMessage, 'success');
+  return update;
+}
+
 async function handleExpired(challenge, now = new Date()) {
-  // Nakon početka 1. 9. pending izazov ostaje otvoren za prihvaćanje.
-  // Istek se više ne pretvara u odbijanje i ne može promijeniti poredak.
-  if(areChallengeRejectionsDisabled(now)) return;
+  if(!challenge || challenge.status !== 'pending') return;
+  const expiresAt = new Date(challenge.response_expires_at);
+  if(isNaN(expiresAt.getTime()) || expiresAt > now) return;
+
+  // Novo pravilo ovisi o lokalnom datumu samog roka. Tako i izazov poslan prije
+  // 1. 9., kojem tri dana istječu 1. 9. ili kasnije, završava automatskim porazom.
+  if(usesAutomaticNoResponseLoss(challenge)) {
+    await resolveChallengeAsChallengerWin(challenge, {
+      reason: 'Automatska pobjeda: istekao rok za prihvaćanje',
+      resultScore: AUTO_LOSS_RESULT_SCORE,
+      toastMessage: 'Rok za prihvaćanje je istekao — izazivaču je evidentirana pobjeda. 🔄'
+    });
+    return;
+  }
+
   const totalRejections = getConsecutiveRejectionCount(challenge) + 1;
 
   if(totalRejections >= 2) {
-    await swapTeams(challenge.challenger_id, challenge.challenged_id, {
+    await resolveChallengeAsChallengerWin(challenge, {
       reason: 'Istek roka: drugo odbijanje',
-      relatedChallengeId: challenge.id
+      toastMessage: 'Rok istekao — timovi zamijenili mjesta! 🔄'
     });
-    await sb.from('challenges').update({
-      status: 'completed',
-      result_winner_id: challenge.challenger_id,
-      rejection_count: 0,
-      updated_at: new Date().toISOString()
-    }).eq('id', challenge.id);
-    showToast('Rok istekao — timovi zamijenili mjesta! 🔄', 'success');
   } else {
-    await sb.from('challenges').update({
+    const update = {
       status: 'declined',
       rejection_count: totalRejections,
       updated_at: new Date().toISOString()
-    }).eq('id', challenge.id);
+    };
+    await sb.from('challenges').update(update).eq('id', challenge.id);
+    Object.assign(challenge, update);
   }
 }

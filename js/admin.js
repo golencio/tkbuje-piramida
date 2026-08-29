@@ -366,6 +366,11 @@ function getRankingChangeLog(limit = 8) {
         detail = 'Izazvani tim odbio je drugi put, pa je izazivač preuzeo mjesto';
         icon = '⚠';
         tone = 'gold';
+      } else if(c.result_score === AUTO_LOSS_RESULT_SCORE) {
+        reason = 'Automatski poraz';
+        detail = 'Izazov nije prihvaćen u roku od 3 dana, pa je izazivač preuzeo mjesto';
+        icon = '⏰';
+        tone = 'red';
       } else if(c.status === 'surrendered') {
         reason = 'Predaja';
         detail = 'Promjena zbog predaje / isteka roka';
@@ -729,7 +734,7 @@ function renderAdmin() {
           const hours = Math.max(0, Math.floor(diff/3600000));
           const rejectionDisabled = areChallengeRejectionsDisabled();
           const pendingMeta = rejectionDisabled
-            ? 'Čeka prihvaćanje · odbijanje nije dopušteno'
+            ? 'Rok za prihvaćanje: ' + hours + 'h · istek znači automatski poraz'
             : 'Rok: ' + hours + 'h · Odbijanja: ' + getConsecutiveRejectionCount(c) + '/1';
           return '<div class="admin-action-row">'
             + '<div class="admin-row-icon">⚔️</div>'
@@ -943,6 +948,14 @@ async function deleteChallengeAdmin() {
 }
 
 async function adminAcceptChallenge(challengeId) {
+  const challenge = allChallenges.find(c => c.id === challengeId);
+  const now = new Date();
+  if(challenge?.status === 'pending' && challenge.response_expires_at && new Date(challenge.response_expires_at) <= now) {
+    await handleExpired(challenge, now);
+    showToast('Rok za prihvaćanje je istekao.', 'error');
+    await safeLoadAll('manual'); renderAdmin();
+    return;
+  }
   const matchExpires = new Date(Date.now() + 6*24*60*60*1000).toISOString();
   const {error} = await sb.from('challenges').update({
     status: 'accepted',
@@ -966,12 +979,10 @@ async function adminDeclineChallenge(challengeId, now = new Date()) {
 
   if(totalRejections >= 2) {
     if(!confirm('Ovo je drugo odbijanje od zadnje zamjene — timovi će zamijeniti mjesta. Nastavi?')) return;
-    await swapTeams(c.challenger_id, c.challenged_id, {
+    await resolveChallengeAsChallengerWin(c, {
       reason: 'Drugo odbijanje izazova',
-      relatedChallengeId: challengeId
+      toastMessage: 'Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄'
     });
-    await sb.from('challenges').update({ status:'completed', result_winner_id:c.challenger_id, rejection_count:0 }).eq('id',challengeId);
-    showToast('Izazivač pobijedio zbog dvostrukog odbijanja! Timovi su zamijenili mjesta! 🔄','success');
   } else {
     await sb.from('challenges').update({ status:'declined', rejection_count:totalRejections }).eq('id',challengeId);
     showToast('Izazov odbijen (1/2). Izazivač može poslati još jedan izazov.','');

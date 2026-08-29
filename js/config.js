@@ -138,7 +138,7 @@ function getNewChallengeClosedMessage() {
 }
 
 function getRejectionDisabledMessage() {
-  return 'Od 1. 9. 2026. izazove više nije moguće odbiti. Izazov se može prihvatiti i odigrati.';
+  return 'Od 1. 9. 2026. izazove nije moguće odbiti. Rok za prihvaćanje je 3 dana; neprihvaćanje se automatski računa kao poraz.';
 }
 
 function escapeContactHtml(value) {

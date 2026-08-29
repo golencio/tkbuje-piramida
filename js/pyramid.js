@@ -304,7 +304,7 @@ function getTeamActiveChallenge(teamId) {
   const now = new Date();
   return allChallenges.find(c =>
     ['pending','accepted','pending_result'].includes(c.status) &&
-    (c.status !== 'pending' || areChallengeRejectionsDisabled(now) || !c.response_expires_at || new Date(c.response_expires_at) >= now) &&
+    (c.status !== 'pending' || !c.response_expires_at || new Date(c.response_expires_at) > now) &&
     (c.challenger_id === teamId || c.challenged_id === teamId)
   ) || null;
 }
